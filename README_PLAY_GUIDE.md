@@ -1,10 +1,10 @@
 # Aetheria: Chronicles of the Drake (UE 5.8.4) — Руководство игрока и разработчика
 
 ## Быстрый запуск
-- **Играть (авто-проверка RTX + DLSS/TSR):** запустите `D:\AetheriaChronicles\PLAY_AETHERIA_CHRONICLES.bat`
-  - На видеокартах **NVIDIA RTX** (например, RTX 3070 8GB) автоматически включается режим **`CrimsonRTXUltra`** (D3D12 SM6, Hardware Ray Tracing Lumen, Nanite, Virtual Shadow Maps, Reflex, Texture Streaming 3 ГБ + автоподхват DLSS при установке плагина в `Plugins\DLSS\`).
+- **Играть (авто-проверка RTX + NVIDIA DLSS 4.5):** запустите `C:\Games\AetheriaChronicles\PLAY_AETHERIA_CHRONICLES.bat` (или ярлык `Aetheria Chronicles` на Рабочем столе)
+  - На видеокартах **NVIDIA RTX** автоматически включается режим **`CrimsonRTXUltra`** (D3D12 SM6, Hardware Ray Tracing Lumen, Nanite, Virtual Shadow Maps, NVIDIA DLSS 4.5 + Ray Reconstruction + Frame Generation + Reflex, Texture Streaming 3 ГБ).
   - На видеокартах **без RTX** (или с флагом `-nortx`) автоматически запускается облегчённая версия **`ClassicPerformance`** (без HWRT/Volumetric Fog, облегчённый пул текстур 1.5 ГБ).
-- **Пересборка C++:** запустите `D:\AetheriaChronicles\BUILD_AETHERIA_CHRONICLES.bat` (кэши `DDC`, `Zen`, `UBA` автоматически вынесены на `D:\UE5_DDC`, `D:\UE5_Zen\Data`, `D:\UE5_UBA`).
+- **Пересборка C++:** запустите `C:\Games\AetheriaChronicles\BUILD_AETHERIA_CHRONICLES.bat` (кэши `DDC`, `Zen`, `UBA` автоматически вынесены на `C:\UE5_Cache`).
 
 ---
 
@@ -45,7 +45,16 @@
   - `Tab` — Гримуар всех 10 заклинаний Invoker
   - `T` — Смена времени суток (*Golden Sunset → Starry Full Moon → Misty Dawn → Highland Noon*)
   - `F10` — Панель диагностики RTX / DLSS / Texture Streaming
-  - `Esc` — Освободить/захватить курсор / закрыть окно
+  - `` ` `` (тильда / `ё`) — Консоль разработчика Aetheria
+  - `Esc` — Главное меню / пауза / закрыть окно
+
+---
+
+## Режим Бога (`/godmode`) и Консоль Разработчика (клавиша `` ` ``)
+Нажмите клавишу `` ` `` (тильда / `ё`) в любой момент игры, чтобы открыть встроенную консоль Aetheria, и введите:
+- **`/godmode`** — включает/выключает **Режим Бога**: делает персонажа **полностью бессмертным**, мгновенно открывает **все 10 из 10 заклинаний** (*Exort · Wex · Quas*, снимая даже ограничение малого роста), даёт бесконечную ману/выносливость и обнуляет перезарядку заклинаний.
+- **`/restore`** — мгновенно запускает магическое восстановление ландшафта, примятой травы, срубленных деревьев и разрушенных колонн/кристаллов (по умолчанию мир сам восстанавливается магией с изумрудно-золотыми эффектами ровно через **1 минуту / 60 секунд**).
+- **`/help`** — список всех команд консоли (`/heal`, `/gold`, `/time`, `/clear`, `HostCoop`, `JoinCoop`).
 
 ---
 

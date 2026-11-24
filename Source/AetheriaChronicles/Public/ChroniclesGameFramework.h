@@ -20,10 +20,13 @@ class AAetheriaEnemyCharacter;
 class AAetheriaHeroCharacter;
 class AAetheriaNPCActor;
 class AAetheriaWorldBuilder;
+class ACameraActor;
 class AChroniclesPlayerController;
 class APlayerStart;
 class SAetheriaChroniclesHUD;
 class SBorder;
+class SEditableTextBox;
+class SScrollBox;
 class SVerticalBox;
 class SWidget;
 class UFogOfWarMapSubsystem;
@@ -35,6 +38,7 @@ UENUM(BlueprintType)
 enum class EChroniclesOverlayMode : uint8
 {
 	None,
+	MainMenu,
 	WorldMap,
 	SkillTree,
 	QuestLog,
@@ -152,6 +156,42 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Aetheria|UI")
 	EChroniclesOverlayMode ActiveOverlay = EChroniclesOverlayMode::None;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Aetheria|UI")
+	bool bHasEnteredGameWorld = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Aetheria|UI")
+	bool bIsNewGameCreationFlow = false;
+
+	/** 0=InCaveTalkToTutor, 1=WalkOutToOverlook, 2=ApproachWaterfall, 3=PlayingWaterfallCutscene, 4=CompletedAdventureActive */
+	UPROPERTY(BlueprintReadOnly, Category = "Aetheria|Prologue")
+	uint8 PrologueStage = 4;
+
+	bool bMainMenuReturnTarget = false;
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|UI")
+	void EnterGameFromTitleScreen(bool bLoadSavedProgress = false);
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Prologue")
+	void StartNewGameCharacterCreation();
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Prologue")
+	void ConfirmNewHeroAndAwakenInCave();
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Prologue")
+	void StartPrologueWaterfallCutscene();
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|Prologue")
+	bool IsPrologueCutsceneActive() const { return PrologueStage == 3; }
+
+	/** Returns the live tracked waypoint world coordinate (Prologue stage target or tracked quest objective). */
+	FVector GetActiveWaypointWorldLocation(FString& OutLabel) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|UI")
+	void OpenMainMenuOverlay();
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|UI")
+	void RequestQuitApplication();
+
 	UFUNCTION(BlueprintCallable, Category = "Aetheria|Input")
 	void ToggleMouseCapture();
 
@@ -209,7 +249,29 @@ public:
 	const FString& GetActiveToastMessage() const { return ActiveToastText; }
 	float GetActiveToastAlpha() const;
 
-	// --- Multiplayer Console Commands ---
+	// --- Multiplayer & Developer Console Commands (` key -> /godmode) ---
+
+	virtual FString ConsoleCommand(const FString& Command, bool bWriteToLog = true) override;
+
+	UFUNCTION(Exec)
+	void GodMode();
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Console")
+	void ToggleDeveloperConsole();
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Console")
+	void SetDeveloperConsoleOpen(bool bOpen);
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|Console")
+	bool IsDeveloperConsoleOpen() const { return bDevConsoleOpen; }
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Console")
+	bool ExecuteDeveloperConsoleCommand(const FString& RawCommand);
+
+	void AppendConsoleLogLine(const FString& Line, const FLinearColor& Color = FLinearColor(0.88f, 0.86f, 0.82f, 1.0f));
+	const TArray<TPair<FString, FLinearColor>>& GetConsoleLogLines() const { return ConsoleLogLines; }
+	const TArray<FString>& GetConsoleCommandHistory() const { return ConsoleCommandHistory; }
+	double GetLastConsoleOpenRealTime() const { return LastConsoleOpenRealTime; }
 
 	UFUNCTION(Exec)
 	void HostCoop();
@@ -243,10 +305,13 @@ private:
 	void HandleApplicationActivationChanged(bool bIsActive);
 
 	void HandleGlobalAndOverlayKeys();
+	bool WasConsoleToggleKeyJustPressed() const;
 	void HandleHeroGameplayInput(AAetheriaHeroCharacter* Hero, float DeltaTime);
 	void HandleDragonGameplayInput(AAetheriaDragonActor* Dragon, float DeltaTime);
 	void UpdateToastNotifications(float DeltaTime);
 	void UpdateDeathOverlayState();
+	void UpdatePrologueAndWaterfallCutscene(float DeltaTime);
+	void EndPrologueWaterfallCutscene();
 
 	bool ComputeSpellAim(AAetheriaHeroCharacter* Hero, FVector& OutOrigin, FVector& OutDir, FVector& OutTargetPoint) const;
 
@@ -298,6 +363,23 @@ private:
 	// Live 3D Hero Customizer studio camera orbit & zoom state
 	float CreatorOrbitYaw = 165.f;
 	int32 CreatorZoomMode = 0;
+
+	// Gentle cinematic camera sway angle on the Launch / Title Screen
+	float TitleCameraOrbitAngle = 0.0f;
+
+	// Prologue Waterfall Plunge & Shore Surfacing 3-shot cutscene state
+	float WaterfallCutsceneTimer = 0.0f;
+	bool bWaterfallSplashSpawned = false;
+	FVector CutsceneStartHeroLoc = FVector::ZeroVector;
+	TWeakObjectPtr<ACameraActor> CutsceneCameraActor;
+
+	// In-game Developer Console (` / ~ / ё) state & history
+	bool bDevConsoleOpen = false;
+	bool bPendingConsoleFocus = false;
+	double LastConsoleToggleRealTime = -10.0;
+	double LastConsoleOpenRealTime = -10.0;
+	TArray<TPair<FString, FLinearColor>> ConsoleLogLines;
+	TArray<FString> ConsoleCommandHistory;
 };
 
 // ============================================================================
@@ -334,7 +416,67 @@ private:
 };
 
 // ============================================================================
-// 4B. SAetheriaChroniclesHUD — Production Slate HUD & Interactive Overlays
+// 4B. SChroniclesMinimapWidget — 172x172 Round Bottom-Right Radar Minimap
+// ============================================================================
+class AETHERIACHRONICLES_API SChroniclesMinimapWidget : public SLeafWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SChroniclesMinimapWidget)
+		: _OwnerPC(nullptr)
+		, _MinimapSize(172.f)
+	{}
+		SLATE_ARGUMENT(TWeakObjectPtr<AChroniclesPlayerController>, OwnerPC)
+		SLATE_ARGUMENT(float, MinimapSize)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs);
+
+	virtual FVector2D ComputeDesiredSize(float LayoutScaleMultiplier) const override;
+	virtual int32 OnPaint(
+		const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override;
+
+private:
+	TWeakObjectPtr<AChroniclesPlayerController> OwnerPC;
+	float DesiredSizePx = 172.f;
+};
+
+// ============================================================================
+// 4C. SChroniclesWorldSpaceOverlay — Overhead NPC Names, Enemy HP Bars,
+//     Floating Golden Objective Diamond & Minimalist Center Dot Reticle
+// ============================================================================
+class AETHERIACHRONICLES_API SChroniclesWorldSpaceOverlay : public SLeafWidget
+{
+public:
+	SLATE_BEGIN_ARGS(SChroniclesWorldSpaceOverlay)
+		: _OwnerPC(nullptr)
+	{}
+		SLATE_ARGUMENT(TWeakObjectPtr<AChroniclesPlayerController>, OwnerPC)
+	SLATE_END_ARGS()
+
+	void Construct(const FArguments& InArgs);
+
+	virtual FVector2D ComputeDesiredSize(float LayoutScaleMultiplier) const override;
+	virtual int32 OnPaint(
+		const FPaintArgs& Args,
+		const FGeometry& AllottedGeometry,
+		const FSlateRect& MyCullingRect,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId,
+		const FWidgetStyle& InWidgetStyle,
+		bool bParentEnabled) const override;
+
+private:
+	TWeakObjectPtr<AChroniclesPlayerController> OwnerPC;
+};
+
+// ============================================================================
+// 4D. SAetheriaChroniclesHUD — Production Slate HUD & Interactive Overlays
 // ============================================================================
 class AETHERIACHRONICLES_API SAetheriaChroniclesHUD : public SCompoundWidget
 {
@@ -347,17 +489,26 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
+	virtual bool SupportsKeyboardFocus() const override { return true; }
+	virtual FReply OnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
+
 	/** Rebuilds dynamic overlay lists (Skill Tree columns, Quest Chronicle, Grimoire, Landmarks). */
 	void RefreshDynamicPanels();
+	void SyncDeveloperConsoleVisibilityAndFocus(bool bOpen, bool bForceFocus = false);
+	void RebuildConsoleLogBox();
 
 private:
 	// --- Persistent HUD Regions ---
 	TSharedRef<SWidget> BuildTopCenterCompassAndBossBar();
 	TSharedRef<SWidget> BuildTopRightStatusAndHotkeys();
 	TSharedRef<SWidget> BuildBottomLeftVitalsAndInvokerPanel();
+	TSharedRef<SWidget> BuildBottomRightMinimapAndGold();
 	TSharedRef<SWidget> BuildBottomCenterPromptsAndToast();
+	TSharedRef<SWidget> BuildCutsceneLetterboxOverlay();
+	TSharedRef<SWidget> BuildDeveloperConsoleOverlay();
 
 	// --- Interactive Modal Overlays ---
+	TSharedRef<SWidget> BuildMainMenuOverlay();
 	TSharedRef<SWidget> BuildWorldMapOverlay();
 	TSharedRef<SWidget> BuildSkillTreeOverlay();
 	TSharedRef<SWidget> BuildQuestLogOverlay();
@@ -400,5 +551,10 @@ private:
 	TSharedPtr<SVerticalBox> MapLandmarksBox;
 	TSharedPtr<SVerticalBox> CreatorLeftContentBox;
 	TSharedPtr<SVerticalBox> CreatorRightStatsBox;
+	TSharedPtr<SWidget> ConsoleOverlayContainer;
+	TSharedPtr<SEditableTextBox> ConsoleInputBox;
+	TSharedPtr<SScrollBox> ConsoleScrollBox;
+	TSharedPtr<SVerticalBox> ConsoleLogListBox;
+	int32 ConsoleHistoryBrowseIndex = -1;
 	int32 CreatorActiveTab = 0;
 };

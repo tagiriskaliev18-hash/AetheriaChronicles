@@ -13,12 +13,16 @@
 #include "Engine/Scene.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "Kismet/GameplayStatics.h"
 #include "MaterialTypes.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Materials/MaterialParameters.h"
+#include "Misc/CommandLine.h"
 #include "Misc/PackageName.h"
+#include "Misc/Parse.h"
 #include "Sound/SoundBase.h"
+#include "Sound/SoundWave.h"
 #include "TimerManager.h"
 
 namespace AetheriaStyleInternal
@@ -319,11 +323,40 @@ void UAetheriaMusicSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		CueSlot = nullptr;
 	}
 
-	LoadCueForState(EChronicleMusicState::Village, TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_Village_Loop.CUE_Village_Loop"));
-	LoadCueForState(EChronicleMusicState::Field,   TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_Field_Loop.CUE_Field_Loop"));
-	LoadCueForState(EChronicleMusicState::Battle,  TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_Battle_Loop.CUE_Battle_Loop"));
-	LoadCueForState(EChronicleMusicState::Boss,    TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_BossBattle_Loop.CUE_BossBattle_Loop"));
+	// Load orchestral music cues with multi-candidate fallbacks (CUE -> looping WAV -> Gothic BGM)
+	LoadCueForState(EChronicleMusicState::Menu, {
+		TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_Menu_Loop.CUE_Menu_Loop"),
+		TEXT("/Game/PathOfAdventure/Loop/WAV/WAV_Menu_Loop.WAV_Menu_Loop"),
+		TEXT("/Game/Audio/BGM_Sanctuary_Gothic.BGM_Sanctuary_Gothic")
+	});
+	LoadCueForState(EChronicleMusicState::Village, {
+		TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_Village_Loop.CUE_Village_Loop"),
+		TEXT("/Game/PathOfAdventure/Loop/WAV/WAV_Village_Loop.WAV_Village_Loop"),
+		TEXT("/Game/Audio/BGM_Sanctuary_Gothic.BGM_Sanctuary_Gothic")
+	});
+	LoadCueForState(EChronicleMusicState::Field, {
+		TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_Field_Loop.CUE_Field_Loop"),
+		TEXT("/Game/PathOfAdventure/Loop/WAV/WAV_Field_Loop.WAV_Field_Loop"),
+		TEXT("/Game/Audio/BGM_Abyssal_Expedition.BGM_Abyssal_Expedition")
+	});
+	LoadCueForState(EChronicleMusicState::Battle, {
+		TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_Battle_Loop.CUE_Battle_Loop"),
+		TEXT("/Game/PathOfAdventure/Loop/WAV/WAV_Battle_Loop.WAV_Battle_Loop"),
+		TEXT("/Game/Audio/BGM_Abyssal_Expedition.BGM_Abyssal_Expedition")
+	});
+	LoadCueForState(EChronicleMusicState::Boss, {
+		TEXT("/Game/PathOfAdventure/Loop/CUE/CUE_BossBattle_Loop.CUE_BossBattle_Loop"),
+		TEXT("/Game/PathOfAdventure/Loop/WAV/WAV_BossBattle_Loop.WAV_BossBattle_Loop"),
+		TEXT("/Game/Audio/BGM_Boss_Dread.BGM_Boss_Dread")
+	});
 
+	AmbientLoopSound = SafeLoadSound(TEXT("/Game/Audio/SFX_Amb_Brazier_Loop.SFX_Amb_Brazier_Loop"), true);
+	MenuClickSound   = SafeLoadSound(TEXT("/Game/Audio/SFX_UIClick.SFX_UIClick"), false);
+	MenuStartSound   = SafeLoadSound(TEXT("/Game/Audio/SFX_Banner_Notify.SFX_Banner_Notify"), false);
+
+	UE_LOG(LogChronicles, Display, TEXT("[Music] Loaded %d/5 orchestral cues (Menu/Village/Field/Battle/Boss)"), GetLoadedCueCount());
+
+	// UI-safe 2D audio decks: bIsUISound = true & bAllowSpatialization = false guarantees playback in menus, UI-only focus, and gameplay!
 	auto CreateDeck = [this, &InWorld]() -> UAudioComponent*
 	{
 		UAudioComponent* Deck = NewObject<UAudioComponent>(this);
@@ -331,8 +364,9 @@ void UAetheriaMusicSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 		{
 			Deck->bAutoDestroy = false;
 			Deck->bAllowSpatialization = false;
-			Deck->bIsUISound = false;
+			Deck->bIsUISound = true;
 			Deck->bAutoActivate = false;
+			Deck->bIgnoreForFlushing = true;
 			Deck->RegisterComponentWithWorld(&InWorld);
 		}
 		return Deck;
@@ -340,9 +374,32 @@ void UAetheriaMusicSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 
 	DeckA = CreateDeck();
 	DeckB = CreateDeck();
+	AmbientDeck = CreateDeck();
 	ActiveDeckIndex = 0;
 
-	TransitionToState(GetExplorationState());
+	if (IsValid(AmbientDeck) && IsValid(AmbientLoopSound))
+	{
+		AmbientDeck->SetSound(AmbientLoopSound);
+		const float AmbVol = bMusicMuted ? 0.0f : (0.18f * MusicVolumeMaster);
+		if (AmbVol > KINDA_SMALL_NUMBER)
+		{
+			AmbientDeck->FadeIn(1.5f, AmbVol, 0.0f, EAudioFaderCurve::Logarithmic);
+		}
+	}
+
+	const bool bAutomatedRun = FParse::Param(FCommandLine::Get(), TEXT("wizardsmoke"))
+		|| FParse::Param(FCommandLine::Get(), TEXT("captureframes"));
+	if (!bAutomatedRun)
+	{
+		bMenuMusicActive = true;
+		TransitionToState(EChronicleMusicState::Menu, 1.0f, 1.0f);
+	}
+	else
+	{
+		bMenuMusicActive = false;
+		bIsInVillage = true;
+		TransitionToState(EChronicleMusicState::Village, 1.0f, 1.0f);
+	}
 }
 
 void UAetheriaMusicSubsystem::Deinitialize()
@@ -367,23 +424,112 @@ void UAetheriaMusicSubsystem::Deinitialize()
 
 	ReleaseDeck(DeckA);
 	ReleaseDeck(DeckB);
+	ReleaseDeck(AmbientDeck);
 
 	for (TObjectPtr<USoundBase>& CueSlot : StateCues)
 	{
 		CueSlot = nullptr;
 	}
+	AmbientLoopSound = nullptr;
+	MenuClickSound = nullptr;
+	MenuStartSound = nullptr;
 
 	CurrentState = EChronicleMusicState::None;
+	bMenuMusicActive = false;
 	bBossActive = false;
 
 	Super::Deinitialize();
+}
+
+void UAetheriaMusicSubsystem::SetMenuMusicActive(bool bInMenu)
+{
+	bMenuMusicActive = bInMenu;
+
+	if (bMenuMusicActive)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			World->GetTimerManager().ClearTimer(CombatDecayTimerHandle);
+		}
+		TransitionToState(EChronicleMusicState::Menu, 1.0f, 1.0f);
+	}
+	else
+	{
+		const EChronicleMusicState TargetState = bBossActive ? EChronicleMusicState::Boss : GetExplorationState();
+		TransitionToState(TargetState, 1.4f, 1.4f);
+	}
+}
+
+void UAetheriaMusicSubsystem::SetMusicVolume(float NewVolume01)
+{
+	MusicVolumeMaster = FMath::Clamp(NewVolume01, 0.0f, 1.0f);
+	ApplyLiveVolumes();
+}
+
+void UAetheriaMusicSubsystem::SetMusicMuted(bool bMute)
+{
+	bMusicMuted = bMute;
+	ApplyLiveVolumes();
+}
+
+FString UAetheriaMusicSubsystem::GetCurrentTrackDisplayName() const
+{
+	switch (CurrentState)
+	{
+	case EChronicleMusicState::Menu:    return TEXT("Main Theme — Chronicles of the Drake");
+	case EChronicleMusicState::Village: return TEXT("Golden Oakhaven Sanctuary");
+	case EChronicleMusicState::Field:   return TEXT("Highland Frontier");
+	case EChronicleMusicState::Battle:  return TEXT("Crimson Skirmish");
+	case EChronicleMusicState::Boss:    return TEXT("Malakor, Sovereign of the Seal");
+	case EChronicleMusicState::None:
+	default:                            return TEXT("Silence");
+	}
+}
+
+void UAetheriaMusicSubsystem::PlayMenuClickSFX()
+{
+	if (bMusicMuted || IsRunningDedicatedServer() || !IsValid(MenuClickSound))
+	{
+		return;
+	}
+	if (UWorld* World = GetWorld())
+	{
+		const float Vol = FMath::Clamp(0.65f * FMath::Max(0.35f, MusicVolumeMaster), 0.25f, 0.85f);
+		UGameplayStatics::PlaySound2D(World, MenuClickSound, Vol);
+	}
+}
+
+void UAetheriaMusicSubsystem::PlayMenuStartSFX()
+{
+	if (bMusicMuted || IsRunningDedicatedServer() || !IsValid(MenuStartSound))
+	{
+		return;
+	}
+	if (UWorld* World = GetWorld())
+	{
+		const float Vol = FMath::Clamp(0.80f * FMath::Max(0.35f, MusicVolumeMaster), 0.30f, 0.95f);
+		UGameplayStatics::PlaySound2D(World, MenuStartSound, Vol);
+	}
+}
+
+int32 UAetheriaMusicSubsystem::GetLoadedCueCount() const
+{
+	int32 Count = 0;
+	for (int32 Idx = static_cast<int32>(EChronicleMusicState::Menu); Idx <= static_cast<int32>(EChronicleMusicState::Boss); ++Idx)
+	{
+		if (StateCues[Idx] != nullptr)
+		{
+			++Count;
+		}
+	}
+	return Count;
 }
 
 void UAetheriaMusicSubsystem::SetExplorationZone(bool bInVillage)
 {
 	bIsInVillage = bInVillage;
 
-	if (bBossActive || CurrentState == EChronicleMusicState::Boss || CurrentState == EChronicleMusicState::Battle)
+	if (bMenuMusicActive || bBossActive || CurrentState == EChronicleMusicState::Boss || CurrentState == EChronicleMusicState::Battle)
 	{
 		return;
 	}
@@ -393,7 +539,7 @@ void UAetheriaMusicSubsystem::SetExplorationZone(bool bInVillage)
 
 void UAetheriaMusicSubsystem::NotifyCombatActivity()
 {
-	if (bBossActive || CurrentState == EChronicleMusicState::Boss)
+	if (bMenuMusicActive || bBossActive || CurrentState == EChronicleMusicState::Boss)
 	{
 		return;
 	}
@@ -410,6 +556,11 @@ void UAetheriaMusicSubsystem::SetBossEncounterActive(bool bActive)
 {
 	bBossActive = bActive;
 
+	if (bMenuMusicActive)
+	{
+		return;
+	}
+
 	if (bBossActive)
 	{
 		if (UWorld* World = GetWorld())
@@ -424,29 +575,110 @@ void UAetheriaMusicSubsystem::SetBossEncounterActive(bool bActive)
 	}
 }
 
-void UAetheriaMusicSubsystem::LoadCueForState(EChronicleMusicState State, const TCHAR* ObjectPath)
+USoundBase* UAetheriaMusicSubsystem::SafeLoadSound(const TCHAR* ObjectPath, bool bForceLooping)
 {
-	const int32 StateIndex = static_cast<int32>(State);
-	if (StateIndex < 0 || StateIndex >= UE_ARRAY_COUNT(StateCues) || !ObjectPath)
+	if (!ObjectPath || ObjectPath[0] == TEXT('\0'))
 	{
-		return;
+		return nullptr;
 	}
 
 	const FString PackageName = FPackageName::ObjectPathToPackageName(FString(ObjectPath));
-	if (!FPackageName::DoesPackageExist(PackageName))
+	if (PackageName.IsEmpty() || !FPackageName::DoesPackageExist(PackageName))
 	{
-		UE_LOG(LogChronicles, Verbose, TEXT("UAetheriaMusicSubsystem: Music package not staged, skipping [%s]."), ObjectPath);
+		return nullptr;
+	}
+
+	USoundBase* Loaded = LoadObject<USoundBase>(nullptr, ObjectPath);
+	if (Loaded && bForceLooping)
+	{
+		if (USoundWave* Wave = Cast<USoundWave>(Loaded))
+		{
+			Wave->bLooping = true;
+		}
+	}
+	return Loaded;
+}
+
+void UAetheriaMusicSubsystem::LoadCueForState(EChronicleMusicState State, const TArray<const TCHAR*>& CandidatePaths)
+{
+	const int32 StateIndex = static_cast<int32>(State);
+	if (StateIndex < 0 || StateIndex >= UE_ARRAY_COUNT(StateCues))
+	{
 		return;
 	}
 
-	StateCues[StateIndex] = LoadObject<USoundBase>(nullptr, ObjectPath);
-	if (!StateCues[StateIndex])
+	for (const TCHAR* CandidatePath : CandidatePaths)
 	{
-		UE_LOG(LogChronicles, Warning, TEXT("UAetheriaMusicSubsystem: Failed to load SoundBase [%s]."), ObjectPath);
+		if (USoundBase* Loaded = SafeLoadSound(CandidatePath, true))
+		{
+			StateCues[StateIndex] = Loaded;
+			return;
+		}
+	}
+
+	UE_LOG(LogChronicles, Warning, TEXT("UAetheriaMusicSubsystem: No staged music asset found for state %d."), StateIndex);
+}
+
+float UAetheriaMusicSubsystem::GetTargetVolumeForState(EChronicleMusicState State) const
+{
+	if (bMusicMuted)
+	{
+		return 0.0f;
+	}
+
+	float BaseVol = 0.62f;
+	switch (State)
+	{
+	case EChronicleMusicState::Menu:    BaseVol = 0.70f; break;
+	case EChronicleMusicState::Village: BaseVol = 0.62f; break;
+	case EChronicleMusicState::Field:   BaseVol = 0.62f; break;
+	case EChronicleMusicState::Battle:  BaseVol = 0.68f; break;
+	case EChronicleMusicState::Boss:    BaseVol = 0.78f; break;
+	case EChronicleMusicState::None:
+	default:                            BaseVol = 0.0f;  break;
+	}
+
+	return BaseVol * FMath::Clamp(MusicVolumeMaster, 0.0f, 1.0f);
+}
+
+void UAetheriaMusicSubsystem::ApplyLiveVolumes()
+{
+	const float TargetVol = GetTargetVolumeForState(CurrentState);
+	UAudioComponent* ActiveDeck = (ActiveDeckIndex == 0) ? DeckA.Get() : DeckB.Get();
+	if (IsValid(ActiveDeck))
+	{
+		if (!bMusicMuted && TargetVol > KINDA_SMALL_NUMBER && !ActiveDeck->IsPlaying() && CurrentState != EChronicleMusicState::None)
+		{
+			const int32 StateIndex = static_cast<int32>(CurrentState);
+			USoundBase* ActiveCue = (StateIndex >= 0 && StateIndex < UE_ARRAY_COUNT(StateCues)) ? StateCues[StateIndex].Get() : nullptr;
+			if (IsValid(ActiveCue))
+			{
+				ActiveDeck->SetSound(ActiveCue);
+				ActiveDeck->FadeIn(0.6f, TargetVol, 0.0f, EAudioFaderCurve::Logarithmic);
+			}
+		}
+		else
+		{
+			ActiveDeck->SetVolumeMultiplier(TargetVol);
+		}
+	}
+
+	if (IsValid(AmbientDeck) && IsValid(AmbientLoopSound))
+	{
+		const float AmbVol = bMusicMuted ? 0.0f : (0.18f * FMath::Clamp(MusicVolumeMaster, 0.0f, 1.0f));
+		if (!bMusicMuted && AmbVol > KINDA_SMALL_NUMBER && !AmbientDeck->IsPlaying())
+		{
+			AmbientDeck->SetSound(AmbientLoopSound);
+			AmbientDeck->FadeIn(0.8f, AmbVol, 0.0f, EAudioFaderCurve::Logarithmic);
+		}
+		else
+		{
+			AmbientDeck->SetVolumeMultiplier(AmbVol);
+		}
 	}
 }
 
-void UAetheriaMusicSubsystem::TransitionToState(EChronicleMusicState NewState)
+void UAetheriaMusicSubsystem::TransitionToState(EChronicleMusicState NewState, float OverrideFadeIn, float OverrideFadeOut)
 {
 	if (NewState == CurrentState)
 	{
@@ -454,9 +686,9 @@ void UAetheriaMusicSubsystem::TransitionToState(EChronicleMusicState NewState)
 	}
 
 	const bool bIsCombat = (NewState == EChronicleMusicState::Battle || NewState == EChronicleMusicState::Boss);
-	const float InFade = bIsCombat ? 0.85f : 1.75f;
-	const float OutFade = bIsCombat ? 1.15f : 2.00f;
-	const float TargetVolume = (NewState == EChronicleMusicState::Boss) ? 0.72f : 0.62f;
+	const float InFade = (OverrideFadeIn >= 0.0f) ? OverrideFadeIn : (bIsCombat ? 0.85f : 1.75f);
+	const float OutFade = (OverrideFadeOut >= 0.0f) ? OverrideFadeOut : (bIsCombat ? 1.15f : 2.00f);
+	const float TargetVolume = GetTargetVolumeForState(NewState);
 
 	UAudioComponent* OutgoingDeck = (ActiveDeckIndex == 0) ? DeckA.Get() : DeckB.Get();
 	if (IsValid(OutgoingDeck) && OutgoingDeck->IsPlaying())
@@ -473,7 +705,14 @@ void UAetheriaMusicSubsystem::TransitionToState(EChronicleMusicState NewState)
 	if (IsValid(IncomingDeck) && IsValid(NextCue))
 	{
 		IncomingDeck->SetSound(NextCue);
-		IncomingDeck->FadeIn(InFade, TargetVolume, 0.0f, EAudioFaderCurve::Logarithmic);
+		if (!bMusicMuted && TargetVolume > KINDA_SMALL_NUMBER)
+		{
+			IncomingDeck->FadeIn(InFade, TargetVolume, 0.0f, EAudioFaderCurve::Logarithmic);
+		}
+		else
+		{
+			IncomingDeck->SetVolumeMultiplier(0.0f);
+		}
 	}
 
 	CurrentState = NewState;
@@ -494,7 +733,7 @@ void UAetheriaMusicSubsystem::ScheduleReturnToExploration(float DelaySeconds)
 		{
 			if (UAetheriaMusicSubsystem* StrongThis = WeakThis.Get())
 			{
-				if (!StrongThis->bBossActive)
+				if (!StrongThis->bBossActive && !StrongThis->bMenuMusicActive)
 				{
 					StrongThis->TransitionToState(StrongThis->GetExplorationState());
 				}

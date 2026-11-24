@@ -319,11 +319,22 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Spell|Invoker")
 	FString GetActiveOrbsString() const;
 
+	// --- God Mode (/godmode) Full Spell Access, Zero Cooldown & Infinite Mana ---
+	UPROPERTY(ReplicatedUsing = OnRep_SpellState, BlueprintReadOnly, Category = "Spell|GodMode")
+	bool bGodModeActive = false;
+
+	UFUNCTION(BlueprintCallable, Category = "Spell|GodMode")
+	void SetGodModeActive(bool bEnable);
+
+	UFUNCTION(BlueprintPure, Category = "Spell|GodMode")
+	bool IsGodModeActive() const { return bGodModeActive; }
+
 protected:
 	UFUNCTION()
 	void OnRep_SpellState();
 
 	bool OwnerHasAuthority() const;
+	void SetGodModeActive_Internal(bool bEnable);
 	void UnlockOrb_Internal(EChronicleOrb Orb);
 	bool PushOrb_Internal(EChronicleOrb Orb);
 	bool InvokeCurrentSpell_Internal();
@@ -333,6 +344,9 @@ protected:
 		const FVector& AimDir,
 		const FVector& TargetPoint,
 		float ChargeT01);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetGodModeActive(bool bEnable);
 
 	UFUNCTION(Server, Reliable)
 	void ServerUnlockOrb(EChronicleOrb Orb);

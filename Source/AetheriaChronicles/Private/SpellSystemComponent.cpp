@@ -9,10 +9,12 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "DestructionAndWorld.h"
 #include "Engine/HitResult.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/DamageType.h"
@@ -35,8 +37,11 @@ namespace
 	struct FChronicleSpellAssetPaths
 	{
 		const TCHAR* NiagaraPath = nullptr;
+		const TCHAR* SecondaryNiagaraPath = nullptr;
 		const TCHAR* CascadePath = nullptr;
+		const TCHAR* SecondaryCascadePath = nullptr;
 		const TCHAR* ImpactCascadePath = nullptr;
+		const TCHAR* ImpactNiagaraPath = nullptr;
 		const TCHAR* CastSFXPath = nullptr;
 		const TCHAR* ImpactSFXPath = nullptr;
 		float BaseVFXScale = 1.5f;
@@ -62,92 +67,126 @@ namespace
 	{
 		switch (SpellId)
 		{
+		// Fire / Earth Spells (EEE Solar Cataclysm, EEW Chaos Meteor)
 		case EChronicleSpellId::SunStrike:
 			return {
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Explosion.NS_Free_Spells_Explosion"),
+				nullptr,
 				TEXT("/Game/FXVarietyPack/Particles/P_ky_fireStorm.P_ky_fireStorm"),
 				nullptr,
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_explosion.P_ky_explosion"),
+				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Explosion.NS_Free_Spells_Explosion"),
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_GroundStrike_1.SW_MagicCast_GroundStrike_1"),
 				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Fire_1.SW_MagicImpact_Fire_1"),
-				1.8f
+				1.85f
 			};
 		case EChronicleSpellId::ChaosMeteor:
 			return {
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Explosion.NS_Free_Spells_Explosion"),
+				nullptr,
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_fireStorm.P_ky_fireStorm"),
 				TEXT("/Game/FXVarietyPack/Particles/P_ky_shootingStar1.P_ky_shootingStar1"),
 				TEXT("/Game/FXVarietyPack/Particles/P_ky_explosion.P_ky_explosion"),
+				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Explosion.NS_Free_Spells_Explosion"),
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_ThrowHeavy_1.SW_MagicCast_ThrowHeavy_1"),
 				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Fire_1.SW_MagicImpact_Fire_1"),
-				1.9f
+				1.95f
 			};
+		// Lightning Spells (EWW/WWE Alacrity, WWW EMP, QQW Ghost Walk)
 		case EChronicleSpellId::StormAlacrity:
 			return {
+				TEXT("/Game/Vefects/Zap_VFX/VFX/Zap/Particles/NS_Zap_02_Blue.NS_Zap_02_Blue"),
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Buff_Air.NS_Free_Spells_Buff_Air"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_magicCircle1.P_ky_magicCircle1"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_lightning1.P_ky_lightning1"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_thunderStorm.P_ky_thunderStorm"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_lightning1.P_ky_lightning1"),
 				nullptr,
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_Buff1_1.SW_MagicCast_Buff1_1"),
-				nullptr,
-				1.35f
+				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_LightningStrikeMulti_1.SW_MagicImpact_LightningStrikeMulti_1"),
+				1.45f
 			};
 		case EChronicleSpellId::StormEMP:
 			return {
+				TEXT("/Game/Vefects/Zap_VFX/VFX/Zap/Particles/NS_Zap_02_Blue.NS_Zap_02_Blue"),
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Aura_Lightning.NS_Free_Spells_Aura_Lightning"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_thunderBall.P_ky_thunderBall"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_ThunderBallHit.P_ky_ThunderBallHit"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_thunderStorm.P_ky_thunderStorm"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_lightning1.P_ky_lightning1"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_lightning1.P_ky_lightning1"),
+				TEXT("/Game/Vefects/Zap_VFX/VFX/Zap/Particles/NS_Zap_02_Blue.NS_Zap_02_Blue"),
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_ThrowLightningSpear_1.SW_MagicCast_ThrowLightningSpear_1"),
 				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_LightningStrikeMulti_1.SW_MagicImpact_LightningStrikeMulti_1"),
-				1.75f
-			};
-		case EChronicleSpellId::ColdSnap:
-			return {
-				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_waterBall.P_ky_waterBall"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_waterBallHit.P_ky_waterBallHit"),
-				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_IceCrystal1_1.SW_MagicCast_IceCrystal1_1"),
-				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Crystal_1.SW_MagicImpact_Crystal_1"),
-				1.25f
+				1.8f
 			};
 		case EChronicleSpellId::ChronoBlink:
 			return {
+				TEXT("/Game/Vefects/Zap_VFX/VFX/Zap/Particles/NS_Zap_02_Blue.NS_Zap_02_Blue"),
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Aura_Soul.NS_Free_Spells_Aura_Soul"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_darkStorm.P_ky_darkStorm"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_lightning1.P_ky_lightning1"),
+				nullptr,
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_thunderStorm.P_ky_thunderStorm"),
 				nullptr,
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_Buff1_1.SW_MagicCast_Buff1_1"),
 				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Water_1.SW_MagicImpact_Water_1"),
+				1.5f
+			};
+		// Water / Frost Spells (QQQ Cold Snap, QQE Ice Wall, EEQ Forge Spirit)
+		case EChronicleSpellId::ColdSnap:
+			return {
+				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave"),
+				nullptr,
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_aquaStorm.P_ky_aquaStorm"),
+				nullptr,
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_waterBallHit.P_ky_waterBallHit"),
+				nullptr,
+				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_IceCrystal1_1.SW_MagicCast_IceCrystal1_1"),
+				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Crystal_1.SW_MagicImpact_Crystal_1"),
 				1.45f
 			};
 		case EChronicleSpellId::IcePrismWall:
 			return {
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Circle.NS_Free_Spells_Circle"),
+				nullptr,
 				TEXT("/Game/FXVarietyPack/Particles/P_ky_aquaStorm.P_ky_aquaStorm"),
+				nullptr,
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_waterBallHit.P_ky_waterBallHit"),
 				nullptr,
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_IceCrystal1_1.SW_MagicCast_IceCrystal1_1"),
 				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Crystal_1.SW_MagicImpact_Crystal_1"),
 				1.65f
 			};
-		case EChronicleSpellId::GravityTornado:
-			return {
-				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Aura_Air.NS_Free_Spells_Aura_Air"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_storm.P_ky_storm"),
-				nullptr,
-				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_CreatingBarrier1_1.SW_MagicCast_CreatingBarrier1_1"),
-				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Water_1.SW_MagicImpact_Water_1"),
-				1.7f
-			};
 		case EChronicleSpellId::EmberConduit:
 			return {
+				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Explosion.NS_Free_Spells_Explosion"),
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Aura_Fire.NS_Free_Spells_Aura_Fire"),
-				TEXT("/Game/FXVarietyPack/Particles/P_ky_fireBall.P_ky_fireBall"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_aquaStorm.P_ky_aquaStorm"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_fireStorm.P_ky_fireStorm"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_waterBallHit.P_ky_waterBallHit"),
 				nullptr,
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_Buff1_1.SW_MagicCast_Buff1_1"),
 				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Barrier_1.SW_MagicImpact_Barrier_1"),
-				1.6f
+				1.65f
+			};
+		// Wind / Storm Spells (QWW/WWQ Cyclone/Tornado, QWE Deafening Blast)
+		case EChronicleSpellId::GravityTornado:
+			return {
+				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave"),
+				TEXT("/Game/Vefects/Wind_VFX/VFX/Particles/NS_Wind_Debris_Tree_Leaves_01_Colored_Closer.NS_Wind_Debris_Tree_Leaves_01_Colored_Closer"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_storm.P_ky_storm"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_shotShockwave.P_ky_shotShockwave"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_shotShockwave.P_ky_shotShockwave"),
+				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave"),
+				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_CreatingBarrier1_1.SW_MagicCast_CreatingBarrier1_1"),
+				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Water_1.SW_MagicImpact_Water_1"),
+				1.75f
 			};
 		case EChronicleSpellId::PrimalBlast:
 			return {
 				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave"),
+				TEXT("/Game/Vefects/Wind_VFX/VFX/Particles/NS_Wind_Debris_Tree_Leaves_01_Colored_Closer.NS_Wind_Debris_Tree_Leaves_01_Colored_Closer"),
 				TEXT("/Game/FXVarietyPack/Particles/P_ky_shotShockwave.P_ky_shotShockwave"),
-				nullptr,
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_storm.P_ky_storm"),
+				TEXT("/Game/FXVarietyPack/Particles/P_ky_shotShockwave.P_ky_shotShockwave"),
+				TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave"),
 				TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_GroundStrike_1.SW_MagicCast_GroundStrike_1"),
 				TEXT("/Game/FreeModularMagicSFX/E_Impact/Mono/SW_MagicImpact_Metallic_1.SW_MagicImpact_Metallic_1"),
 				1.85f
@@ -176,6 +215,27 @@ namespace
 		case EChronicleOrb::Wex:   return TEXT("Wex (Tempest Storm)");
 		case EChronicleOrb::Quas:  return TEXT("Quas (Chrono Frost)");
 		default:                   return TEXT("None");
+		}
+	}
+
+	EChronicleOrb PrimaryElementForSpell(EChronicleSpellId SpellId)
+	{
+		switch (SpellId)
+		{
+		case EChronicleSpellId::SunStrike:
+		case EChronicleSpellId::ChaosMeteor:
+			return EChronicleOrb::Exort;
+		case EChronicleSpellId::ColdSnap:
+		case EChronicleSpellId::IcePrismWall:
+		case EChronicleSpellId::EmberConduit:
+			return EChronicleOrb::Quas;
+		case EChronicleSpellId::StormEMP:
+		case EChronicleSpellId::GravityTornado:
+		case EChronicleSpellId::StormAlacrity:
+		case EChronicleSpellId::ChronoBlink:
+		case EChronicleSpellId::PrimalBlast:
+		default:
+			return EChronicleOrb::Wex;
 		}
 	}
 }
@@ -823,6 +883,22 @@ void AChronicleSpellActor::SpawnRealSpellVFXAndCastSFX(float ChargeScale)
 			true);
 	}
 
+	if (UNiagaraSystem* SecondaryNiagara = LoadGuardedAsset<UNiagaraSystem>(Paths.SecondaryNiagaraPath))
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAttached(
+			SecondaryNiagara,
+			RootScene,
+			NAME_None,
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			FVector(VFXScale * 0.95f),
+			EAttachLocation::KeepRelativeOffset,
+			true,
+			ENCPoolMethod::None,
+			true,
+			true);
+	}
+
 	if (UParticleSystem* CascadeAsset = LoadGuardedAsset<UParticleSystem>(Paths.CascadePath))
 	{
 		ActiveCascadeVFX = UGameplayStatics::SpawnEmitterAttached(
@@ -832,6 +908,21 @@ void AChronicleSpellActor::SpawnRealSpellVFXAndCastSFX(float ChargeScale)
 			FVector::ZeroVector,
 			FRotator::ZeroRotator,
 			FVector(VFXScale),
+			EAttachLocation::KeepRelativeOffset,
+			true,
+			EPSCPoolMethod::None,
+			true);
+	}
+
+	if (UParticleSystem* SecondaryCascade = LoadGuardedAsset<UParticleSystem>(Paths.SecondaryCascadePath))
+	{
+		UGameplayStatics::SpawnEmitterAttached(
+			SecondaryCascade,
+			RootScene,
+			NAME_None,
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			FVector(VFXScale * 0.92f),
 			EAttachLocation::KeepRelativeOffset,
 			true,
 			EPSCPoolMethod::None,
@@ -881,6 +972,32 @@ void AChronicleSpellActor::PlaySpellImpactVFXAndSFX(const FVector& Origin)
 				GetActorRotation(),
 				FVector(ImpactScale),
 				true);
+		}
+
+		if (UNiagaraSystem* ImpactNiagara = LoadGuardedAsset<UNiagaraSystem>(Paths.ImpactNiagaraPath))
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				World,
+				ImpactNiagara,
+				Origin,
+				GetActorRotation(),
+				FVector(ImpactScale),
+				true,
+				true,
+				ENCPoolMethod::None,
+				true);
+		}
+
+		// Notify world terrain-scarring & 60s magical meadow restoration system
+		const float ScarRadius = FMath::Clamp(EffectiveRadius > 0.f ? EffectiveRadius : CachedDef.BlastRadius, 240.f, 680.f);
+		const EChronicleOrb PrimaryElement = PrimaryElementForSpell(SpellId);
+		for (TActorIterator<AAetheriaWorldBuilder> It(World); It; ++It)
+		{
+			if (AAetheriaWorldBuilder* Builder = *It)
+			{
+				Builder->NotifySpellTerrainImpact(Origin, ScarRadius, PrimaryElement);
+				break;
+			}
 		}
 	}
 
@@ -972,6 +1089,32 @@ void AChronicleSpellActor::ApplySpellBlastAndDestruction(
 				const float Falloff = FMath::Clamp(1.f - (Dist / SafeRadius) * 0.5f, 0.25f, 1.f);
 				UGameplayStatics::ApplyDamage(
 					HitActor,
+					DamageAmount * Falloff,
+					GetInstigatorController(),
+					this,
+					UDamageType::StaticClass());
+			}
+		}
+
+		// Explicitly damage nearby intact ADestructiblePropActors (monoliths & sliceable meadow trees)
+		// so Crimson Desert AoE spells reliably shatter them even across uneven ground slopes.
+		const float DestructibleRadius = SafeRadius * 1.15f;
+		const float DestructibleRadiusSq = FMath::Square(DestructibleRadius);
+		for (TActorIterator<ADestructiblePropActor> It(World); It; ++It)
+		{
+			ADestructiblePropActor* Prop = *It;
+			if (!IsValid(Prop) || Prop->IsBroken() || DamagedStaticActors.Contains(Prop))
+			{
+				continue;
+			}
+			const float DistSq = FVector::DistSquared(Origin, Prop->GetActorLocation());
+			if (DistSq <= DestructibleRadiusSq)
+			{
+				DamagedStaticActors.Add(Prop);
+				const float Dist = FMath::Sqrt(DistSq);
+				const float Falloff = FMath::Clamp(1.f - (Dist / DestructibleRadius) * 0.45f, 0.35f, 1.f);
+				UGameplayStatics::ApplyDamage(
+					Prop,
 					DamageAmount * Falloff,
 					GetInstigatorController(),
 					this,
@@ -1503,6 +1646,7 @@ void USpellSystemComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(USpellSystemComponent, ManaCostMultiplier);
 	DOREPLIFETIME(USpellSystemComponent, SpellCooldownMultiplier);
 	DOREPLIFETIME(USpellSystemComponent, ManaRegenPerSec);
+	DOREPLIFETIME(USpellSystemComponent, bGodModeActive);
 }
 
 void USpellSystemComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -1511,6 +1655,17 @@ void USpellSystemComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 
 	if (DeltaTime <= 0.f)
 	{
+		return;
+	}
+
+	if (bGodModeActive)
+	{
+		Mana = MaxMana;
+		InvokeCooldownRemaining = 0.f;
+		if (CooldownRemaining.Num() > 0)
+		{
+			CooldownRemaining.Empty();
+		}
 		return;
 	}
 
@@ -1614,15 +1769,19 @@ bool USpellSystemComponent::IsOrbUnlocked(EChronicleOrb Orb) const
 {
 	switch (Orb)
 	{
-	case EChronicleOrb::Exort: return bUnlockedExort;
-	case EChronicleOrb::Wex:   return bUnlockedWex;
-	case EChronicleOrb::Quas:  return bUnlockedQuas;
+	case EChronicleOrb::Exort: return bGodModeActive || bUnlockedExort;
+	case EChronicleOrb::Wex:   return bGodModeActive || bUnlockedWex;
+	case EChronicleOrb::Quas:  return bGodModeActive || bUnlockedQuas;
 	default:                   return false;
 	}
 }
 
 int32 USpellSystemComponent::GetUnlockedOrbCount() const
 {
+	if (bGodModeActive)
+	{
+		return 3;
+	}
 	return (bUnlockedExort ? 1 : 0) + (bUnlockedWex ? 1 : 0) + (bUnlockedQuas ? 1 : 0);
 }
 
@@ -1630,7 +1789,7 @@ int32 USpellSystemComponent::GetUnlockedOrbCount() const
 
 bool USpellSystemComponent::PushOrb(EChronicleOrb Orb)
 {
-	if (bSpellCastingBlockedByStature)
+	if (bSpellCastingBlockedByStature && !bGodModeActive)
 	{
 		UE_LOG(LogChronicles, Verbose, TEXT("[SpellSystem] PushOrb blocked by small Hero stature (< 1.45m)."));
 		return false;
@@ -1652,7 +1811,7 @@ bool USpellSystemComponent::PushOrb(EChronicleOrb Orb)
 
 bool USpellSystemComponent::PushOrb_Internal(EChronicleOrb Orb)
 {
-	if (bSpellCastingBlockedByStature || Orb == EChronicleOrb::None || !IsOrbUnlocked(Orb))
+	if ((bSpellCastingBlockedByStature && !bGodModeActive) || Orb == EChronicleOrb::None || !IsOrbUnlocked(Orb))
 	{
 		return false;
 	}
@@ -1728,7 +1887,7 @@ EChronicleSpellId USpellSystemComponent::ResolveCurrentCombo() const
 
 bool USpellSystemComponent::InvokeCurrentSpell()
 {
-	if (bSpellCastingBlockedByStature || InvokeCooldownRemaining > 0.f)
+	if ((bSpellCastingBlockedByStature && !bGodModeActive) || (!bGodModeActive && InvokeCooldownRemaining > 0.f))
 	{
 		return false;
 	}
@@ -1748,7 +1907,7 @@ bool USpellSystemComponent::InvokeCurrentSpell()
 
 bool USpellSystemComponent::InvokeCurrentSpell_Internal()
 {
-	if (bSpellCastingBlockedByStature || InvokeCooldownRemaining > 0.f)
+	if ((bSpellCastingBlockedByStature && !bGodModeActive) || (!bGodModeActive && InvokeCooldownRemaining > 0.f))
 	{
 		return false;
 	}
@@ -1769,7 +1928,7 @@ bool USpellSystemComponent::InvokeCurrentSpell_Internal()
 		SlotD = Resolved;
 	}
 
-	InvokeCooldownRemaining = FMath::Max(0.15f, InvokeCooldownDuration / FMath::Max(0.5f, WexSpeedScale));
+	InvokeCooldownRemaining = bGodModeActive ? 0.f : FMath::Max(0.15f, InvokeCooldownDuration / FMath::Max(0.5f, WexSpeedScale));
 	UE_LOG(LogChronicles, Log, TEXT("[SpellSystem] Invoked %s into SlotD (SlotF = %s)"),
 		*GetSpellDef(SlotD).ComboKey,
 		SlotF != EChronicleSpellId::None ? *GetSpellDef(SlotF).ComboKey : TEXT("None"));
@@ -1787,7 +1946,7 @@ bool USpellSystemComponent::CastSpellSlot(
 	const FVector& TargetPoint,
 	float ChargeT01)
 {
-	if (bSpellCastingBlockedByStature)
+	if (bSpellCastingBlockedByStature && !bGodModeActive)
 	{
 		return false;
 	}
@@ -1798,14 +1957,14 @@ bool USpellSystemComponent::CastSpellSlot(
 		return false;
 	}
 
-	if (GetSpellCooldownRemaining(SpellId) > 0.f)
+	if (!bGodModeActive && GetSpellCooldownRemaining(SpellId) > 0.f)
 	{
 		return false;
 	}
 
 	const FChronicleSpellDef Def = GetSpellDef(SpellId);
-	const float EffectiveManaCost = FMath::Max(1.f, Def.ManaCost * FMath::Clamp(ManaCostMultiplier, 0.25f, 2.0f));
-	if (Mana < EffectiveManaCost)
+	const float EffectiveManaCost = bGodModeActive ? 0.f : FMath::Max(1.f, Def.ManaCost * FMath::Clamp(ManaCostMultiplier, 0.25f, 2.0f));
+	if (!bGodModeActive && Mana < EffectiveManaCost)
 	{
 		return false;
 	}
@@ -1815,9 +1974,16 @@ bool USpellSystemComponent::CastSpellSlot(
 	if (!OwnerHasAuthority())
 	{
 		// Predict cooldown & mana locally for snappy client UX, then run authoritative cast on server
-		Mana = FMath::Max(0.f, Mana - EffectiveManaCost);
-		const float ScaledCooldown = FMath::Max(0.35f, Def.Cooldown * FMath::Clamp(SpellCooldownMultiplier, 0.25f, 2.0f));
-		CooldownRemaining.Add(SpellId, ScaledCooldown);
+		if (!bGodModeActive)
+		{
+			Mana = FMath::Max(0.f, Mana - EffectiveManaCost);
+			const float ScaledCooldown = FMath::Max(0.35f, Def.Cooldown * FMath::Clamp(SpellCooldownMultiplier, 0.25f, 2.0f));
+			CooldownRemaining.Add(SpellId, ScaledCooldown);
+		}
+		else
+		{
+			Mana = MaxMana;
+		}
 		OnSpellStateChanged.Broadcast();
 
 		ServerCastSpellSlot(bSlotF, AimOrigin, AimDir, TargetPoint, ClampedCharge);
@@ -1834,7 +2000,7 @@ bool USpellSystemComponent::CastSpellSlot_Internal(
 	const FVector& TargetPoint,
 	float ChargeT01)
 {
-	if (bSpellCastingBlockedByStature)
+	if (bSpellCastingBlockedByStature && !bGodModeActive)
 	{
 		return false;
 	}
@@ -1845,14 +2011,14 @@ bool USpellSystemComponent::CastSpellSlot_Internal(
 		return false;
 	}
 
-	if (GetSpellCooldownRemaining(SpellId) > 0.f)
+	if (!bGodModeActive && GetSpellCooldownRemaining(SpellId) > 0.f)
 	{
 		return false;
 	}
 
 	const FChronicleSpellDef Def = GetSpellDef(SpellId);
-	const float EffectiveManaCost = FMath::Max(1.f, Def.ManaCost * FMath::Clamp(ManaCostMultiplier, 0.25f, 2.0f));
-	if (Mana < EffectiveManaCost)
+	const float EffectiveManaCost = bGodModeActive ? 0.f : FMath::Max(1.f, Def.ManaCost * FMath::Clamp(ManaCostMultiplier, 0.25f, 2.0f));
+	if (!bGodModeActive && Mana < EffectiveManaCost)
 	{
 		return false;
 	}
@@ -1924,10 +2090,18 @@ bool USpellSystemComponent::CastSpellSlot_Internal(
 		return false;
 	}
 
-	// Deduct resources & start scaled cooldown
-	Mana = FMath::Max(0.f, Mana - EffectiveManaCost);
-	const float ScaledCooldown = FMath::Max(0.35f, Def.Cooldown * FMath::Clamp(SpellCooldownMultiplier, 0.25f, 2.0f));
-	CooldownRemaining.Add(SpellId, ScaledCooldown);
+	// Deduct resources & start scaled cooldown (zero cost & zero cooldown in God Mode)
+	float ScaledCooldown = 0.f;
+	if (bGodModeActive)
+	{
+		Mana = MaxMana;
+	}
+	else
+	{
+		Mana = FMath::Max(0.f, Mana - EffectiveManaCost);
+		ScaledCooldown = FMath::Max(0.35f, Def.Cooldown * FMath::Clamp(SpellCooldownMultiplier, 0.25f, 2.0f));
+		CooldownRemaining.Add(SpellId, ScaledCooldown);
+	}
 
 	SpellActor->InitializeSpell(
 		SpellId,
@@ -2126,9 +2300,9 @@ bool USpellSystemComponent::IsSpellUnlocked(EChronicleSpellId SpellId) const
 		return false;
 	}
 
-	return (!Def.bNeedsExort || bUnlockedExort)
-		&& (!Def.bNeedsWex || bUnlockedWex)
-		&& (!Def.bNeedsQuas || bUnlockedQuas);
+	return (!Def.bNeedsExort || IsOrbUnlocked(EChronicleOrb::Exort))
+		&& (!Def.bNeedsWex || IsOrbUnlocked(EChronicleOrb::Wex))
+		&& (!Def.bNeedsQuas || IsOrbUnlocked(EChronicleOrb::Quas));
 }
 
 int32 USpellSystemComponent::GetUnlockedSpellCount() const
@@ -2146,11 +2320,71 @@ int32 USpellSystemComponent::GetUnlockedSpellCount() const
 
 float USpellSystemComponent::GetSpellCooldownRemaining(EChronicleSpellId SpellId) const
 {
+	if (bGodModeActive)
+	{
+		return 0.f;
+	}
 	if (const float* Found = CooldownRemaining.Find(SpellId))
 	{
 		return FMath::Max(0.f, *Found);
 	}
 	return 0.f;
+}
+
+void USpellSystemComponent::SetGodModeActive(bool bEnable)
+{
+	if (!OwnerHasAuthority())
+	{
+		ServerSetGodModeActive(bEnable);
+	}
+	SetGodModeActive_Internal(bEnable);
+}
+
+void USpellSystemComponent::SetGodModeActive_Internal(bool bEnable)
+{
+	bGodModeActive = bEnable;
+	if (bEnable)
+	{
+		Mana = MaxMana;
+		InvokeCooldownRemaining = 0.f;
+		CooldownRemaining.Empty();
+
+		// Immediately orbit all 3 Primal Orbs (Exort · Wex · Quas) and populate both active spell slots
+		ActiveOrbs = { EChronicleOrb::Exort, EChronicleOrb::Wex, EChronicleOrb::Quas };
+		if (SlotD == EChronicleSpellId::None)
+		{
+			SlotD = EChronicleSpellId::PrimalBlast;
+		}
+		if (SlotF == EChronicleSpellId::None || SlotF == SlotD)
+		{
+			SlotF = (SlotD == EChronicleSpellId::ChaosMeteor)
+				? EChronicleSpellId::PrimalBlast
+				: EChronicleSpellId::ChaosMeteor;
+		}
+	}
+	else
+	{
+		ActiveOrbs.RemoveAll([this](EChronicleOrb Orb)
+		{
+			return !IsOrbUnlocked(Orb);
+		});
+		if (SlotD != EChronicleSpellId::None && !IsSpellUnlocked(SlotD))
+		{
+			SlotD = EChronicleSpellId::None;
+		}
+		if (SlotF != EChronicleSpellId::None && !IsSpellUnlocked(SlotF))
+		{
+			SlotF = EChronicleSpellId::None;
+		}
+	}
+
+	UE_LOG(LogChronicles, Display,
+		TEXT("[SpellSystem] God Mode %s | Unlocked Orbs=%d/3 | Available Spells=%d/10"),
+		bGodModeActive ? TEXT("ENABLED") : TEXT("DISABLED"),
+		GetUnlockedOrbCount(),
+		GetUnlockedSpellCount());
+
+	OnSpellStateChanged.Broadcast();
 }
 
 void USpellSystemComponent::RestoreMana(float Amount)
@@ -2207,6 +2441,11 @@ FString USpellSystemComponent::GetActiveOrbsString() const
 }
 
 // --- Server RPC Implementations ---
+
+void USpellSystemComponent::ServerSetGodModeActive_Implementation(bool bEnable)
+{
+	SetGodModeActive_Internal(bEnable);
+}
 
 void USpellSystemComponent::ServerUnlockOrb_Implementation(EChronicleOrb Orb)
 {

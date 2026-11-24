@@ -64,6 +64,7 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathCylinder[]      = TEXT("/Engine/BasicShapes/Cylinder.Cylinder");
 	static constexpr TCHAR PathCone[]          = TEXT("/Engine/BasicShapes/Cone.Cone");
 	static constexpr TCHAR PathCube[]          = TEXT("/Engine/BasicShapes/Cube.Cube");
+	static constexpr TCHAR PathPlane[]         = TEXT("/Engine/BasicShapes/Plane.Plane");
 	static constexpr TCHAR PathMatBasic[]        = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
 	static constexpr TCHAR PathMatEmissive[]     = TEXT("/Engine/EngineMaterials/EmissiveMeshMaterial.EmissiveMeshMaterial");
 	static constexpr TCHAR PathMatMasterPBR[]    = TEXT("/Game/Materials/M_AetheriaMasterPBR.M_AetheriaMasterPBR");
@@ -71,6 +72,8 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathMatDarkIron[]     = TEXT("/Game/Materials/M_AetheriaDarkIron.M_AetheriaDarkIron");
 	static constexpr TCHAR PathMatEmissiveCore[] = TEXT("/Game/Materials/M_AetheriaEmissiveCore.M_AetheriaEmissiveCore");
 	static constexpr TCHAR PathMatFireball[]     = TEXT("/Game/Materials/M_AetheriaFireball.M_AetheriaFireball");
+	static constexpr TCHAR PathMatArcaneRing[]   = TEXT("/Game/Materials/M_AetheriaArcaneRing.M_AetheriaArcaneRing");
+	static constexpr TCHAR PathWhiteTex[]        = TEXT("/Engine/EngineResources/WhiteSquareTexture.WhiteSquareTexture");
 
 	static constexpr TCHAR PathABPCombat[]     = TEXT("/Game/Variant_Combat/Anims/ABP_Manny_Combat.ABP_Manny_Combat_C");
 	static constexpr TCHAR PathABPUnarmed[]    = TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed.ABP_Unarmed_C");
@@ -114,74 +117,102 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathWhisperHitReact[] = TEXT("/Game/Whisper/Animations/Anim_Whisper_Taking_Damage1.Anim_Whisper_Taking_Damage1");
 	static constexpr TCHAR PathWhisperDeath[]    = TEXT("/Game/Whisper/Animations/Anim_Whisper_Death.Anim_Whisper_Death");
 
-	// Staged Paragon Rampage (ForestTroll & Boss Malakor)
-	static constexpr TCHAR PathRampageMesh[]     = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Meshes/Rampage.Rampage");
-	static constexpr TCHAR PathRampageABP[]      = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Rampage_AnimBlueprint.Rampage_AnimBlueprint_C");
-	static constexpr TCHAR PathRampageMeleeA[]   = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_A_Montage.Attack_Biped_Melee_A_Montage");
-	static constexpr TCHAR PathRampageMeleeB[]   = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_B_Montage.Attack_Biped_Melee_B_Montage");
-	static constexpr TCHAR PathRampageMeleeC[]   = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_C_Montage.Attack_Biped_Melee_C_Montage");
-	static constexpr TCHAR PathRampageRoar[]     = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Emote_Master_Roar_T3.Emote_Master_Roar_T3");
-	static constexpr TCHAR PathRampageHitReact[] = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/HitReact_Front.HitReact_Front");
-	static constexpr TCHAR PathRampageDeath[]    = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Death_A.Death_A");
+	// Staged Paragon Rampage (ForestTroll & Boss Malakor — SingleNode verified sequences)
+	static constexpr TCHAR PathRampageMesh[]          = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Meshes/Rampage.Rampage");
+	static constexpr TCHAR PathRampageABP[]           = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Rampage_AnimBlueprint.Rampage_AnimBlueprint_C");
+	static constexpr TCHAR PathRampageIdle[]          = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Idle.Idle");
+	static constexpr TCHAR PathRampageIdleAlt[]       = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Ability_RipNToss_Idle.Ability_RipNToss_Idle");
+	static constexpr TCHAR PathRampageRun[]           = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathRampageRunBiped[]      = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Jog_Biped_Fwd.Jog_Biped_Fwd");
+	static constexpr TCHAR PathRampageRunAlt[]        = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Ability_RipNToss_Jog_Fwd.Ability_RipNToss_Jog_Fwd");
+	static constexpr TCHAR PathRampageAttackASeq[]    = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Melee_A.Attack_Melee_A");
+	static constexpr TCHAR PathRampageAttackBSeq[]    = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Melee_B.Attack_Melee_B");
+	static constexpr TCHAR PathRampageAttackCSeq[]    = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Melee_C.Attack_Melee_C");
+	static constexpr TCHAR PathRampageMeleeA[]        = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_A_Montage.Attack_Biped_Melee_A_Montage");
+	static constexpr TCHAR PathRampageMeleeB[]        = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_B_Montage.Attack_Biped_Melee_B_Montage");
+	static constexpr TCHAR PathRampageMeleeC[]        = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_C_Montage.Attack_Biped_Melee_C_Montage");
+	static constexpr TCHAR PathRampageRoar[]          = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Emote_Master_Roar_T3.Emote_Master_Roar_T3");
+	static constexpr TCHAR PathRampageHitReact[]      = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathRampageDeath[]         = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Death_A.Death_A");
 
-	// Paragon Sevarog (Boss Malakor priority) & Paragon Heroes (Auto-upgrade when staged)
+	// Paragon Sevarog (Boss Malakor priority — SingleNode verified sequences) & Paragon Heroes
 	static constexpr TCHAR PathSevarogBloodredMesh[]  = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Skins/Tier_1/Sevarog_Red/Meshes/SevarogBloodred.SevarogBloodred");
 	static constexpr TCHAR PathSevarogMesh[]          = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Meshes/Sevarog.Sevarog");
 	static constexpr TCHAR PathSevarogABP[]           = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Sevarog_AnimBlueprint.Sevarog_AnimBlueprint_C");
+	static constexpr TCHAR PathSevarogIdle[]          = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Idle.Idle");
+	static constexpr TCHAR PathSevarogRun[]           = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathSevarogSwing1Seq[]     = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing1_Medium.Swing1_Medium");
+	static constexpr TCHAR PathSevarogSwing2Seq[]     = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing2_Medium.Swing2_Medium");
 	static constexpr TCHAR PathSevarogSwing1Montage[] = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing1_Medium_Montage.Swing1_Medium_Montage");
 	static constexpr TCHAR PathSevarogSwing2Montage[] = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing2_Medium_Montage.Swing2_Medium_Montage");
 	static constexpr TCHAR PathSevarogSwing3Seq[]     = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing3_Medium.Swing3_Medium");
 	static constexpr TCHAR PathSevarogUltSwingSeq[]   = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Ultimate_Swing_120fps.Ultimate_Swing_120fps");
+	static constexpr TCHAR PathSevarogCastSeq[]       = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Cast.Cast");
 	static constexpr TCHAR PathSevarogHitReact[]      = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Hitreact_Front.Hitreact_Front");
 	static constexpr TCHAR PathSevarogDeath[]         = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Death_front.Death_front");
 	static constexpr TCHAR PathBossExplosionFX[]      = TEXT("/Game/FXVarietyPack/Particles/P_ky_explosion.P_ky_explosion");
 	static constexpr TCHAR PathBossShockwaveNS[]      = TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave");
-	static constexpr TCHAR PathGideonMesh[]         = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Meshes/Gideon.Gideon");
-	static constexpr TCHAR PathGideonToughMesh[]    = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Skins/Tough/Meshes/Gideon_Tough.Gideon_Tough");
-	static constexpr TCHAR PathGideonABP[]          = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Gideon_AnimBlueprint.Gideon_AnimBlueprint_C");
-	static constexpr TCHAR PathGideonPedestalIdle[] = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/HeroPedestal_Idle.HeroPedestal_Idle");
-	static constexpr TCHAR PathGideonIdle[]         = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Idle.Idle");
-	static constexpr TCHAR PathGideonRun[]          = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Jog_Fwd.Jog_Fwd");
-	static constexpr TCHAR PathGideonCast[]         = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Cast.Cast");
-	static constexpr TCHAR PathGideonAttackASeq[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_A_Medium.Primary_Attack_A_Medium");
-	static constexpr TCHAR PathGideonAttackBSeq[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_B_Medium.Primary_Attack_B_Medium");
-	static constexpr TCHAR PathGideonAttackCSeq[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_C_Medium.Primary_Attack_C_Medium");
-	static constexpr TCHAR PathGideonHitReact[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/HitReact_Front.HitReact_Front");
-	static constexpr TCHAR PathGideonDeath[]        = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Death_Fwd.Death_Fwd");
+	static constexpr TCHAR PathGideonMesh[]           = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Meshes/Gideon.Gideon");
+	static constexpr TCHAR PathGideonToughMesh[]      = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Skins/Tough/Meshes/Gideon_Tough.Gideon_Tough");
+	static constexpr TCHAR PathGideonABP[]            = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Gideon_AnimBlueprint.Gideon_AnimBlueprint_C");
+	static constexpr TCHAR PathGideonPedestalIdle[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/HeroPedestal_Idle.HeroPedestal_Idle");
+	static constexpr TCHAR PathGideonIdle[]           = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Idle.Idle");
+	static constexpr TCHAR PathGideonRun[]            = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathGideonSprint[]         = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Run_Fwd.Run_Fwd");
+	static constexpr TCHAR PathGideonJumpStart[]      = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Jump_In_Place_Start.Jump_In_Place_Start");
+	static constexpr TCHAR PathGideonJumpLoop[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Jump_In_Place_Fall_Loop.Jump_In_Place_Fall_Loop");
+	static constexpr TCHAR PathGideonJumpLand[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Jump_In_Place_Land.Jump_In_Place_Land");
+	static constexpr TCHAR PathGideonRollSpin[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Spin_Jog_Fwd2Bwd_CW.Spin_Jog_Fwd2Bwd_CW");
+	static constexpr TCHAR PathGideonRollLean[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Travel_Mode_Fwd_Lean.Travel_Mode_Fwd_Lean");
+	static constexpr TCHAR PathGideonCast[]           = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Cast.Cast");
+	static constexpr TCHAR PathGideonAttackASeq[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_A_Medium.Primary_Attack_A_Medium");
+	static constexpr TCHAR PathGideonAttackBSeq[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_B_Medium.Primary_Attack_B_Medium");
+	static constexpr TCHAR PathGideonAttackCSeq[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_C_Medium.Primary_Attack_C_Medium");
+	static constexpr TCHAR PathGideonHitReact[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathGideonDeath[]          = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Death_Fwd.Death_Fwd");
 
-	static constexpr TCHAR PathAuroraMesh[]         = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Meshes/Aurora.Aurora");
-	static constexpr TCHAR PathAuroraABP[]          = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Aurora_AnimBlueprint.Aurora_AnimBlueprint_C");
-	static constexpr TCHAR PathAuroraIdle[]         = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Idle.Idle");
-	static constexpr TCHAR PathAuroraRun[]          = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jog_Fwd.Jog_Fwd");
-	static constexpr TCHAR PathAuroraRunBwd[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jog_Bwd.Jog_Bwd");
-	static constexpr TCHAR PathAuroraCast[]         = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Cast.Cast");
-	static constexpr TCHAR PathAuroraAttackASeq[]   = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_A.Primary_Attack_A");
-	static constexpr TCHAR PathAuroraAttackBSeq[]   = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_B.Primary_Attack_B");
-	static constexpr TCHAR PathAuroraAttackCSeq[]   = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_C.Primary_Attack_C");
-	static constexpr TCHAR PathAuroraHitReact[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/HitReact_Front.HitReact_Front");
-	static constexpr TCHAR PathAuroraDeath[]        = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Death.Death");
+	static constexpr TCHAR PathAuroraMesh[]           = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Meshes/Aurora.Aurora");
+	static constexpr TCHAR PathAuroraABP[]            = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Aurora_AnimBlueprint.Aurora_AnimBlueprint_C");
+	static constexpr TCHAR PathAuroraIdle[]           = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Idle.Idle");
+	static constexpr TCHAR PathAuroraRun[]            = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathAuroraRunBwd[]         = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jog_Bwd.Jog_Bwd");
+	static constexpr TCHAR PathAuroraJumpStart[]      = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jump_Start.Jump_Start");
+	static constexpr TCHAR PathAuroraJumpLoop[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jump_Apex.Jump_Apex");
+	static constexpr TCHAR PathAuroraJumpLand[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jump_Land.Jump_Land");
+	static constexpr TCHAR PathAuroraCast[]           = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Cast.Cast");
+	static constexpr TCHAR PathAuroraAttackASeq[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_A.Primary_Attack_A");
+	static constexpr TCHAR PathAuroraAttackBSeq[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_B.Primary_Attack_B");
+	static constexpr TCHAR PathAuroraAttackCSeq[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_C.Primary_Attack_C");
+	static constexpr TCHAR PathAuroraHitReact[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathAuroraDeath[]          = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Death.Death");
 
-	static constexpr TCHAR PathGruxMesh[]           = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Meshes/Grux.Grux");
-	static constexpr TCHAR PathGruxABP[]            = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Grux_AnimBlueprint.Grux_AnimBlueprint_C");
-	static constexpr TCHAR PathGruxIdle[]           = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Idle.Idle");
-	static constexpr TCHAR PathGruxRun[]            = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Jog_Fwd.Jog_Fwd");
-	static constexpr TCHAR PathGruxCast[]           = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Cast.Cast");
-	static constexpr TCHAR PathGruxAttackASeq[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_LA.PrimaryAttack_LA");
-	static constexpr TCHAR PathGruxAttackBSeq[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_RA.PrimaryAttack_RA");
-	static constexpr TCHAR PathGruxAttackCSeq[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_FourStrikes.PrimaryAttack_FourStrikes");
-	static constexpr TCHAR PathGruxHitReact[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/HitReact_Front.HitReact_Front");
-	static constexpr TCHAR PathGruxDeath[]          = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Death_A.Death_A");
+	static constexpr TCHAR PathGruxMesh[]             = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Meshes/Grux.Grux");
+	static constexpr TCHAR PathGruxABP[]              = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Grux_AnimBlueprint.Grux_AnimBlueprint_C");
+	static constexpr TCHAR PathGruxIdle[]             = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Idle.Idle");
+	static constexpr TCHAR PathGruxRun[]              = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathGruxSprint[]           = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Run_Fwd.Run_Fwd");
+	static constexpr TCHAR PathGruxJumpStart[]        = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Jump_Start.Jump_Start");
+	static constexpr TCHAR PathGruxJumpLoop[]         = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Jump_Loop.Jump_Loop");
+	static constexpr TCHAR PathGruxJumpLand[]         = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Jump_Land.Jump_Land");
+	static constexpr TCHAR PathGruxCast[]             = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Cast.Cast");
+	static constexpr TCHAR PathGruxAttackASeq[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_LA.PrimaryAttack_LA");
+	static constexpr TCHAR PathGruxAttackBSeq[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_RA.PrimaryAttack_RA");
+	static constexpr TCHAR PathGruxAttackCSeq[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_FourStrikes.PrimaryAttack_FourStrikes");
+	static constexpr TCHAR PathGruxHitReact[]         = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathGruxDeath[]            = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Death_A.Death_A");
 
-	static constexpr TCHAR PathMorigeshMesh[]       = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Meshes/Morigesh.Morigesh");
-	static constexpr TCHAR PathMorigeshABP[]        = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Morigesh_AnimBlueprint.Morigesh_AnimBlueprint_C");
-	static constexpr TCHAR PathMorigeshIdle[]       = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Idle.Idle");
-	static constexpr TCHAR PathMorigeshRun[]        = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Jog_Fwd.Jog_Fwd");
-	static constexpr TCHAR PathMorigeshCast[]       = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Cast.Cast");
-	static constexpr TCHAR PathMorigeshAttackASeq[] = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_A_Slow.PrimaryAttack_A_Slow");
-	static constexpr TCHAR PathMorigeshAttackBSeq[] = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_B_Slow.PrimaryAttack_B_Slow");
-	static constexpr TCHAR PathMorigeshAttackCSeq[] = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_C_Slow.PrimaryAttack_C_Slow");
-	static constexpr TCHAR PathMorigeshHitReact[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/HitReact_Front.HitReact_Front");
-	static constexpr TCHAR PathMorigeshDeath[]      = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Death.Death");
+	static constexpr TCHAR PathMorigeshMesh[]         = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Meshes/Morigesh.Morigesh");
+	static constexpr TCHAR PathMorigeshABP[]          = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Morigesh_AnimBlueprint.Morigesh_AnimBlueprint_C");
+	static constexpr TCHAR PathMorigeshIdle[]         = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Idle.Idle");
+	static constexpr TCHAR PathMorigeshRun[]          = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathMorigeshJumpStart[]    = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Jump_Start.Jump_Start");
+	static constexpr TCHAR PathMorigeshJumpLoop[]     = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Jump_Apex.Jump_Apex");
+	static constexpr TCHAR PathMorigeshCast[]         = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Cast.Cast");
+	static constexpr TCHAR PathMorigeshAttackASeq[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_A_Slow.PrimaryAttack_A_Slow");
+	static constexpr TCHAR PathMorigeshAttackBSeq[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_B_Slow.PrimaryAttack_B_Slow");
+	static constexpr TCHAR PathMorigeshAttackCSeq[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_C_Slow.PrimaryAttack_C_Slow");
+	static constexpr TCHAR PathMorigeshHitReact[]     = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathMorigeshDeath[]        = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Death.Death");
 	static constexpr TCHAR PathKwangMesh[]     = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Meshes/Kwang_GDC.Kwang_GDC");
 	static constexpr TCHAR PathKwangABP[]      = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Animations/Kwang_AnimBlueprint.Kwang_AnimBlueprint_C");
 	static constexpr TCHAR PathKwangMeleeA[]   = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Animations/PrimaryAttack_A_Slow_Montage.PrimaryAttack_A_Slow_Montage");
@@ -207,6 +238,8 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathKhaimeraABP[]        = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Khaimera_AnimBlueprint.Khaimera_AnimBlueprint_C");
 	static constexpr TCHAR PathKhaimeraIdle[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Idle.Idle");
 	static constexpr TCHAR PathKhaimeraRun[]        = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathKhaimeraJumpStart[]  = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Jump_Start.Jump_Start");
+	static constexpr TCHAR PathKhaimeraJumpLoop[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Jump_Apex.Jump_Apex");
 	static constexpr TCHAR PathKhaimeraCast[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Cast.Cast");
 	static constexpr TCHAR PathKhaimeraAttackASeq[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_A.Melee_A");
 	static constexpr TCHAR PathKhaimeraAttackBSeq[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_B.Melee_B");
@@ -225,6 +258,14 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathNSAuraLightning[]     = TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Aura_Lightning.NS_Free_Spells_Aura_Lightning");
 	static constexpr TCHAR PathNSAuraSoul[]          = TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Aura_Soul.NS_Free_Spells_Aura_Soul");
 	static constexpr TCHAR PathNSLevelUp[]           = TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_LevelUp.NS_Free_Spells_LevelUp");
+	static constexpr TCHAR PathNSAuraAir[]           = TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Aura_Air.NS_Free_Spells_Aura_Air");
+	static constexpr TCHAR PathNSWindLeaves[]        = TEXT("/Game/Vefects/Wind_VFX/VFX/Particles/NS_Wind_Debris_Tree_Leaves_01_Colored_Closer.NS_Wind_Debris_Tree_Leaves_01_Colored_Closer");
+	static constexpr TCHAR PathNSWindFlowsFast[]     = TEXT("/Game/Vefects/Wind_VFX/VFX/Particles/NS_Wind_Flows_02_Fast.NS_Wind_Flows_02_Fast");
+	static constexpr TCHAR PathFXHit1[]              = TEXT("/Game/FXVarietyPack/Particles/P_ky_hit1.P_ky_hit1");
+	static constexpr TCHAR PathFXShotShockwave[]     = TEXT("/Game/FXVarietyPack/Particles/P_ky_shotShockwave.P_ky_shotShockwave");
+	static constexpr TCHAR PathFXHealAura[]          = TEXT("/Game/FXVarietyPack/Particles/P_ky_healAura.P_ky_healAura");
+	static constexpr TCHAR PathEarthWedgeMesh[]      = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Cover/SM_MWAM_StoneA.SM_MWAM_StoneA");
+	static constexpr TCHAR PathEarthWedgeMat[]       = TEXT("/Game/MWLandscapeAutoMaterial/Materials/Cover/MTL_MWAM_CoverRocks.MTL_MWAM_CoverRocks");
 	static constexpr TCHAR PathSFXMagicBuff[]        = TEXT("/Game/FreeModularMagicSFX/C_Cast/Mono/SW_MagicCast_Buff1_1.SW_MagicCast_Buff1_1");
 
 	static bool DoesObjectPackageExist(const TCHAR* ObjectPath)
@@ -261,6 +302,22 @@ namespace AetheriaActorsUtil
 	{
 		const FVector Dir = Direction.GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
 		return FQuat::FindBetweenNormals(FVector::UpVector, Dir);
+	}
+
+	static void NotifyWorldBuilderTerrainImpact(UWorld* World, const FVector& WorldLocation, float ImpactRadius, EChronicleOrb PrimaryElement)
+	{
+		if (!World)
+		{
+			return;
+		}
+		for (TActorIterator<AAetheriaWorldBuilder> It(World); It; ++It)
+		{
+			if (AAetheriaWorldBuilder* Builder = *It)
+			{
+				Builder->NotifySpellTerrainImpact(WorldLocation, ImpactRadius, PrimaryElement);
+				break;
+			}
+		}
 	}
 
 	static USkeletalMesh* FindFirstSkeletalMeshInPaths(const TArray<FString>& PackagePaths)
@@ -524,6 +581,12 @@ namespace AetheriaActorsUtil
 		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(BaseMat, Outer);
 		if (MID)
 		{
+			// M_AetheriaMasterPBR defaults AlbedoMap to near-black T_DarkIronCloth_Albedo (~0.04 linear);
+			// replace AlbedoMap with WhiteSquareTexture while keeping its fine NormalMap & RoughnessMap scale weave!
+			if (UTexture* WhiteTex = LoadObject<UTexture>(nullptr, PathWhiteTex))
+			{
+				MID->SetTextureParameterValue(TEXT("AlbedoMap"), WhiteTex);
+			}
 			MID->SetVectorParameterValue(TEXT("BaseColor"), BaseColor);
 			MID->SetVectorParameterValue(TEXT("Color"), BaseColor);
 			MID->SetVectorParameterValue(TEXT("AccentColor"), RimAccentColor);
@@ -1027,29 +1090,29 @@ void AAetheriaDragonActor::BuildProceduralRedDragon()
 		return;
 	}
 
-	// Richly shaded Aetheria PBR dragon materials (deep crimson-obsidian scales, burnished bronze-crimson membranes,
-	// volcanic obsidian horns, and churning golden-ember M_AetheriaFireball eyes & chest furnace)
+	// Richly shaded Aetheria PBR dragon materials (deep blood-crimson scales with normal/roughness weave,
+	// burnished crimson-gold membranes, volcanic obsidian horns, and churning golden-ember M_AetheriaFireball eyes & chest furnace)
 	CrimsonScaleMID = AetheriaActorsUtil::CreateDragonPBRMID(
 		this,
 		AetheriaActorsUtil::PathMatMasterPBR,
 		AetheriaActorsUtil::PathMatObsidian,
-		FLinearColor(0.58f, 0.055f, 0.038f, 1.0f),
+		FLinearColor(0.68f, 0.046f, 0.028f, 1.0f),
+		0.28f,
 		0.42f,
-		0.48f,
 		0.36f,
-		FLinearColor(0.88f, 0.18f, 0.03f, 1.0f),
-		0.22f);
+		FLinearColor(0.95f, 0.16f, 0.025f, 1.0f),
+		0.28f);
 
 	CrimsonBellyMID = AetheriaActorsUtil::CreateDragonPBRMID(
 		this,
 		AetheriaActorsUtil::PathMatMasterPBR,
 		AetheriaActorsUtil::PathMatDarkIron,
-		FLinearColor(0.56f, 0.18f, 0.068f, 1.0f),
-		0.28f,
-		0.58f,
-		0.30f,
-		FLinearColor(0.82f, 0.24f, 0.05f, 1.0f),
-		0.14f);
+		FLinearColor(0.76f, 0.21f, 0.052f, 1.0f),
+		0.22f,
+		0.48f,
+		0.32f,
+		FLinearColor(0.92f, 0.28f, 0.045f, 1.0f),
+		0.20f);
 
 	HornObsidianMID = AetheriaActorsUtil::CreateDragonPBRMID(
 		this,
@@ -1150,23 +1213,44 @@ void AAetheriaDragonActor::BuildProceduralRedDragon()
 	AddProceduralPart(TEXT("DragonLowerJaw"), CubeMeshAsset, LowerJawPivot,
 		FVector(48.f, 0.f, -6.f), FRotator(4.f, 0.f, 0.f), FVector(0.86f, 0.48f, 0.22f), CrimsonBellyMID);
 
-	// --- Flapping Left & Right Articulated Wings (~600 cm wingspan) ---
+	// Tucked muscular hind legs & obsidian talons beneath haunches
+	for (int32 SideIdx = 0; SideIdx < 2; ++SideIdx)
+	{
+		const float S = (SideIdx == 0) ? -1.f : 1.f;
+		const TCHAR* Tag = (SideIdx == 0) ? TEXT("L") : TEXT("R");
+		AddProceduralPart(FString::Printf(TEXT("DragonHindShin_%s"), Tag), CylinderMeshAsset, ProceduralDragonRoot,
+			FVector(-128.f, S * 64.f, -54.f), FRotator(38.f, 0.f, S * -8.f), FVector(0.46f, 0.42f, 0.85f), CrimsonScaleMID);
+		AddProceduralPart(FString::Printf(TEXT("DragonHindTalon_%s"), Tag), ConeMeshAsset, ProceduralDragonRoot,
+			FVector(-108.f, S * 68.f, -88.f), FRotator(72.f, 0.f, 0.f), FVector(0.24f, 0.30f, 0.56f), HornObsidianMID);
+	}
+
+	// --- Flapping Left & Right Articulated Bat-Fanned Wings (~640 cm wingspan) ---
 	auto BuildWing = [this](USceneComponent* WingPivot, float SideSign, const TCHAR* Prefix)
 	{
-		// Inner leading wing bone
+		// Inner & outer leading crimson wing-arm bones
 		AddProceduralPart(FString::Printf(TEXT("%sArmInner"), Prefix), CylinderMeshAsset, WingPivot,
-			FVector(16.f, SideSign * 98.f, 28.f), FRotator(0.f, 0.f, SideSign * 78.f), FVector(0.26f, 0.26f, 2.05f), CrimsonScaleMID);
-		// Outer leading wing spar
+			FVector(24.f, SideSign * 102.f, 28.f), FRotator(8.f, SideSign * 10.f, SideSign * 78.f), FVector(0.28f, 0.28f, 2.15f), CrimsonScaleMID);
 		AddProceduralPart(FString::Printf(TEXT("%sArmOuter"), Prefix), CylinderMeshAsset, WingPivot,
-			FVector(-12.f, SideSign * 265.f, 42.f), FRotator(0.f, SideSign * -12.f, SideSign * 85.f), FVector(0.20f, 0.20f, 2.55f), CrimsonScaleMID);
-		// Obsidian wing-thumb claw
+			FVector(4.f, SideSign * 276.f, 44.f), FRotator(-6.f, SideSign * -14.f, SideSign * 85.f), FVector(0.21f, 0.21f, 2.75f), CrimsonScaleMID);
+		// Obsidian wing-thumb horn claw
 		AddProceduralPart(FString::Printf(TEXT("%sClaw"), Prefix), ConeMeshAsset, WingPivot,
-			FVector(44.f, SideSign * 185.f, 52.f), FRotator(58.f, 0.f, SideSign * 12.f), FVector(0.18f, 0.18f, 0.52f), HornObsidianMID);
-		// Crimson-gold stretched wing membrane inner & outer panels
-		AddProceduralPart(FString::Printf(TEXT("%sMembraneInner"), Prefix), CubeMeshAsset, WingPivot,
-			FVector(-48.f, SideSign * 112.f, 16.f), FRotator(4.f, SideSign * -6.f, SideSign * 8.f), FVector(1.65f, 1.85f, 0.06f), CrimsonBellyMID);
-		AddProceduralPart(FString::Printf(TEXT("%sMembraneOuter"), Prefix), CubeMeshAsset, WingPivot,
-			FVector(-72.f, SideSign * 272.f, 26.f), FRotator(6.f, SideSign * -18.f, SideSign * 4.f), FVector(1.45f, 2.15f, 0.05f), CrimsonBellyMID);
+			FVector(58.f, SideSign * 192.f, 52.f), FRotator(64.f, 0.f, SideSign * 12.f), FVector(0.20f, 0.20f, 0.58f), HornObsidianMID);
+
+		// 3 Fanned Finger-Bone Spars radiating backward from the wing-wrist across the crimson membrane
+		AddProceduralPart(FString::Printf(TEXT("%sSpar1"), Prefix), ConeMeshAsset, WingPivot,
+			FVector(-52.f, SideSign * 172.f, 24.f), FRotator(-76.f, SideSign * 22.f, 0.f), FVector(0.14f, 0.14f, 2.20f), CrimsonScaleMID);
+		AddProceduralPart(FString::Printf(TEXT("%sSpar2"), Prefix), ConeMeshAsset, WingPivot,
+			FVector(-66.f, SideSign * 248.f, 28.f), FRotator(-78.f, SideSign * 42.f, 0.f), FVector(0.13f, 0.13f, 2.45f), CrimsonScaleMID);
+		AddProceduralPart(FString::Printf(TEXT("%sSpar3"), Prefix), ConeMeshAsset, WingPivot,
+			FVector(-48.f, SideSign * 324.f, 34.f), FRotator(-80.f, SideSign * 64.f, 0.f), FVector(0.12f, 0.12f, 2.35f), CrimsonScaleMID);
+
+		// Overlapping scalloped crimson-gold wing membrane sails
+		AddProceduralPart(FString::Printf(TEXT("%sMembraneInner"), Prefix), SphereMeshAsset, WingPivot,
+			FVector(-48.f, SideSign * 108.f, 18.f), FRotator(4.f, SideSign * -8.f, SideSign * 7.f), FVector(1.85f, 1.95f, 0.07f), CrimsonBellyMID);
+		AddProceduralPart(FString::Printf(TEXT("%sMembraneMid"), Prefix), SphereMeshAsset, WingPivot,
+			FVector(-68.f, SideSign * 224.f, 25.f), FRotator(5.f, SideSign * -16.f, SideSign * 5.f), FVector(1.70f, 1.95f, 0.06f), CrimsonBellyMID);
+		AddProceduralPart(FString::Printf(TEXT("%sMembraneOuter"), Prefix), SphereMeshAsset, WingPivot,
+			FVector(-56.f, SideSign * 334.f, 32.f), FRotator(6.f, SideSign * -28.f, SideSign * 3.f), FVector(1.35f, 1.85f, 0.05f), CrimsonScaleMID);
 	};
 
 	BuildWing(LeftWingPivot, -1.f, TEXT("LeftWing"));
@@ -1209,6 +1293,7 @@ void AAetheriaDragonActor::MountRider(AAetheriaHeroCharacter* Hero, APlayerContr
 	}
 
 	RiderHero = Hero;
+	Hero->bDragonUnlocked = true;
 	bMounted = true;
 	bBreathingFire = false;
 	FlightSpeed = 1950.f;
@@ -1437,10 +1522,18 @@ void AAetheriaDragonActor::ApplyFlightInput(
 	}
 
 	// Dragonfire Breath Cone (CHRONICLE_TRACE_PROJECTILE sweep, 65 * DragonFireMult DPS)
+	const bool bRiderGodMode = (RiderHero.IsValid() && RiderHero->IsGodModeActive());
+	if (bRiderGodMode)
+	{
+		FireEnergy = MaxFireEnergy;
+	}
 	bBreathingFire = bFireHeld && (FireEnergy > 2.f);
 	if (bBreathingFire)
 	{
-		FireEnergy = FMath::Max(0.f, FireEnergy - 16.5f * DragonFireDrainMult * DeltaTime);
+		if (!bRiderGodMode)
+		{
+			FireEnergy = FMath::Max(0.f, FireEnergy - 16.5f * DragonFireDrainMult * DeltaTime);
+		}
 		FireDamageTickAccum += DeltaTime;
 
 		constexpr float TickStep = 0.10f;
@@ -1527,13 +1620,59 @@ void AAetheriaDragonActor::ApplyDragonFireSweep(float DeltaDamage, float FireMul
 			UGameplayStatics::ApplyPointDamage(HitActor, DeltaDamage, FireDir, Hit, InstigatorCtrl, this, UDamageType::StaticClass());
 		}
 	}
+
+	// Throttled terrain scorching (once every 0.45s while breathing fire) -> meadow scars & craters that restore after 60s
+	static TWeakObjectPtr<UWorld> LastDragonScarWorld;
+	static float LastDragonFireScarTime = -10.f;
+	const float NowSec = World->GetTimeSeconds();
+	if (LastDragonScarWorld.Get() != World || NowSec < LastDragonFireScarTime || (NowSec - LastDragonFireScarTime) >= 0.45f)
+	{
+		FVector FireImpactLoc = FVector::ZeroVector;
+		bool bHasTerrainImpact = false;
+
+		for (const FHitResult& Hit : Hits)
+		{
+			if (!Hit.ImpactPoint.IsNearlyZero())
+			{
+				FireImpactLoc = FVector(Hit.ImpactPoint);
+				bHasTerrainImpact = true;
+				break;
+			}
+		}
+		if (!bHasTerrainImpact)
+		{
+			FHitResult GroundHit;
+			if (World->LineTraceSingleByChannel(GroundHit, FireOrigin, FireEnd, ECC_WorldStatic, Params))
+			{
+				FireImpactLoc = GroundHit.ImpactPoint;
+				bHasTerrainImpact = true;
+			}
+			else
+			{
+				const FVector MidCone = FireOrigin + FireDir * (Range * 0.55f);
+				if (World->LineTraceSingleByChannel(GroundHit, MidCone + FVector(0.f, 0.f, 120.f), MidCone - FVector(0.f, 0.f, 900.f), ECC_WorldStatic, Params))
+				{
+					FireImpactLoc = GroundHit.ImpactPoint;
+					bHasTerrainImpact = true;
+				}
+			}
+		}
+
+		if (bHasTerrainImpact)
+		{
+			LastDragonScarWorld = World;
+			LastDragonFireScarTime = NowSec;
+			AetheriaActorsUtil::NotifyWorldBuilderTerrainImpact(World, FireImpactLoc, 380.f, EChronicleOrb::Exort);
+		}
+	}
 }
 
 void AAetheriaDragonActor::UpdateDragonAnimation(float DeltaTime)
 {
-	const float ActiveBeatRate = bMounted ? WingBeatSpeed : 1.15f;
+	const bool bDivingGlide = bMounted && (CachedUpAxis < -0.25f);
+	const float ActiveBeatRate = bMounted ? (bDivingGlide ? 1.45f : FMath::Max(WingBeatSpeed, 3.8f)) : 1.65f;
 	WingBeatPhase += DeltaTime * ActiveBeatRate;
-	TailWavePhase += DeltaTime * (bMounted ? 3.8f : 1.7f);
+	TailWavePhase += DeltaTime * (bMounted ? 4.2f : 2.15f);
 
 	// High-poly SkeletalMesh animation state machine (DragonTheUsurperSK)
 	if (bUsingImportedSkeletalMesh && ImportedDragonMesh)
@@ -1570,7 +1709,7 @@ void AAetheriaDragonActor::UpdateDragonAnimation(float DeltaTime)
 			DesiredAnim = DragonFlyAnim.Get();
 		}
 
-		if (DesiredAnim && DesiredAnim != ActiveDragonAnim.Get())
+		if (DesiredAnim && (DesiredAnim != ActiveDragonAnim.Get() || (bShouldLoop && !ImportedDragonMesh->IsPlaying())))
 		{
 			USkeletalMesh* SkelMesh = ImportedDragonMesh->GetSkeletalMeshAsset();
 			if (SkelMesh && AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, DesiredAnim->GetSkeleton()))
@@ -1578,6 +1717,11 @@ void AAetheriaDragonActor::UpdateDragonAnimation(float DeltaTime)
 				ImportedDragonMesh->PlayAnimation(DesiredAnim, bShouldLoop);
 				ActiveDragonAnim = DesiredAnim;
 			}
+		}
+		if (ActiveDragonAnim)
+		{
+			const float DragonAnimRate = bMounted ? FMath::Clamp(ActiveBeatRate / 3.8f, 0.85f, 1.35f) : 1.0f;
+			ImportedDragonMesh->SetPlayRate(DragonAnimRate);
 		}
 
 		// Track live snout & back bone positions while preserving actor-forward alignment so
@@ -1596,9 +1740,8 @@ void AAetheriaDragonActor::UpdateDragonAnimation(float DeltaTime)
 	}
 	else if (!bUsingImportedSkeletalMesh)
 	{
-		const bool bDivingGlide = bMounted && (CachedUpAxis < -0.25f);
-		const float WingAmp = bMounted ? (bDivingGlide ? 11.f : 42.f) : 7.f;
-		const float WingBias = bMounted ? (bDivingGlide ? 16.f : 6.f) : -24.f;
+		const float WingAmp = bMounted ? (bDivingGlide ? 11.f : 46.f) : 16.f;
+		const float WingBias = bMounted ? (bDivingGlide ? 16.f : 6.f) : -12.f;
 		const float FlapAngle = FMath::Sin(WingBeatPhase) * WingAmp + WingBias;
 
 		if (LeftWingPivot)
@@ -1613,7 +1756,7 @@ void AAetheriaDragonActor::UpdateDragonAnimation(float DeltaTime)
 		// Neck & head poise + jaw opening wide when breathing blazing dragonfire
 		if (NeckPivot)
 		{
-			const float NeckBreath = FMath::Sin(TailWavePhase * 0.85f) * 3.5f;
+			const float NeckBreath = FMath::Sin(TailWavePhase * 0.85f) * (bMounted ? 3.5f : 5.0f);
 			NeckPivot->SetRelativeRotation(FRotator(NeckBreath + (bBreathingFire ? 6.f : 0.f), -CurrentBankRoll * 0.25f, 0.f));
 		}
 		if (LowerJawPivot)
@@ -1623,14 +1766,15 @@ void AAetheriaDragonActor::UpdateDragonAnimation(float DeltaTime)
 			LowerJawPivot->SetRelativeRotation(FRotator(FMath::FInterpTo(CurJaw.Pitch, TargetJawPitch, DeltaTime, 12.f), 0.f, 0.f));
 		}
 
-		// 5-segment serpentine waving tail
+		// 5-segment serpentine undulating tail (lively wave both perched and flying)
 		for (int32 Seg = 0; Seg < TailSegmentPivots.Num(); ++Seg)
 		{
 			if (USceneComponent* SegPivot = TailSegmentPivots[Seg])
 			{
 				const float Phase = TailWavePhase - static_cast<float>(Seg) * 0.72f;
-				const float YawWave = FMath::Sin(Phase) * (9.f + Seg * 3.2f) - (CurrentBankRoll * 0.18f);
-				const float PitchWave = FMath::Cos(Phase * 0.7f) * (3.5f + Seg * 1.1f);
+				const float AmpScale = bMounted ? 1.15f : 1.0f;
+				const float YawWave = FMath::Sin(Phase) * (10.5f + Seg * 3.6f) * AmpScale - (CurrentBankRoll * 0.18f);
+				const float PitchWave = FMath::Cos(Phase * 0.7f) * (4.0f + Seg * 1.25f) * AmpScale;
 				SegPivot->SetRelativeRotation(FRotator(PitchWave, YawWave, 0.f));
 			}
 		}
@@ -1725,6 +1869,34 @@ void AAetheriaDragonActor::Tick(float DeltaTime)
 	{
 		bBreathingFire = false;
 		FireEnergy = FMath::Min(MaxFireEnergy, FireEnergy + 14.f * DeltaTime);
+
+		// Allow immediate [F] mount & flight when standing next to Ignis at the lakeside perch (< 750 cm)!
+		if (HasAuthority())
+		{
+			if (UWorld* World = GetWorld())
+			{
+				const FVector DragonLoc = GetActorLocation();
+				const float PerchMountRadiusSq = FMath::Square(750.f);
+				for (TActorIterator<AAetheriaHeroCharacter> It(World); It; ++It)
+				{
+					AAetheriaHeroCharacter* Hero = *It;
+					if (Hero && !Hero->bDead && !Hero->bDragonUnlocked)
+					{
+						if (FVector::DistSquared(DragonLoc, Hero->GetActorLocation()) < PerchMountRadiusSq)
+						{
+							Hero->bDragonUnlocked = true;
+							if (UGameInstance* GI = GetGameInstance())
+							{
+								if (UQuestSubsystem* QuestSys = GI->GetSubsystem<UQuestSubsystem>())
+								{
+									QuestSys->PushNotification(TEXT("Ignis the Red Dragon awaits — Press [F] to Mount & Fly!"));
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	UpdateDragonAnimation(DeltaTime);
@@ -1854,6 +2026,30 @@ AAetheriaHeroCharacter::AAetheriaHeroCharacter()
 	HeroWeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HeroWeaponMesh->SetCastShadow(true);
 	HeroWeaponMesh->SetVisibility(false);
+
+	// Cyan air foot-aura activated ONLY during high-speed ground sprint (hidden in Studio, idle, air, mounted)
+	SprintFootAuraComp = CreateDefaultSubobject<UNiagaraComponent>(TEXT("SprintFootAuraComp"));
+	SprintFootAuraComp->SetupAttachment(RootComponent);
+	SprintFootAuraComp->SetRelativeLocation(FVector(0.f, 0.f, -82.f));
+	SprintFootAuraComp->SetRelativeScale3D(FVector(0.55f));
+	SprintFootAuraComp->bAutoActivate = false;
+}
+
+void AAetheriaHeroCharacter::AddMovementInput(FVector WorldDirection, float ScaleValue, bool bForce)
+{
+	const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	if (!FMath::IsNearlyZero(ScaleValue) && !WorldDirection.IsNearlyZero())
+	{
+		CachedMoveInputTimestamp = WorldTime;
+	}
+
+	// Zero-Slide Martial Commitment: block WASD skating into CharacterMovement during an active melee swing window
+	if (!bForce && (bDead || bCreatorStudioCameraActive || WorldTime < MeleeMoveLockUntilTime))
+	{
+		return;
+	}
+
+	Super::AddMovementInput(WorldDirection, ScaleValue, bForce);
 }
 
 void AAetheriaHeroCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -1871,6 +2067,7 @@ void AAetheriaHeroCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(AAetheriaHeroCharacter, InvulnTimer);
 	DOREPLIFETIME(AAetheriaHeroCharacter, EnemiesSlain);
 	DOREPLIFETIME(AAetheriaHeroCharacter, bDragonUnlocked);
+	DOREPLIFETIME(AAetheriaHeroCharacter, bGodMode);
 }
 
 void AAetheriaHeroCharacter::BeginPlay()
@@ -1890,12 +2087,26 @@ void AAetheriaHeroCharacter::BeginPlay()
 	}
 	RefreshAllHeroStats();
 
-	// Preload Free_Spells Niagara & Buff SFX for Orb Unlocks & Level-Up celebrations
+	// Preload Free_Spells Niagara, 3-Hit Martial Combo FX, Sprint Aura & Buff SFX
 	OrbUnlockAuraFireNS      = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSAuraFire);
 	OrbUnlockAuraLightningNS = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSAuraLightning);
 	OrbUnlockAuraSoulNS      = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSAuraSoul);
 	HeroLevelUpNS            = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSLevelUp);
 	MagicBuffSFX             = AetheriaActorsUtil::SafeLoadObjectIfPresent<USoundBase>(AetheriaActorsUtil::PathSFXMagicBuff);
+
+	MartialHit1FX            = AetheriaActorsUtil::SafeLoadObjectIfPresent<UParticleSystem>(AetheriaActorsUtil::PathFXHit1);
+	MartialFireArcFX         = AetheriaActorsUtil::SafeLoadObjectIfPresent<UParticleSystem>(AetheriaActorsUtil::PathDragonFireBallFX);
+	MartialShockwaveFX       = AetheriaActorsUtil::SafeLoadObjectIfPresent<UParticleSystem>(AetheriaActorsUtil::PathFXShotShockwave);
+	MartialExplosionFX       = AetheriaActorsUtil::SafeLoadObjectIfPresent<UParticleSystem>(AetheriaActorsUtil::PathBossExplosionFX);
+	MartialShockwaveNS       = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathBossShockwaveNS);
+	MartialWindLeavesNS      = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSWindLeaves);
+	DodgeWindFlowsNS         = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSWindFlowsFast);
+	SprintFootAuraNS         = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSAuraAir);
+	if (SprintFootAuraComp && SprintFootAuraNS)
+	{
+		SprintFootAuraComp->SetAsset(SprintFootAuraNS);
+		SprintFootAuraComp->DeactivateImmediate();
+	}
 
 	if (SpellSystem)
 	{
@@ -1933,8 +2144,18 @@ bool AAetheriaHeroCharacter::BindParagonHeroSingleNodeAnims(USkeletalMesh* SkelM
 	USkeletalMeshComponent* MeshComp = GetMesh();
 	ActiveIdleAnimSeq = nullptr;
 	ActiveRunAnimSeq = nullptr;
+	ActiveSprintAnimSeq = nullptr;
+	ActiveJumpStartSeq = nullptr;
+	ActiveJumpLoopSeq = nullptr;
+	ActiveJumpLandSeq = nullptr;
+	ActiveRollAnimSeq = nullptr;
 	CombatAnimLockUntilTime = 0.f;
+	MeleeMoveLockUntilTime = 0.f;
+	RollBrakeUntilTime = 0.f;
+	JumpLandAnimUntilTime = 0.f;
 	bPlayingRunAnim = false;
+	bPlayingSprintAnim = false;
+	bPlayingJumpAnim = false;
 	bPlayingCombatOneShot = false;
 
 	if (!MeshComp || !SkelMesh || !SkelMesh->GetSkeleton())
@@ -1944,71 +2165,94 @@ bool AAetheriaHeroCharacter::BindParagonHeroSingleNodeAnims(USkeletalMesh* SkelM
 
 	const FString MeshId = SkelMesh->GetPathName() + TEXT(" ") + SkelMesh->GetName();
 
-	const TCHAR* IdlePrimary   = nullptr;
-	const TCHAR* IdleFallback  = nullptr;
-	const TCHAR* RunPrimary    = nullptr;
-	const TCHAR* RunFallback   = nullptr;
-	const TCHAR* CastPath      = nullptr;
-	const TCHAR* AttackSeqs[3] = { nullptr, nullptr, nullptr };
-	const TCHAR* HitPath       = nullptr;
-	const TCHAR* DeathPath     = nullptr;
+	const TCHAR* IdlePrimary      = nullptr;
+	const TCHAR* IdleFallback     = nullptr;
+	const TCHAR* RunPrimary       = nullptr;
+	const TCHAR* RunFallback      = nullptr;
+	const TCHAR* SprintPath       = nullptr;
+	const TCHAR* JumpStartPath    = nullptr;
+	const TCHAR* JumpLoopPath     = nullptr;
+	const TCHAR* JumpLandPath     = nullptr;
+	const TCHAR* RollPrimaryPath  = nullptr;
+	const TCHAR* RollFallbackPath = nullptr;
+	const TCHAR* CastPath         = nullptr;
+	const TCHAR* AttackSeqs[3]    = { nullptr, nullptr, nullptr };
+	const TCHAR* HitPath          = nullptr;
+	const TCHAR* DeathPath        = nullptr;
 
 	if (MeshId.Contains(TEXT("Gideon"), ESearchCase::IgnoreCase))
 	{
-		IdlePrimary   = AetheriaActorsUtil::PathGideonPedestalIdle;
-		IdleFallback  = AetheriaActorsUtil::PathGideonIdle;
-		RunPrimary    = AetheriaActorsUtil::PathGideonRun;
-		CastPath      = AetheriaActorsUtil::PathGideonCast;
-		AttackSeqs[0] = AetheriaActorsUtil::PathGideonAttackASeq;
-		AttackSeqs[1] = AetheriaActorsUtil::PathGideonAttackBSeq;
-		AttackSeqs[2] = AetheriaActorsUtil::PathGideonAttackCSeq;
-		HitPath       = AetheriaActorsUtil::PathGideonHitReact;
-		DeathPath     = AetheriaActorsUtil::PathGideonDeath;
+		IdlePrimary      = AetheriaActorsUtil::PathGideonPedestalIdle;
+		IdleFallback     = AetheriaActorsUtil::PathGideonIdle;
+		RunPrimary       = AetheriaActorsUtil::PathGideonRun;
+		SprintPath       = AetheriaActorsUtil::PathGideonSprint;
+		JumpStartPath    = AetheriaActorsUtil::PathGideonJumpStart;
+		JumpLoopPath     = AetheriaActorsUtil::PathGideonJumpLoop;
+		JumpLandPath     = AetheriaActorsUtil::PathGideonJumpLand;
+		RollPrimaryPath  = AetheriaActorsUtil::PathGideonRollSpin;
+		RollFallbackPath = AetheriaActorsUtil::PathGideonRollLean;
+		CastPath         = AetheriaActorsUtil::PathGideonCast;
+		AttackSeqs[0]    = AetheriaActorsUtil::PathGideonAttackASeq;
+		AttackSeqs[1]    = AetheriaActorsUtil::PathGideonAttackBSeq;
+		AttackSeqs[2]    = AetheriaActorsUtil::PathGideonAttackCSeq;
+		HitPath          = AetheriaActorsUtil::PathGideonHitReact;
+		DeathPath        = AetheriaActorsUtil::PathGideonDeath;
 	}
 	else if (MeshId.Contains(TEXT("Aurora"), ESearchCase::IgnoreCase))
 	{
-		IdlePrimary   = AetheriaActorsUtil::PathAuroraIdle;
-		RunPrimary    = AetheriaActorsUtil::PathAuroraRun;
-		RunFallback   = AetheriaActorsUtil::PathAuroraRunBwd;
-		CastPath      = AetheriaActorsUtil::PathAuroraCast;
-		AttackSeqs[0] = AetheriaActorsUtil::PathAuroraAttackASeq;
-		AttackSeqs[1] = AetheriaActorsUtil::PathAuroraAttackBSeq;
-		AttackSeqs[2] = AetheriaActorsUtil::PathAuroraAttackCSeq;
-		HitPath       = AetheriaActorsUtil::PathAuroraHitReact;
-		DeathPath     = AetheriaActorsUtil::PathAuroraDeath;
+		IdlePrimary      = AetheriaActorsUtil::PathAuroraIdle;
+		RunPrimary       = AetheriaActorsUtil::PathAuroraRun;
+		RunFallback      = AetheriaActorsUtil::PathAuroraRunBwd;
+		JumpStartPath    = AetheriaActorsUtil::PathAuroraJumpStart;
+		JumpLoopPath     = AetheriaActorsUtil::PathAuroraJumpLoop;
+		JumpLandPath     = AetheriaActorsUtil::PathAuroraJumpLand;
+		CastPath         = AetheriaActorsUtil::PathAuroraCast;
+		AttackSeqs[0]    = AetheriaActorsUtil::PathAuroraAttackASeq;
+		AttackSeqs[1]    = AetheriaActorsUtil::PathAuroraAttackBSeq;
+		AttackSeqs[2]    = AetheriaActorsUtil::PathAuroraAttackCSeq;
+		HitPath          = AetheriaActorsUtil::PathAuroraHitReact;
+		DeathPath        = AetheriaActorsUtil::PathAuroraDeath;
 	}
 	else if (MeshId.Contains(TEXT("Khaimera"), ESearchCase::IgnoreCase))
 	{
-		IdlePrimary   = AetheriaActorsUtil::PathKhaimeraIdle;
-		RunPrimary    = AetheriaActorsUtil::PathKhaimeraRun;
-		CastPath      = AetheriaActorsUtil::PathKhaimeraCast;
-		AttackSeqs[0] = AetheriaActorsUtil::PathKhaimeraAttackASeq;
-		AttackSeqs[1] = AetheriaActorsUtil::PathKhaimeraAttackBSeq;
-		AttackSeqs[2] = AetheriaActorsUtil::PathKhaimeraAttackCSeq;
-		HitPath       = AetheriaActorsUtil::PathKhaimeraHitReact;
-		DeathPath     = AetheriaActorsUtil::PathKhaimeraDeath;
+		IdlePrimary      = AetheriaActorsUtil::PathKhaimeraIdle;
+		RunPrimary       = AetheriaActorsUtil::PathKhaimeraRun;
+		JumpStartPath    = AetheriaActorsUtil::PathKhaimeraJumpStart;
+		JumpLoopPath     = AetheriaActorsUtil::PathKhaimeraJumpLoop;
+		CastPath         = AetheriaActorsUtil::PathKhaimeraCast;
+		AttackSeqs[0]    = AetheriaActorsUtil::PathKhaimeraAttackASeq;
+		AttackSeqs[1]    = AetheriaActorsUtil::PathKhaimeraAttackBSeq;
+		AttackSeqs[2]    = AetheriaActorsUtil::PathKhaimeraAttackCSeq;
+		HitPath          = AetheriaActorsUtil::PathKhaimeraHitReact;
+		DeathPath        = AetheriaActorsUtil::PathKhaimeraDeath;
 	}
 	else if (MeshId.Contains(TEXT("Grux"), ESearchCase::IgnoreCase))
 	{
-		IdlePrimary   = AetheriaActorsUtil::PathGruxIdle;
-		RunPrimary    = AetheriaActorsUtil::PathGruxRun;
-		CastPath      = AetheriaActorsUtil::PathGruxCast;
-		AttackSeqs[0] = AetheriaActorsUtil::PathGruxAttackASeq;
-		AttackSeqs[1] = AetheriaActorsUtil::PathGruxAttackBSeq;
-		AttackSeqs[2] = AetheriaActorsUtil::PathGruxAttackCSeq;
-		HitPath       = AetheriaActorsUtil::PathGruxHitReact;
-		DeathPath     = AetheriaActorsUtil::PathGruxDeath;
+		IdlePrimary      = AetheriaActorsUtil::PathGruxIdle;
+		RunPrimary       = AetheriaActorsUtil::PathGruxRun;
+		SprintPath       = AetheriaActorsUtil::PathGruxSprint;
+		JumpStartPath    = AetheriaActorsUtil::PathGruxJumpStart;
+		JumpLoopPath     = AetheriaActorsUtil::PathGruxJumpLoop;
+		JumpLandPath     = AetheriaActorsUtil::PathGruxJumpLand;
+		CastPath         = AetheriaActorsUtil::PathGruxCast;
+		AttackSeqs[0]    = AetheriaActorsUtil::PathGruxAttackASeq;
+		AttackSeqs[1]    = AetheriaActorsUtil::PathGruxAttackBSeq;
+		AttackSeqs[2]    = AetheriaActorsUtil::PathGruxAttackCSeq;
+		HitPath          = AetheriaActorsUtil::PathGruxHitReact;
+		DeathPath        = AetheriaActorsUtil::PathGruxDeath;
 	}
 	else if (MeshId.Contains(TEXT("Morigesh"), ESearchCase::IgnoreCase))
 	{
-		IdlePrimary   = AetheriaActorsUtil::PathMorigeshIdle;
-		RunPrimary    = AetheriaActorsUtil::PathMorigeshRun;
-		CastPath      = AetheriaActorsUtil::PathMorigeshCast;
-		AttackSeqs[0] = AetheriaActorsUtil::PathMorigeshAttackASeq;
-		AttackSeqs[1] = AetheriaActorsUtil::PathMorigeshAttackBSeq;
-		AttackSeqs[2] = AetheriaActorsUtil::PathMorigeshAttackCSeq;
-		HitPath       = AetheriaActorsUtil::PathMorigeshHitReact;
-		DeathPath     = AetheriaActorsUtil::PathMorigeshDeath;
+		IdlePrimary      = AetheriaActorsUtil::PathMorigeshIdle;
+		RunPrimary       = AetheriaActorsUtil::PathMorigeshRun;
+		JumpStartPath    = AetheriaActorsUtil::PathMorigeshJumpStart;
+		JumpLoopPath     = AetheriaActorsUtil::PathMorigeshJumpLoop;
+		CastPath         = AetheriaActorsUtil::PathMorigeshCast;
+		AttackSeqs[0]    = AetheriaActorsUtil::PathMorigeshAttackASeq;
+		AttackSeqs[1]    = AetheriaActorsUtil::PathMorigeshAttackBSeq;
+		AttackSeqs[2]    = AetheriaActorsUtil::PathMorigeshAttackCSeq;
+		HitPath          = AetheriaActorsUtil::PathMorigeshHitReact;
+		DeathPath        = AetheriaActorsUtil::PathMorigeshDeath;
 	}
 	else
 	{
@@ -2040,8 +2284,13 @@ bool AAetheriaHeroCharacter::BindParagonHeroSingleNodeAnims(USkeletalMesh* SkelM
 		return nullptr;
 	};
 
-	ActiveIdleAnimSeq = LoadCompatibleSeq(IdlePrimary, IdleFallback);
-	ActiveRunAnimSeq  = LoadCompatibleSeq(RunPrimary, RunFallback);
+	ActiveIdleAnimSeq   = LoadCompatibleSeq(IdlePrimary, IdleFallback);
+	ActiveRunAnimSeq    = LoadCompatibleSeq(RunPrimary, RunFallback);
+	ActiveSprintAnimSeq = LoadCompatibleSeq(SprintPath, RunPrimary);
+	ActiveJumpStartSeq  = LoadCompatibleSeq(JumpStartPath);
+	ActiveJumpLoopSeq   = LoadCompatibleSeq(JumpLoopPath, JumpStartPath);
+	ActiveJumpLandSeq   = LoadCompatibleSeq(JumpLandPath);
+	ActiveRollAnimSeq   = LoadCompatibleSeq(RollPrimaryPath, RollFallbackPath);
 	if (UAnimSequence* CastSeq = LoadCompatibleSeq(CastPath))
 	{
 		AnimCast = CastSeq;
@@ -2397,6 +2646,10 @@ bool AAetheriaHeroCharacter::ApplyCustomSkeletalRig(
 
 bool AAetheriaHeroCharacter::CanCastSpellsByStature() const
 {
+	if (bGodMode)
+	{
+		return true;
+	}
 	return Customization ? Customization->GetDerivedStats().bCanCastSpells : true;
 }
 
@@ -2572,6 +2825,8 @@ void AAetheriaHeroCharacter::PlayCombatAnimSequence(UAnimSequence* Seq, float Pl
 		MeshComp->PlayAnimation(Seq, false);
 		MeshComp->SetPlayRate(SafeRate);
 		bPlayingRunAnim = false;
+		bPlayingSprintAnim = false;
+		bPlayingJumpAnim = false;
 		bPlayingCombatOneShot = true;
 
 		const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
@@ -2630,18 +2885,151 @@ void AAetheriaHeroCharacter::TriggerCombatFlash(const FLinearColor& Color, float
 	CombatFlashLight->SetIntensity(PeakLumens);
 }
 
+void AAetheriaHeroCharacter::SpawnMartialComboVFXAndEffects(int32 Step, const FVector& AttackDir, const FVector& ImpactCenter)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector Dir2D = AttackDir.GetSafeNormal2D(UE_SMALL_NUMBER, GetActorForwardVector().GetSafeNormal2D());
+	const FRotator DirRot = Dir2D.Rotation();
+	const int32 ElementalStep = FMath::Abs(Step) % 3;
+
+	if (ElementalStep == 0)
+	{
+		// Hit 1 — Flame Slash: crisp ember arc + hit burst directly in front of hero
+		if (!IsRunningDedicatedServer())
+		{
+			if (MartialHit1FX)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(World, MartialHit1FX, ImpactCenter, DirRot, FVector(0.95f), true);
+			}
+			if (MartialFireArcFX)
+			{
+				const FVector ArcRight = FVector::CrossProduct(FVector::UpVector, Dir2D).GetSafeNormal();
+				UGameplayStatics::SpawnEmitterAtLocation(World, MartialFireArcFX, ImpactCenter - ArcRight * 34.f, DirRot, FVector(0.55f), true);
+				UGameplayStatics::SpawnEmitterAtLocation(World, MartialFireArcFX, ImpactCenter + ArcRight * 34.f, DirRot, FVector(0.55f), true);
+			}
+		}
+	}
+	else if (ElementalStep == 1)
+	{
+		// Hit 2 — Storm's Echo: shockwave pulse + swirling wind leaves + radial knockback (380 cm)
+		if (!IsRunningDedicatedServer())
+		{
+			if (MartialShockwaveFX)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(World, MartialShockwaveFX, ImpactCenter, DirRot, FVector(0.90f), true);
+			}
+			if (MartialShockwaveNS)
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, MartialShockwaveNS, ImpactCenter - FVector(0.f, 0.f, 24.f), DirRot, FVector(0.75f), true);
+			}
+			if (MartialWindLeavesNS)
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, MartialWindLeavesNS, ImpactCenter, DirRot, FVector(0.85f), true);
+			}
+		}
+
+		if (HasAuthority())
+		{
+			AetheriaActorsUtil::NotifyWorldBuilderTerrainImpact(World, ImpactCenter, 320.f, EChronicleOrb::Wex);
+
+			const FVector MyLoc = GetActorLocation();
+			for (TActorIterator<AAetheriaEnemyCharacter> It(World); It; ++It)
+			{
+				AAetheriaEnemyCharacter* Enemy = *It;
+				if (!Enemy || Enemy->bDead)
+				{
+					continue;
+				}
+				const FVector Away = Enemy->GetActorLocation() - MyLoc;
+				if (Away.SizeSquared() <= FMath::Square(380.f))
+				{
+					const FVector PushDir = Away.GetSafeNormal2D(UE_SMALL_NUMBER, Dir2D);
+					const float PushMag = Cast<AAetheriaBossCharacter>(Enemy) ? 240.f : 520.f;
+					Enemy->LaunchCharacter(PushDir * PushMag + FVector(0.f, 0.f, 140.f), false, false);
+				}
+			}
+		}
+	}
+	else
+	{
+		// Hit 3 — Earthen Wedge: rising stone wedge erupts at impact + launches enemies skyward (+420 Z)
+		FVector GroundPos = ImpactCenter - FVector(0.f, 0.f, 88.f);
+		FHitResult GroundHit;
+		FCollisionQueryParams GroundParams(TEXT("EarthWedgeGroundTrace"), false, this);
+		if (World->LineTraceSingleByChannel(
+				GroundHit,
+				ImpactCenter + FVector(0.f, 0.f, 160.f),
+				ImpactCenter - FVector(0.f, 0.f, 360.f),
+				ECC_WorldStatic,
+				GroundParams))
+		{
+			GroundPos = GroundHit.ImpactPoint;
+		}
+
+		if (HasAuthority())
+		{
+			AetheriaActorsUtil::NotifyWorldBuilderTerrainImpact(World, GroundPos, 300.f, EChronicleOrb::Exort);
+
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.Instigator = this;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			if (AAetheriaEarthWedgeActor* Wedge = World->SpawnActor<AAetheriaEarthWedgeActor>(
+					AAetheriaEarthWedgeActor::StaticClass(),
+					GroundPos,
+					DirRot,
+					SpawnParams))
+			{
+				Wedge->InitializeWedge(GroundPos, Dir2D);
+			}
+
+			for (TActorIterator<AAetheriaEnemyCharacter> It(World); It; ++It)
+			{
+				AAetheriaEnemyCharacter* Enemy = *It;
+				if (!Enemy || Enemy->bDead)
+				{
+					continue;
+				}
+				if (FVector::DistSquared(Enemy->GetActorLocation(), ImpactCenter) <= FMath::Square(340.f))
+				{
+					const float UpZ = Cast<AAetheriaBossCharacter>(Enemy) ? 180.f : 420.f;
+					Enemy->LaunchCharacter(Dir2D * 160.f + FVector(0.f, 0.f, UpZ), false, true);
+				}
+			}
+		}
+		else if (!IsRunningDedicatedServer() && MartialExplosionFX)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(World, MartialExplosionFX, GroundPos + FVector(0.f, 0.f, 25.f), FRotator::ZeroRotator, FVector(0.70f), true);
+		}
+	}
+}
+
 void AAetheriaHeroCharacter::PerformMeleeAttack()
 {
 	if (!HasAuthority())
 	{
 		ServerPerformMeleeAttack();
-		// Local responsive VFX & anim preview
+		// Local responsive VFX, zero-slide commitment & anim preview
 		if (!bDead && RollTimer <= 0.f && MeleeCooldownTimer <= 0.f)
 		{
+			const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+			if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+			{
+				MoveComp->StopMovementImmediately();
+				MoveComp->BrakingFrictionFactor = 4.5f;
+				MoveComp->BrakingDecelerationWalking = 3200.f;
+			}
 			const int32 MaxComboSteps = (HeroAttackMontages[3] != nullptr) ? 4 : 3;
 			const int32 PreviewIdx = FMath::Clamp(ComboIndex, 0, MaxComboSteps - 1);
 			const bool bFinisher = (PreviewIdx == (MaxComboSteps - 1));
 			PlayHeroMeleeVisualsAndAudio(PreviewIdx);
+			MeleeMoveLockUntilTime = WorldTime + 0.34f;
+			CombatAnimLockUntilTime = WorldTime + 0.46f;
 			TriggerCombatFlash(bFinisher ? FLinearColor(1.0f, 0.42f, 0.12f) : FLinearColor(1.0f, 0.72f, 0.30f),
 				bFinisher ? 9500.f : 6500.f, 0.22f);
 		}
@@ -2676,6 +3064,15 @@ void AAetheriaHeroCharacter::ExecuteMeleeAttack_Internal()
 
 	const FHeroDerivedStats Stats = Customization ? Customization->GetDerivedStats() : FHeroDerivedStats();
 	const float SafeAtkSpeed = FMath::Max(0.4f, Stats.AttackSpeedMultiplier);
+	const bool bWasRunning = GetVelocity().Size2D() > 200.f;
+
+	// Zero-Slide Martial Commitment: immediately kill lateral ice-skate velocity & apply heavy braking friction
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->StopMovementImmediately();
+		MoveComp->BrakingFrictionFactor = 4.5f;
+		MoveComp->BrakingDecelerationWalking = 3200.f;
+	}
 
 	const int32 MaxComboSteps = (HeroAttackMontages[3] != nullptr) ? 4 : 3;
 	const int32 FinisherStep = MaxComboSteps - 1;
@@ -2683,16 +3080,27 @@ void AAetheriaHeroCharacter::ExecuteMeleeAttack_Internal()
 	ComboIndex = (CurrentStep + 1) % MaxComboSteps;
 	ComboResetTimer = 1.45f;
 	MeleeCooldownTimer = ((CurrentStep == FinisherStep) ? 0.50f : 0.34f) / SafeAtkSpeed;
-	bBlocking = false;
+	if (bBlocking)
+	{
+		bBlocking = false;
+		SyncSkillTreeMultipliers();
+	}
 
-	// Play 4-hit native montage (A -> B -> C -> D) or sequence fallback + effort SFX
-	PlayHeroMeleeVisualsAndAudio(CurrentStep);
-
-	// MotionWarping: gently lock warp target onto nearest enemy in front melee arc
-	AAetheriaEnemyCharacter* WarpEnemy = nullptr;
-	float BestDistSq = FMath::Square(390.f * FMath::Max(0.75f, Stats.MeleeReachMultiplier));
+	// Determine crisp attack facing: soft-lock onto nearest alive enemy within 480 cm in front arc, else camera flat forward
 	const FVector MyLoc = GetActorLocation();
-	const FVector MyFwd = GetActorForwardVector();
+	FVector AimFwd = GetActorForwardVector().GetSafeNormal2D(UE_SMALL_NUMBER, FVector::ForwardVector);
+	if (Controller)
+	{
+		const FRotator ControlYawRot(0.f, Controller->GetControlRotation().Yaw, 0.f);
+		const FVector CamFwd = FRotationMatrix(ControlYawRot).GetUnitAxis(EAxis::X).GetSafeNormal2D();
+		if (!CamFwd.IsNearlyZero())
+		{
+			AimFwd = CamFwd;
+		}
+	}
+
+	AAetheriaEnemyCharacter* WarpEnemy = nullptr;
+	float BestDistSq = FMath::Square(480.f * FMath::Max(0.75f, Stats.MeleeReachMultiplier));
 
 	for (TActorIterator<AAetheriaEnemyCharacter> It(World); It; ++It)
 	{
@@ -2703,19 +3111,41 @@ void AAetheriaHeroCharacter::ExecuteMeleeAttack_Internal()
 		}
 		const FVector ToEnemy = Enemy->GetActorLocation() - MyLoc;
 		const float DistSq = ToEnemy.SizeSquared();
-		if (DistSq < BestDistSq && FVector::DotProduct(MyFwd, ToEnemy.GetSafeNormal()) > 0.25f)
+		if (DistSq < BestDistSq && FVector::DotProduct(AimFwd, ToEnemy.GetSafeNormal2D()) > 0.25f)
 		{
 			BestDistSq = DistSq;
 			WarpEnemy = Enemy;
 		}
 	}
 
-	if (MotionWarping && WarpEnemy)
+	FVector AttackDir = AimFwd;
+	if (WarpEnemy)
 	{
 		const FVector ToTarget = (WarpEnemy->GetActorLocation() - MyLoc).GetSafeNormal2D();
-		const FVector WarpPos = WarpEnemy->GetActorLocation() - ToTarget * 125.f;
-		MotionWarping->AddOrUpdateWarpTargetFromLocationAndRotation(TEXT("MeleeTarget"), WarpPos, ToTarget.Rotation());
+		if (!ToTarget.IsNearlyZero())
+		{
+			AttackDir = ToTarget;
+		}
+		if (MotionWarping)
+		{
+			const FVector WarpPos = WarpEnemy->GetActorLocation() - AttackDir * 125.f;
+			MotionWarping->AddOrUpdateWarpTargetFromLocationAndRotation(TEXT("MeleeTarget"), WarpPos, AttackDir.Rotation());
+		}
 	}
+
+	// Snap hero rotation cleanly into the strike vector + apply one short committed martial step impulse
+	SetActorRotation(FRotator(0.f, AttackDir.Rotation().Yaw, 0.f));
+	LaunchCharacter(AttackDir * (bWasRunning ? 420.f : 250.f) + FVector(0.f, 0.f, 25.f), true, false);
+
+	// Play melee animation & effort SFX, then lock movement (0.34s) and anim recovery (0.46s) cleanly
+	PlayHeroMeleeVisualsAndAudio(CurrentStep);
+	const float WorldTime = World->GetTimeSeconds();
+	MeleeMoveLockUntilTime = WorldTime + (0.34f / SafeAtkSpeed);
+	CombatAnimLockUntilTime = WorldTime + (0.46f / SafeAtkSpeed);
+
+	// Spawn Avatar-grade 3-Hit Elemental Combo VFX & secondary knockback/launch effects
+	const FVector ImpactCenter = MyLoc + AttackDir * 165.f + FVector(0.f, 0.f, 24.f);
+	SpawnMartialComboVFXAndEffects(CurrentStep, AttackDir, ImpactCenter);
 
 	// SkillTree + Customization combat scaling + Critical Hit roll
 	const float MeleeMult = SkillTree ? SkillTree->GetMeleeDamageMultiplier() : 1.f;
@@ -2750,9 +3180,9 @@ void AAetheriaHeroCharacter::ExecuteMeleeAttack_Internal()
 			0.22f);
 	}
 
-	// CHRONICLE_TRACE_PROJECTILE arc sweep (capsule rotated from +Z via FindBetweenNormals)
+	// CHRONICLE_TRACE_PROJECTILE arc sweep along committed AttackDir
 	const float ReachMult = FMath::Max(0.6f, Stats.MeleeReachMultiplier);
-	const FVector SweepDir = MyFwd.GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
+	const FVector SweepDir = AttackDir.GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
 	const FVector SweepStart = MyLoc + FVector(0.f, 0.f, 45.f) + SweepDir * 45.f;
 	const FVector SweepEnd = SweepStart + SweepDir * ((bIsFinisherHit ? 295.f : 255.f) * ReachMult);
 
@@ -2822,7 +3252,32 @@ void AAetheriaHeroCharacter::ExecuteMeleeAttack_Internal()
 		}
 		else if (ADestructiblePropActor* Destructible = Cast<ADestructiblePropActor>(HitActor))
 		{
-			UGameplayStatics::ApplyPointDamage(Destructible, DamageToDeal * 1.45f * Stats.DestructionDamageMultiplier, SweepDir, Hit, GetController(), this, UDamageType::StaticClass());
+			UGameplayStatics::ApplyPointDamage(Destructible, DamageToDeal * 1.65f * Stats.DestructionDamageMultiplier, SweepDir, Hit, GetController(), this, UDamageType::StaticClass());
+		}
+	}
+
+	// Front-cone destructible proximity pass so meadow trees, pillars, and crates reliably shatter on martial strikes
+	const float PropCheckDistSq = FMath::Square(340.f * ReachMult);
+	for (TActorIterator<ADestructiblePropActor> It(World); It; ++It)
+	{
+		ADestructiblePropActor* Destructible = *It;
+		if (!Destructible || HitActors.Contains(Destructible))
+		{
+			continue;
+		}
+		const FVector ToProp = Destructible->GetActorLocation() - MyLoc;
+		if (ToProp.SizeSquared2D() <= PropCheckDistSq && FMath::Abs(ToProp.Z) < 220.f)
+		{
+			const FVector ToPropDir = ToProp.GetSafeNormal2D(UE_SMALL_NUMBER, SweepDir);
+			if (FVector::DotProduct(SweepDir, ToPropDir) > 0.15f)
+			{
+				HitActors.Add(Destructible);
+				FHitResult PropHit;
+				PropHit.ImpactPoint = Destructible->GetActorLocation();
+				PropHit.Location = Destructible->GetActorLocation();
+				PropHit.ImpactNormal = -SweepDir;
+				UGameplayStatics::ApplyPointDamage(Destructible, DamageToDeal * 1.65f * Stats.DestructionDamageMultiplier, SweepDir, PropHit, GetController(), this, UDamageType::StaticClass());
+			}
 		}
 	}
 
@@ -2853,6 +3308,7 @@ void AAetheriaHeroCharacter::SetBlocking(bool bNewBlocking)
 	{
 		bBlocking = false;
 		ParryWindowTimer = 0.f;
+		SyncSkillTreeMultipliers();
 		return;
 	}
 
@@ -2863,6 +3319,7 @@ void AAetheriaHeroCharacter::SetBlocking(bool bNewBlocking)
 		ParryWindowTimer = 0.25f + ParryBonus;
 	}
 	bBlocking = bNewBlocking;
+	SyncSkillTreeMultipliers();
 }
 
 void AAetheriaHeroCharacter::ServerSetBlocking_Implementation(bool bNewBlocking)
@@ -2873,14 +3330,15 @@ void AAetheriaHeroCharacter::ServerSetBlocking_Implementation(bool bNewBlocking)
 void AAetheriaHeroCharacter::PerformDodgeRoll(const FVector& WorldMoveDir)
 {
 	const float DodgeCostMult = Customization ? FMath::Max(0.25f, Customization->GetDerivedStats().DodgeStaminaCostMultiplier) : 1.0f;
-	const float StamCost = 20.f * DodgeCostMult;
+	const float StamCost = bGodMode ? 0.f : (20.f * DodgeCostMult);
 
 	if (!HasAuthority())
 	{
 		ServerPerformDodgeRoll(WorldMoveDir);
-		if (!bDead && RollTimer <= 0.f && Stamina >= StamCost)
+		if (!bDead && RollTimer <= 0.f && (bGodMode || Stamina >= StamCost))
 		{
-			PlayCombatAnimSequence(AnimDash, 1.15f);
+			UAnimSequence* RollSeq = ActiveRollAnimSeq ? ActiveRollAnimSeq.Get() : AnimDash.Get();
+			PlayCombatAnimSequence(RollSeq, 1.25f);
 		}
 		return;
 	}
@@ -2896,15 +3354,20 @@ void AAetheriaHeroCharacter::ServerPerformDodgeRoll_Implementation(const FVector
 void AAetheriaHeroCharacter::ExecuteDodgeRoll_Internal(const FVector& WorldMoveDir)
 {
 	const FHeroDerivedStats Stats = Customization ? Customization->GetDerivedStats() : FHeroDerivedStats();
-	const float StamCost = 20.f * FMath::Max(0.25f, Stats.DodgeStaminaCostMultiplier);
-	if (bDead || RollTimer > 0.f || Stamina < StamCost)
+	const float StamCost = bGodMode ? 0.f : (20.f * FMath::Max(0.25f, Stats.DodgeStaminaCostMultiplier));
+	if (bDead || RollTimer > 0.f || (!bGodMode && Stamina < StamCost))
 	{
 		return;
 	}
 
-	Stamina = FMath::Max(0.f, Stamina - StamCost);
-	bBlocking = false;
+	Stamina = bGodMode ? MaxStamina : FMath::Max(0.f, Stamina - StamCost);
+	if (bBlocking)
+	{
+		bBlocking = false;
+		SyncSkillTreeMultipliers();
+	}
 	ParryWindowTimer = 0.f;
+	MeleeMoveLockUntilTime = 0.f;
 
 	const float IFrameMult = SkillTree ? SkillTree->GetDodgeIFrameMultiplier() : 1.f;
 	const float MoveMult = SkillTree ? SkillTree->GetMoveSpeedMultiplier() : 1.f;
@@ -2922,9 +3385,31 @@ void AAetheriaHeroCharacter::ExecuteDodgeRoll_Internal(const FVector& WorldMoveD
 		Dir2D.Normalize();
 	}
 	ActiveRollDir = Dir2D;
+	SetActorRotation(FRotator(0.f, ActiveRollDir.Rotation().Yaw, 0.f));
 
-	LaunchCharacter(ActiveRollDir * (980.f * MoveMult * Stats.DodgeDistanceMultiplier) + FVector(0.f, 0.f, 110.f), true, false);
-	PlayCombatAnimSequence(AnimDash, 1.15f);
+	LaunchCharacter(ActiveRollDir * (920.f * MoveMult * Stats.DodgeDistanceMultiplier) + FVector(0.f, 0.f, 95.f), true, false);
+	UAnimSequence* RollSeq = ActiveRollAnimSeq ? ActiveRollAnimSeq.Get() : AnimDash.Get();
+	PlayCombatAnimSequence(RollSeq, 1.25f);
+
+	if (UWorld* World = GetWorld())
+	{
+		const float WorldTime = World->GetTimeSeconds();
+		RollBrakeUntilTime = WorldTime + RollTimer;
+		CombatAnimLockUntilTime = WorldTime + RollTimer;
+
+		if (!IsRunningDedicatedServer())
+		{
+			const FVector FeetLoc = GetActorLocation() - FVector(0.f, 0.f, 55.f);
+			if (DodgeWindFlowsNS)
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, DodgeWindFlowsNS, FeetLoc, ActiveRollDir.Rotation(), FVector(0.75f), true);
+			}
+			if (MartialShockwaveFX)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(World, MartialShockwaveFX, FeetLoc, ActiveRollDir.Rotation(), FVector(0.65f), true);
+			}
+		}
+	}
 }
 
 float AAetheriaHeroCharacter::TakeDamage(
@@ -2933,6 +3418,14 @@ float AAetheriaHeroCharacter::TakeDamage(
 	AController* EventInstigator,
 	AActor* DamageCauser)
 {
+	if (bGodMode)
+	{
+		HP = MaxHP;
+		Stamina = MaxStamina;
+		TriggerCombatFlash(FLinearColor(1.0f, 0.86f, 0.28f), 5500.f, 0.16f);
+		return 0.f;
+	}
+
 	if (bDead || DamageAmount <= 0.f)
 	{
 		return 0.f;
@@ -3041,6 +3534,46 @@ float AAetheriaHeroCharacter::TakeDamage(
 	return Applied;
 }
 
+void AAetheriaHeroCharacter::FellOutOfWorld(const UDamageType& dmgType)
+{
+	// Never call Super::FellOutOfWorld (which destroys the Hero pawn and breaks respawn / God Mode!).
+	TArray<const AActor*> Ignored;
+	Ignored.Add(this);
+	float SafeGroundZ = OakhavenSpawnLocation.Z;
+	AetheriaActorsUtil::TraceGroundZ(
+		GetWorld(),
+		OakhavenSpawnLocation.X,
+		OakhavenSpawnLocation.Y,
+		OakhavenSpawnLocation.Z + 1800.f,
+		OakhavenSpawnLocation.Z - 4000.f,
+		Ignored,
+		SafeGroundZ);
+	const FVector SafeReturnLoc(OakhavenSpawnLocation.X, OakhavenSpawnLocation.Y, SafeGroundZ + 104.f);
+
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->StopMovementImmediately();
+		if (!bDead)
+		{
+			MoveComp->SetMovementMode(MOVE_Walking);
+		}
+	}
+	SetActorLocation(SafeReturnLoc, false, nullptr, ETeleportType::TeleportPhysics);
+
+	if (bGodMode)
+	{
+		HP = MaxHP;
+		Stamina = MaxStamina;
+		TriggerCombatFlash(FLinearColor(1.0f, 0.86f, 0.28f), 8500.f, 0.30f);
+		return;
+	}
+
+	if (!bDead)
+	{
+		UGameplayStatics::ApplyDamage(this, MaxHP * 10.f + 9999.f, GetController(), this, UDamageType::StaticClass());
+	}
+}
+
 void AAetheriaHeroCharacter::RespawnAtOakhaven()
 {
 	if (!HasAuthority())
@@ -3055,6 +3588,100 @@ void AAetheriaHeroCharacter::RespawnAtOakhaven()
 void AAetheriaHeroCharacter::ServerRespawnAtOakhaven_Implementation()
 {
 	ExecuteRespawn_Internal();
+}
+
+void AAetheriaHeroCharacter::SetGodMode(bool bEnable)
+{
+	if (!HasAuthority())
+	{
+		bGodMode = bEnable;
+		if (SpellSystem)
+		{
+			SpellSystem->SetGodModeActive(bEnable);
+		}
+		ServerSetGodMode(bEnable);
+		return;
+	}
+
+	ExecuteSetGodMode_Internal(bEnable);
+}
+
+bool AAetheriaHeroCharacter::ToggleGodMode()
+{
+	const bool bTargetState = !bGodMode;
+	SetGodMode(bTargetState);
+	return bTargetState;
+}
+
+void AAetheriaHeroCharacter::ServerSetGodMode_Implementation(bool bEnable)
+{
+	ExecuteSetGodMode_Internal(bEnable);
+}
+
+void AAetheriaHeroCharacter::ExecuteSetGodMode_Internal(bool bEnable)
+{
+	bGodMode = bEnable;
+
+	if (bEnable)
+	{
+		const bool bWasDead = bDead;
+		bDead = false;
+		bBlocking = false;
+		RollTimer = 0.f;
+		InvulnTimer = 0.f;
+		ParryWindowTimer = 0.f;
+		MeleeCooldownTimer = 0.f;
+
+		RefreshAllHeroStats();
+		HP = MaxHP;
+		Stamina = MaxStamina;
+
+		if (bWasDead)
+		{
+			if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+			{
+				Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+			}
+			if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+			{
+				MoveComp->StopMovementImmediately();
+				MoveComp->SetMovementMode(MOVE_Walking);
+			}
+			CombatAnimLockUntilTime = 0.f;
+			bPlayingRunAnim = false;
+			bPlayingCombatOneShot = false;
+			if (ActiveIdleAnimSeq)
+			{
+				if (USkeletalMeshComponent* MeshComp = GetMesh())
+				{
+					MeshComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+					MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+				}
+			}
+		}
+
+		SpawnLevelUpSpectacle();
+		TriggerCombatFlash(FLinearColor(1.0f, 0.86f, 0.24f), 12500.f, 0.45f);
+	}
+	else
+	{
+		RefreshAllHeroStats();
+	}
+
+	if (SpellSystem)
+	{
+		SpellSystem->SetGodModeActive(bEnable);
+		SpellSystem->bSpellCastingBlockedByStature = (!bGodMode) && (!CanCastSpellsByStature());
+	}
+
+	UpdateOrbitingOrbs(0.f);
+
+	UE_LOG(LogChronicles, Display,
+		TEXT("[GodMode] Hero '%s' God Mode -> %s (Immortal=%d, Spells=%d/10)"),
+		*GetName(),
+		bGodMode ? TEXT("ENABLED") : TEXT("DISABLED"),
+		bGodMode ? 1 : 0,
+		SpellSystem ? SpellSystem->GetUnlockedSpellCount() : 0);
 }
 
 void AAetheriaHeroCharacter::ExecuteRespawn_Internal()
@@ -3202,7 +3829,7 @@ void AAetheriaHeroCharacter::SyncSkillTreeMultipliers()
 		SpellSystem->ExortPowerScale = Stats.SpellPowerMultiplier * Stats.ExortBonusMultiplier * SkillTreeExortMult;
 		SpellSystem->WexSpeedScale = 1.f / FMath::Max(0.35f, SkillTreeWexCDMult);
 		SpellSystem->QuasControlScale = SkillTree ? SkillTree->GetQuasControlMultiplier() : 1.f;
-		SpellSystem->bSpellCastingBlockedByStature = !Stats.bCanCastSpells;
+		SpellSystem->bSpellCastingBlockedByStature = (!bGodMode) && (!Stats.bCanCastSpells);
 		SpellSystem->ManaCostMultiplier = Stats.ManaCostMultiplier;
 		SpellSystem->SpellCooldownMultiplier = Stats.SpellCooldownMultiplier * SkillTreeWexCDMult;
 		SpellSystem->ManaRegenPerSec = Stats.ManaRegenPerSec * SkillTreeManaRegenMult;
@@ -3217,21 +3844,29 @@ void AAetheriaHeroCharacter::SyncSkillTreeMultipliers()
 	}
 
 	// Delta-sync MaxWalkSpeed so external buffs (StormAlacrity) are never overwritten,
-	// while driving TurnRateDegPerSec & AccelMultiplier directly from Hero Stature/Physique!
+	// while driving TurnRateDegPerSec, AccelMultiplier, and cautious 175 cm/s guard walk while blocking!
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
+		const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
 		MoveComp->RotationRate = FRotator(0.f, Stats.TurnRateDegPerSec, 0.f);
 		MoveComp->MaxAcceleration = 2048.f * Stats.AccelMultiplier;
-		MoveComp->BrakingDecelerationWalking = 2100.f * Stats.AccelMultiplier;
+		if (WorldTime >= MeleeMoveLockUntilTime)
+		{
+			MoveComp->BrakingFrictionFactor = 2.0f;
+			MoveComp->BrakingDecelerationWalking = 2100.f * Stats.AccelMultiplier;
+		}
 
-		const float BlockScale = bBlocking ? 0.55f : 1.0f;
 		const float WexBonus = 1.0f + 0.045f * static_cast<float>(ActiveWexOrbs);
-		const float DesiredBaseSpeed = BaseWalkSpeed * BlockScale * WexBonus;
+		const float DesiredBaseSpeed = bBlocking ? 175.f : (BaseWalkSpeed * WexBonus);
 		const float Delta = DesiredBaseSpeed - LastSyncedWalkSpeed;
 		if (!FMath::IsNearlyZero(Delta))
 		{
-			MoveComp->MaxWalkSpeed = FMath::Max(160.f, MoveComp->MaxWalkSpeed + Delta);
+			MoveComp->MaxWalkSpeed = bBlocking ? 175.f : FMath::Max(160.f, MoveComp->MaxWalkSpeed + Delta);
 			LastSyncedWalkSpeed = DesiredBaseSpeed;
+		}
+		else if (bBlocking && MoveComp->MaxWalkSpeed > 175.f)
+		{
+			MoveComp->MaxWalkSpeed = 175.f;
 		}
 	}
 }
@@ -3465,6 +4100,12 @@ void AAetheriaHeroCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (bGodMode)
+	{
+		HP = MaxHP;
+		Stamina = MaxStamina;
+	}
+
 	if (SkillTree && SkillTree->Level > LastObservedHeroLevel)
 	{
 		LastObservedHeroLevel = SkillTree->Level;
@@ -3533,44 +4174,154 @@ void AAetheriaHeroCharacter::Tick(float DeltaTime)
 		}
 	}
 
-	// SingleNode Paragon locomotion state machine (Idle <-> Jog_Fwd; bypasses broken Paragon *_AnimBlueprint A-pose!)
+	// Zero-slide post-roll braking & SingleNode Paragon locomotion state machine
+	// (Idle <-> Jog_Fwd <-> Run_Fwd <-> JumpStart/FallLoop/JumpLand <-> CombatOneShot)
+	const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	const bool bIsMountedOnDragon = (Cast<AAetheriaDragonActor>(GetAttachParentActor()) != nullptr);
+	const bool bIsFalling = (MoveComp != nullptr) && MoveComp->IsFalling();
+	const float Speed2D = GetVelocity().Size2D();
+
+	// Clean post-roll brake so dodge roll lands decisively with zero ice-skating drift
+	if (RollBrakeUntilTime > 0.f && WorldTime >= RollBrakeUntilTime)
+	{
+		RollBrakeUntilTime = 0.f;
+		if (MoveComp && !bIsFalling)
+		{
+			const bool bHoldingMove = (WorldTime - CachedMoveInputTimestamp) < 0.14f;
+			if (!bHoldingMove)
+			{
+				MoveComp->StopMovementImmediately();
+			}
+			else if (Speed2D > MoveComp->MaxWalkSpeed && Speed2D > KINDA_SMALL_NUMBER)
+			{
+				const float ClampScale = MoveComp->MaxWalkSpeed / Speed2D;
+				MoveComp->Velocity = FVector(MoveComp->Velocity.X * ClampScale, MoveComp->Velocity.Y * ClampScale, MoveComp->Velocity.Z);
+			}
+		}
+	}
+
+	// Zero-slide melee-to-run exit: immediately break tail recovery into Run/Jog once MeleeMoveLock expires if WASD is held
+	if (bPlayingCombatOneShot && WorldTime >= MeleeMoveLockUntilTime && RollTimer <= 0.f)
+	{
+		const bool bPlayerHoldingWASD = ((WorldTime - CachedMoveInputTimestamp) < 0.14f)
+			|| !GetLastMovementInputVector().IsNearlyZero()
+			|| (Speed2D > 45.f);
+		if (bPlayerHoldingWASD)
+		{
+			CombatAnimLockUntilTime = 0.f;
+		}
+	}
+
 	if (ActiveIdleAnimSeq && !bDead)
 	{
 		if (USkeletalMeshComponent* MeshComp = GetMesh())
 		{
-			const bool bIsMountedOnDragon = (Cast<AAetheriaDragonActor>(GetAttachParentActor()) != nullptr);
-			const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
-			if (!bIsMountedOnDragon && WorldTime >= CombatAnimLockUntilTime)
+			if (bIsMountedOnDragon)
 			{
-				const bool bShouldRun = (!bCreatorStudioCameraActive) && (GetVelocity().Size2D() > 45.f) && (ActiveRunAnimSeq != nullptr);
-				if (bShouldRun)
+				if (bPlayingRunAnim || bPlayingSprintAnim || bPlayingJumpAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
 				{
-					if (!bPlayingRunAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
-					{
-						MeshComp->PlayAnimation(ActiveRunAnimSeq, true);
-						MeshComp->SetPlayRate(1.0f);
-						bPlayingRunAnim = true;
-						bPlayingCombatOneShot = false;
-					}
+					MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+					MeshComp->SetPlayRate(1.0f);
+					bPlayingRunAnim = false;
+					bPlayingSprintAnim = false;
+					bPlayingJumpAnim = false;
+					bPlayingCombatOneShot = false;
 				}
-				else
+			}
+			else if (bIsFalling)
+			{
+				if (!bWasFallingLastTick && ActiveJumpStartSeq)
 				{
-					if (bPlayingRunAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
+					MeshComp->PlayAnimation(ActiveJumpStartSeq, false);
+					MeshComp->SetPlayRate(1.1f);
+					bPlayingJumpAnim = true;
+					bPlayingRunAnim = false;
+					bPlayingSprintAnim = false;
+					bPlayingCombatOneShot = false;
+				}
+				else if (!bPlayingJumpAnim || !MeshComp->IsPlaying())
+				{
+					UAnimSequence* AirSeq = ActiveJumpLoopSeq ? ActiveJumpLoopSeq.Get()
+						: (ActiveJumpStartSeq ? ActiveJumpStartSeq.Get() : ActiveIdleAnimSeq.Get());
+					MeshComp->PlayAnimation(AirSeq, true);
+					MeshComp->SetPlayRate(1.0f);
+					bPlayingJumpAnim = true;
+					bPlayingRunAnim = false;
+					bPlayingSprintAnim = false;
+					bPlayingCombatOneShot = false;
+				}
+			}
+			else
+			{
+				if (bWasFallingLastTick && ActiveJumpLandSeq && Speed2D < 260.f && WorldTime >= CombatAnimLockUntilTime)
+				{
+					MeshComp->PlayAnimation(ActiveJumpLandSeq, false);
+					MeshComp->SetPlayRate(1.2f);
+					JumpLandAnimUntilTime = WorldTime + 0.20f;
+					bPlayingJumpAnim = false;
+					bPlayingRunAnim = false;
+					bPlayingSprintAnim = false;
+					bPlayingCombatOneShot = false;
+				}
+				else if (WorldTime >= CombatAnimLockUntilTime && WorldTime >= JumpLandAnimUntilTime)
+				{
+					const bool bShouldSprint = (!bCreatorStudioCameraActive) && (!bBlocking) && (Speed2D > 460.f) && (ActiveSprintAnimSeq != nullptr);
+					const bool bShouldRun = (!bCreatorStudioCameraActive) && (Speed2D > 45.f) && (ActiveRunAnimSeq != nullptr);
+
+					if (bShouldSprint)
 					{
-						MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
-						MeshComp->SetPlayRate(1.0f);
-						bPlayingRunAnim = false;
-						bPlayingCombatOneShot = false;
+						if (!bPlayingSprintAnim || bPlayingJumpAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
+						{
+							MeshComp->PlayAnimation(ActiveSprintAnimSeq, true);
+							MeshComp->SetPlayRate(1.05f);
+							bPlayingSprintAnim = true;
+							bPlayingRunAnim = false;
+							bPlayingJumpAnim = false;
+							bPlayingCombatOneShot = false;
+						}
+					}
+					else if (bShouldRun)
+					{
+						if (!bPlayingRunAnim || bPlayingSprintAnim || bPlayingJumpAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
+						{
+							MeshComp->PlayAnimation(ActiveRunAnimSeq, true);
+							MeshComp->SetPlayRate(bBlocking ? 0.72f : 1.0f);
+							bPlayingRunAnim = true;
+							bPlayingSprintAnim = false;
+							bPlayingJumpAnim = false;
+							bPlayingCombatOneShot = false;
+						}
+					}
+					else
+					{
+						if (bPlayingRunAnim || bPlayingSprintAnim || bPlayingJumpAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
+						{
+							MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+							MeshComp->SetPlayRate(1.0f);
+							bPlayingRunAnim = false;
+							bPlayingSprintAnim = false;
+							bPlayingJumpAnim = false;
+							bPlayingCombatOneShot = false;
+						}
 					}
 				}
 			}
-			else if (bIsMountedOnDragon && (bPlayingRunAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying()))
-			{
-				MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
-				MeshComp->SetPlayRate(1.0f);
-				bPlayingRunAnim = false;
-				bPlayingCombatOneShot = false;
-			}
+		}
+	}
+	bWasFallingLastTick = bIsFalling;
+
+	// Cyan Sprint Foot-Aura: ONLY active on ground during sprint (>480 cm/s); hidden in Studio, idle, airborne, mounted, dead
+	if (SprintFootAuraComp && SprintFootAuraNS)
+	{
+		const bool bWantSprintAura = (!bDead) && (!bCreatorStudioCameraActive) && (!bIsMountedOnDragon) && (!bIsFalling) && (Speed2D > 480.f);
+		if (bWantSprintAura && !SprintFootAuraComp->IsActive())
+		{
+			SprintFootAuraComp->Activate(true);
+		}
+		else if (!bWantSprintAura && SprintFootAuraComp->IsActive())
+		{
+			SprintFootAuraComp->Deactivate();
 		}
 	}
 
@@ -3868,37 +4619,40 @@ void AAetheriaEnemyCharacter::BindEnemyMeshAndAnims()
 		}
 	}
 
-	// 2. ForestTroll: prefer REAL Paragon Rampage + Rampage_AnimBlueprint + Attack_Biped_Melee_A/B/C montages
+	// 2. ForestTroll: Paragon Rampage driven strictly via AnimationSingleNode (zero broken AnimBP A-pose!)
 	if (Archetype == EChronicleEnemyArchetype::ForestTroll)
 	{
 		if (USkeletalMesh* RampageMesh = AetheriaActorsUtil::SafeLoadObjectIfPresent<USkeletalMesh>(AetheriaActorsUtil::PathRampageMesh))
 		{
 			MeshComp->SetSkeletalMesh(RampageMesh);
 			BindRampageAnimsAndMontages(MeshComp);
-			UE_LOG(LogChronicles, Log, TEXT("AAetheriaEnemyCharacter (%s) bound Paragon Rampage SkeletalMesh & %d Montages."),
-				*EnemyDisplayName.ToString(), EnemyAttackMontages.Num());
+			UE_LOG(LogChronicles, Log, TEXT("AAetheriaEnemyCharacter (%s) bound Paragon Rampage SkeletalMesh & SingleNode animations."),
+				*EnemyDisplayName.ToString());
 			return;
 		}
 	}
 
-	// 2B. FrostWarden: prefer REAL Paragon Khaimera + Khaimera_AnimBlueprint + Melee_A/B/C montages (scale 1.18f)
+	// 2B. FrostWarden: Paragon Khaimera driven strictly via AnimationSingleNode (scale 1.18f, zero broken AnimBP A-pose!)
 	if (Archetype == EChronicleEnemyArchetype::FrostWarden)
 	{
 		if (USkeletalMesh* KhaimeraMesh = AetheriaActorsUtil::SafeLoadObjectIfPresent<USkeletalMesh>(AetheriaActorsUtil::PathKhaimeraMesh))
 		{
 			SetActorScale3D(FVector(1.18f));
 			MeshComp->SetSkeletalMesh(KhaimeraMesh);
-			BindParagonEnemyAnimsAndMontages(
+			BindParagonEnemySingleNodeAnims(
 				MeshComp,
-				AetheriaActorsUtil::PathKhaimeraABP,
-				AetheriaActorsUtil::PathKhaimeraMeleeA,
-				AetheriaActorsUtil::PathKhaimeraMeleeB,
-				AetheriaActorsUtil::PathKhaimeraMeleeC,
+				AetheriaActorsUtil::PathKhaimeraIdle,
+				nullptr,
+				AetheriaActorsUtil::PathKhaimeraRun,
+				nullptr,
+				nullptr,
+				AetheriaActorsUtil::PathKhaimeraAttackASeq,
+				AetheriaActorsUtil::PathKhaimeraAttackBSeq,
+				AetheriaActorsUtil::PathKhaimeraAttackCSeq,
 				AetheriaActorsUtil::PathKhaimeraHitReact,
-				AetheriaActorsUtil::PathKhaimeraDeath,
-				FName(TEXT("FullBody")));
-			UE_LOG(LogChronicles, Log, TEXT("AAetheriaEnemyCharacter (%s) bound Paragon Khaimera SkeletalMesh (scale 1.18) & %d Montages."),
-				*EnemyDisplayName.ToString(), EnemyAttackMontages.Num());
+				AetheriaActorsUtil::PathKhaimeraDeath);
+			UE_LOG(LogChronicles, Log, TEXT("AAetheriaEnemyCharacter (%s) bound Paragon Khaimera SkeletalMesh (scale 1.18) & SingleNode animations."),
+				*EnemyDisplayName.ToString());
 			return;
 		}
 	}
@@ -3931,15 +4685,96 @@ void AAetheriaEnemyCharacter::BindEnemyMeshAndAnims()
 
 bool AAetheriaEnemyCharacter::BindRampageAnimsAndMontages(USkeletalMeshComponent* MeshComp)
 {
-	return BindParagonEnemyAnimsAndMontages(
+	return BindParagonEnemySingleNodeAnims(
 		MeshComp,
-		AetheriaActorsUtil::PathRampageABP,
-		AetheriaActorsUtil::PathRampageMeleeA,
-		AetheriaActorsUtil::PathRampageMeleeB,
-		AetheriaActorsUtil::PathRampageMeleeC,
+		AetheriaActorsUtil::PathRampageIdle,
+		AetheriaActorsUtil::PathRampageIdleAlt,
+		AetheriaActorsUtil::PathRampageRun,
+		AetheriaActorsUtil::PathRampageRunBiped,
+		AetheriaActorsUtil::PathRampageRunAlt,
+		AetheriaActorsUtil::PathRampageAttackASeq,
+		AetheriaActorsUtil::PathRampageAttackBSeq,
+		AetheriaActorsUtil::PathRampageAttackCSeq,
 		AetheriaActorsUtil::PathRampageHitReact,
-		AetheriaActorsUtil::PathRampageDeath,
-		FName(TEXT("FullBody")));
+		AetheriaActorsUtil::PathRampageDeath);
+}
+
+bool AAetheriaEnemyCharacter::BindParagonEnemySingleNodeAnims(
+	USkeletalMeshComponent* MeshComp,
+	const TCHAR* IdlePrimary,
+	const TCHAR* IdleFallback,
+	const TCHAR* RunPrimary,
+	const TCHAR* RunFallback1,
+	const TCHAR* RunFallback2,
+	const TCHAR* AttackAPath,
+	const TCHAR* AttackBPath,
+	const TCHAR* AttackCPath,
+	const TCHAR* HitReactPath,
+	const TCHAR* DeathPath)
+{
+	if (!MeshComp)
+	{
+		return false;
+	}
+
+	USkeletalMesh* SkelMesh = MeshComp->GetSkeletalMeshAsset();
+	if (!SkelMesh || !SkelMesh->GetSkeleton())
+	{
+		return false;
+	}
+
+	auto LoadCompatSeq = [SkelMesh](const TCHAR* Path) -> UAnimSequence*
+	{
+		if (!Path)
+		{
+			return nullptr;
+		}
+		if (UAnimSequence* Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(Path))
+		{
+			if (AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
+			{
+				return Seq;
+			}
+		}
+		return nullptr;
+	};
+
+	EnemyAttackMontages.Reset();
+	EnemyIdleAnim = LoadCompatSeq(IdlePrimary);
+	if (!EnemyIdleAnim)
+	{
+		EnemyIdleAnim = LoadCompatSeq(IdleFallback);
+	}
+
+	EnemyRunAnim = LoadCompatSeq(RunPrimary);
+	if (!EnemyRunAnim)
+	{
+		EnemyRunAnim = LoadCompatSeq(RunFallback1);
+	}
+	if (!EnemyRunAnim)
+	{
+		EnemyRunAnim = LoadCompatSeq(RunFallback2);
+	}
+
+	EnemyAttackAnims[0] = LoadCompatSeq(AttackAPath);
+	EnemyAttackAnims[1] = LoadCompatSeq(AttackBPath);
+	EnemyAttackAnims[2] = LoadCompatSeq(AttackCPath);
+	EnemyAttackAnim = EnemyAttackAnims[0] ? EnemyAttackAnims[0] : (EnemyAttackAnims[1] ? EnemyAttackAnims[1] : EnemyAttackAnims[2]);
+	EnemyHitReactAnim = LoadCompatSeq(HitReactPath);
+	EnemyDeathAnim = LoadCompatSeq(DeathPath);
+
+	if (!EnemyIdleAnim)
+	{
+		return false;
+	}
+
+	// SingleNode mode bypasses legacy Paragon *_AnimBlueprint assets that fail UE 5.8 BP compilation (eliminates enemy A-pose!)
+	MeshComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	bUsingSingleNodeAnims = true;
+	CurrentEnemyAnim = nullptr;
+	OneShotAnimTimer = 0.f;
+	PlayEnemySingleNodeAnim(EnemyIdleAnim, true, 1.0f, true);
+	return true;
 }
 
 bool AAetheriaEnemyCharacter::BindParagonEnemyAnimsAndMontages(
@@ -4017,6 +4852,10 @@ void AAetheriaEnemyCharacter::PlayEnemySingleNodeAnim(UAnimSequence* Seq, bool b
 	}
 
 	const float SafeRate = FMath::Max(0.15f, PlayRate);
+	if (MeshComp->GetAnimationMode() != EAnimationMode::AnimationSingleNode)
+	{
+		MeshComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	}
 	MeshComp->PlayAnimation(Seq, bLooping);
 	MeshComp->SetPlayRate(SafeRate);
 	CurrentEnemyAnim = Seq;
@@ -4146,7 +4985,7 @@ void AAetheriaEnemyCharacter::UpdateEnemySingleNodeAnimation(float DeltaTime)
 	}
 
 	const float Speed2D = GetVelocity().Size2D();
-	UAnimSequence* DesiredLocomotion = (Speed2D > 25.f && EnemyRunAnim) ? EnemyRunAnim.Get() : EnemyIdleAnim.Get();
+	UAnimSequence* DesiredLocomotion = (Speed2D > 30.f && EnemyRunAnim) ? EnemyRunAnim.Get() : EnemyIdleAnim.Get();
 	if (DesiredLocomotion)
 	{
 		PlayEnemySingleNodeAnim(DesiredLocomotion, true, 1.0f, false);
@@ -4420,6 +5259,25 @@ void AAetheriaEnemyCharacter::HandleDeath(AController* KillerController, AActor*
 		}
 	}
 
+	// Drop glowing golden magnetic loot orb (Gold + XP + Heal) on server-authoritative enemy death
+	if (HasAuthority())
+	{
+		if (UWorld* World = GetWorld())
+		{
+			FActorSpawnParameters LootParams;
+			LootParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			if (AAetheriaLootOrbActor* LootOrb = World->SpawnActor<AAetheriaLootOrbActor>(
+					AAetheriaLootOrbActor::StaticClass(),
+					GetActorLocation() + FVector(0.f, 0.f, 36.f),
+					FRotator::ZeroRotator,
+					LootParams))
+			{
+				const int32 OrbGold = FMath::Clamp(GoldReward, 25, 60);
+				LootOrb->InitializeLoot(OrbGold, 45, 25.f);
+			}
+		}
+	}
+
 	SetLifeSpan(4.0f);
 }
 
@@ -4564,11 +5422,19 @@ void AAetheriaEnemyCharacter::UpdateEnemyAI(float DeltaTime)
 
 	if (bWindupActive)
 	{
+		if (!ToHero.IsNearlyZero())
+		{
+			SetActorRotation(FMath::RInterpTo(GetActorRotation(), FRotator(0.f, ToHero.Rotation().Yaw, 0.f), DeltaTime, 8.f));
+		}
 		WindupTimer -= DeltaTime;
 		if (WindupTimer <= 0.f)
 		{
 			bWindupActive = false;
 			AttackCooldownTimer = 1.65f;
+			if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+			{
+				MoveComp->StopMovementImmediately();
+			}
 			PlayEnemyAttackAnim(1.0f);
 
 			// Melee sweep using CHRONICLE_TRACE_PROJECTILE
@@ -4601,6 +5467,12 @@ void AAetheriaEnemyCharacter::UpdateEnemyAI(float DeltaTime)
 		return;
 	}
 
+	// Keep feet firmly planted while completing an attack or hit-react animation (zero enemy sliding!)
+	if (OneShotAnimTimer > 0.f)
+	{
+		return;
+	}
+
 	if (DistToHero > AttackRange * 0.88f)
 	{
 		AddMovementInput(ToHero, 1.0f);
@@ -4609,6 +5481,14 @@ void AAetheriaEnemyCharacter::UpdateEnemyAI(float DeltaTime)
 	{
 		bWindupActive = true;
 		WindupTimer = 0.55f;
+		if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+		{
+			MoveComp->StopMovementImmediately();
+		}
+		if (!ToHero.IsNearlyZero())
+		{
+			SetActorRotation(FRotator(0.f, ToHero.Rotation().Yaw, 0.f));
+		}
 		TriggerStatusFlash(FLinearColor(1.0f, 0.16f, 0.10f), 7500.f, 0.50f);
 	}
 }
@@ -4833,14 +5713,61 @@ void AAetheriaBossCharacter::BeginPlay()
 		}
 	}
 
-	TelegraphCrimsonMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(14.0f, 0.45f, 0.30f, 1.0f), true);
-	if (TelegraphRingMesh && TelegraphCrimsonMID)
+	if (UMaterialInterface* ArcaneRingMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatArcaneRing))
 	{
-		TelegraphRingMesh->SetMaterial(0, TelegraphCrimsonMID);
+		TelegraphCrimsonMID = UMaterialInstanceDynamic::Create(ArcaneRingMat, this);
+		if (TelegraphCrimsonMID)
+		{
+			TelegraphCrimsonMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(1.0f, 0.035f, 0.018f, 1.0f));
+			TelegraphCrimsonMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.0f, 0.035f, 0.018f, 1.0f));
+			TelegraphCrimsonMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+			TelegraphCrimsonMID->SetScalarParameterValue(TEXT("Opacity"), 0.76f);
+		}
+		if (TelegraphRingMesh)
+		{
+			if (UStaticMesh* PlaneMesh = LoadObject<UStaticMesh>(nullptr, AetheriaActorsUtil::PathPlane))
+			{
+				TelegraphRingMesh->SetStaticMesh(PlaneMesh);
+			}
+			TelegraphRingMesh->bDisallowNanite = true;
+			TelegraphRingMesh->SetRelativeLocation(FVector(0.f, 0.f, -84.f));
+			TelegraphRingMesh->SetMaterial(0, TelegraphCrimsonMID);
+		}
 	}
-	if (TelegraphAuraCoreMesh && TelegraphCrimsonMID)
+	else
 	{
-		TelegraphAuraCoreMesh->SetMaterial(0, TelegraphCrimsonMID);
+		TelegraphCrimsonMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(2.8f, 0.08f, 0.04f, 1.0f), true);
+		if (TelegraphRingMesh && TelegraphCrimsonMID)
+		{
+			TelegraphRingMesh->bDisallowNanite = true;
+			TelegraphRingMesh->SetMaterial(0, TelegraphCrimsonMID);
+		}
+	}
+
+	// Keep legacy sphere aura mesh permanently hidden so SevarogBloodred's dark-fantasy sculpt is NEVER obscured by a pink sphere!
+	if (TelegraphAuraCoreMesh)
+	{
+		TelegraphAuraCoreMesh->SetVisibility(false);
+		TelegraphAuraCoreMesh->SetHiddenInGame(true);
+	}
+
+	// Attach real Niagara crimson sovereign flame/soul aura around Malakor for unmistakable red telegraph glow
+	if (!IsRunningDedicatedServer())
+	{
+		if (UNiagaraSystem* FireAuraNS = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSAuraFire))
+		{
+			TelegraphAuraNiagara = NewObject<UNiagaraComponent>(this, TEXT("MalakorCrimsonTelegraphNiagara"));
+			if (TelegraphAuraNiagara)
+			{
+				TelegraphAuraNiagara->SetAsset(FireAuraNS);
+				TelegraphAuraNiagara->bAutoActivate = false;
+				TelegraphAuraNiagara->SetupAttachment(RootComponent);
+				TelegraphAuraNiagara->SetRelativeLocation(FVector(0.f, 0.f, -65.f));
+				TelegraphAuraNiagara->SetRelativeScale3D(FVector(1.35f));
+				TelegraphAuraNiagara->RegisterComponent();
+				TelegraphAuraNiagara->DeactivateImmediate();
+			}
+		}
 	}
 }
 
@@ -4932,23 +5859,19 @@ void AAetheriaBossCharacter::BindEnemyMeshAndAnims()
 	if (bUsingSevarogBoss || ChosenMesh->GetPathName().Contains(TEXT("/Game/ParagonSevarog")))
 	{
 		SetActorScale3D(FVector(1.60f));
-		BindParagonEnemyAnimsAndMontages(
+		BindParagonEnemySingleNodeAnims(
 			MeshComp,
-			AetheriaActorsUtil::PathSevarogABP,
-			AetheriaActorsUtil::PathSevarogSwing1Montage,
-			AetheriaActorsUtil::PathSevarogSwing2Montage,
+			AetheriaActorsUtil::PathSevarogIdle,
 			nullptr,
+			AetheriaActorsUtil::PathSevarogRun,
+			nullptr,
+			nullptr,
+			AetheriaActorsUtil::PathSevarogSwing1Seq,
+			AetheriaActorsUtil::PathSevarogSwing2Seq,
+			AetheriaActorsUtil::PathSevarogSwing3Seq,
 			AetheriaActorsUtil::PathSevarogHitReact,
-			AetheriaActorsUtil::PathSevarogDeath,
-			FName(TEXT("FullBody")));
+			AetheriaActorsUtil::PathSevarogDeath);
 
-		if (UAnimSequence* Swing3Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(AetheriaActorsUtil::PathSevarogSwing3Seq))
-		{
-			if (AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, Swing3Seq->GetSkeleton()))
-			{
-				EnemyAttackAnim = Swing3Seq;
-			}
-		}
 		if (UAnimSequence* UltSeq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(AetheriaActorsUtil::PathSevarogUltSwingSeq))
 		{
 			if (AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, UltSeq->GetSkeleton()))
@@ -4956,9 +5879,16 @@ void AAetheriaBossCharacter::BindEnemyMeshAndAnims()
 				BossHeavyAnim = UltSeq;
 			}
 		}
+		if (UAnimSequence* CastSeq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(AetheriaActorsUtil::PathSevarogCastSeq))
+		{
+			if (AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, CastSeq->GetSkeleton()))
+			{
+				BossRoarAnim = CastSeq;
+			}
+		}
 
-		UE_LOG(LogChronicles, Log, TEXT("AAetheriaBossCharacter (%s) bound Paragon Sevarog (%s, scale 1.60) + AnimBP + %d Montages."),
-			*BossTitle, *ChosenMesh->GetName(), EnemyAttackMontages.Num());
+		UE_LOG(LogChronicles, Log, TEXT("AAetheriaBossCharacter (%s) bound Paragon Sevarog (%s, scale 1.60) strictly via SingleNode animations."),
+			*BossTitle, *ChosenMesh->GetName());
 		return;
 	}
 
@@ -4976,8 +5906,8 @@ void AAetheriaBossCharacter::BindEnemyMeshAndAnims()
 			}
 		}
 
-		UE_LOG(LogChronicles, Log, TEXT("AAetheriaBossCharacter (%s) bound Paragon Rampage (scale 1.55) + AnimBP + %d Montages + Roar."),
-			*BossTitle, EnemyAttackMontages.Num());
+		UE_LOG(LogChronicles, Log, TEXT("AAetheriaBossCharacter (%s) bound Paragon Rampage (scale 1.55) strictly via SingleNode animations + Roar."),
+			*BossTitle);
 		return;
 	}
 
@@ -5178,6 +6108,7 @@ void AAetheriaBossCharacter::ResetBossEncounter()
 
 	if (TelegraphRingMesh)     { TelegraphRingMesh->SetVisibility(false); }
 	if (TelegraphAuraCoreMesh) { TelegraphAuraCoreMesh->SetVisibility(false); }
+	if (TelegraphAuraNiagara)  { TelegraphAuraNiagara->Deactivate(); }
 	if (TelegraphCrimsonLight) { TelegraphCrimsonLight->SetIntensity(0.f); }
 
 	UE_LOG(LogChronicles, Log, TEXT("Boss encounter (%s) cleanly reset to home sanctuary."), *BossTitle);
@@ -5197,6 +6128,7 @@ void AAetheriaBossCharacter::HandleDeath(AController* KillerController, AActor* 
 
 	if (TelegraphRingMesh)     { TelegraphRingMesh->SetVisibility(false); }
 	if (TelegraphAuraCoreMesh) { TelegraphAuraCoreMesh->SetVisibility(false); }
+	if (TelegraphAuraNiagara)  { TelegraphAuraNiagara->Deactivate(); }
 
 	if (TelegraphCrimsonLight)
 	{
@@ -5218,16 +6150,30 @@ void AAetheriaBossCharacter::HandleDeath(AController* KillerController, AActor* 
 	SetLifeSpan(10.0f);
 }
 
+FString AAetheriaBossCharacter::GetBossAttackDisplayName(EBossAttackKind AttackKind)
+{
+	switch (AttackKind)
+	{
+	case EBossAttackKind::CrimsonCleave:     return TEXT("Abyssal Cleave");
+	case EBossAttackKind::AbyssalFireVolley: return TEXT("Abyssal Fire Volley");
+	case EBossAttackKind::SeismicSlam:       return TEXT("Shattered Seal Slam");
+	case EBossAttackKind::TempestLunge:      return TEXT("Tempest Lunge");
+	case EBossAttackKind::ShatterSpin:       return TEXT("Shatter Spin");
+	case EBossAttackKind::ChronoCataclysm:   return TEXT("Chrono Cataclysm");
+	default:                                 return TEXT("Abyssal Strike");
+	}
+}
+
 EBossAttackKind AAetheriaBossCharacter::ChooseNextBossAttack(float DistToHero)
 {
-	// Phase-gated Wukong Boss Arsenal:
-	// Phase 1: CrimsonCleave, SeismicSlam, AbyssalFireVolley
-	// Phase 2: + TempestLunge, ShatterSpin
-	// Phase 3: + ChronoCataclysm
+	// Phase-gated Boss Arsenal cycling 3 distinct signature attacks in Phase 1:
+	// Phase 1: Abyssal Cleave (CrimsonCleave), Abyssal Fire Volley, Shattered Seal Slam (SeismicSlam)
+	// Phase 2: + Tempest Lunge, Shatter Spin
+	// Phase 3: + Chrono Cataclysm
 	TArray<EBossAttackKind> Pool;
 	Pool.Add(EBossAttackKind::CrimsonCleave);
-	Pool.Add(EBossAttackKind::SeismicSlam);
 	Pool.Add(EBossAttackKind::AbyssalFireVolley);
+	Pool.Add(EBossAttackKind::SeismicSlam);
 
 	if (BossPhase >= 2)
 	{
@@ -5239,8 +6185,8 @@ EBossAttackKind AAetheriaBossCharacter::ChooseNextBossAttack(float DistToHero)
 		Pool.Add(EBossAttackKind::ChronoCataclysm);
 	}
 
-	// Smart distance bias: if hero is far, favor gap-closer or molten volley
-	if (DistToHero > 820.f)
+	// Smart distance bias only at long range (>980 cm), otherwise reliably cycle all 3 core attacks
+	if (DistToHero > 980.f)
 	{
 		if (BossPhase >= 2 && (AttackCycleCounter % 2 == 0))
 		{
@@ -5261,8 +6207,14 @@ void AAetheriaBossCharacter::BeginTelegraphedAttack(EBossAttackKind AttackKind, 
 	CurrentAttack = AttackKind;
 	bIsTelegraphing = true;
 	bCataclysmStillnessPhase = false;
-	TelegraphTimer = TELEGRAPH_DURATION; // Unmistakable 0.95s Crimson Glow telegraph!
+	TelegraphTimer = TELEGRAPH_DURATION; // Unmistakable 0.85s Crimson Red Glow telegraph before EVERY strike!
 	LockedTargetHero = TargetHero;
+
+	// Plant boss feet firmly when entering telegraph so Malakor never ice-skates
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		MoveComp->StopMovementImmediately();
+	}
 
 	if (TargetHero)
 	{
@@ -5282,7 +6234,7 @@ void AAetheriaBossCharacter::BeginTelegraphedAttack(EBossAttackKind AttackKind, 
 	// Scale glowing crimson ground danger ring to match the telegraphed attack's exact danger radius
 	if (TelegraphRingMesh)
 	{
-		float WorldRadius = 460.f;
+		float WorldRadius = 480.f;
 		switch (AttackKind)
 		{
 		case EBossAttackKind::CrimsonCleave:     WorldRadius = 480.f; break;
@@ -5294,7 +6246,7 @@ void AAetheriaBossCharacter::BeginTelegraphedAttack(EBossAttackKind AttackKind, 
 		default: break;
 		}
 
-		// Compensate for Boss 1.65x actor scale (BasicShapes Cylinder radius = 50 UU)
+		// Compensate for Boss actor scale (BasicShapes Cylinder radius = 50 UU)
 		const float ActorScale = FMath::Max(0.5f, GetActorScale3D().X);
 		const float LocalScaleXY = (WorldRadius / 50.f) / ActorScale;
 		TelegraphRingMesh->SetRelativeScale3D(FVector(LocalScaleXY, LocalScaleXY, 0.04f));
@@ -5303,27 +6255,50 @@ void AAetheriaBossCharacter::BeginTelegraphedAttack(EBossAttackKind AttackKind, 
 
 	if (TelegraphAuraCoreMesh)
 	{
-		TelegraphAuraCoreMesh->SetVisibility(true);
+		TelegraphAuraCoreMesh->SetVisibility(false);
+	}
+	if (TelegraphAuraNiagara)
+	{
+		TelegraphAuraNiagara->Activate(true);
+	}
+	if (TelegraphCrimsonLight)
+	{
+		TelegraphCrimsonLight->SetLightColor(FLinearColor(1.0f, 0.035f, 0.018f, 1.0f));
+		TelegraphCrimsonLight->SetIntensity(11500.f);
+	}
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UQuestSubsystem* QuestSys = GI->GetSubsystem<UQuestSubsystem>())
+		{
+			QuestSys->PushNotification(FString::Printf(TEXT("MALAKOR TELEGRAPHS: %s!"), *GetBossAttackDisplayName(AttackKind)));
+		}
 	}
 }
 
 void AAetheriaBossCharacter::ExecuteCurrentBossAttack()
 {
 	const EBossAttackKind AttackToRun = CurrentAttack;
-	const bool bWasParryable = IsCurrentAttackParryable();
 	bIsTelegraphing = false;
+
+	if (AttackToRun != EBossAttackKind::TempestLunge)
+	{
+		if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+		{
+			MoveComp->StopMovementImmediately();
+		}
+	}
 
 	if (TelegraphRingMesh)     { TelegraphRingMesh->SetVisibility(false); }
 	if (TelegraphAuraCoreMesh) { TelegraphAuraCoreMesh->SetVisibility(false); }
+	if (TelegraphAuraNiagara)  { TelegraphAuraNiagara->Deactivate(); }
 
-	// Clean EV100 AgX strike flash (Amber on parryable strikes, Crimson on dodge-only)
+	// Unmistakable Crimson Red impact flash on strike release
 	if (TelegraphCrimsonLight)
 	{
-		ImpactLightPeakLumens = (AttackToRun == EBossAttackKind::ChronoCataclysm) ? 4500.f : 3600.f;
+		ImpactLightPeakLumens = (AttackToRun == EBossAttackKind::ChronoCataclysm) ? 18500.f : 12500.f;
 		ImpactLightDecayTimer = 0.55f;
-		TelegraphCrimsonLight->SetLightColor(bWasParryable
-			? FLinearColor(1.0f, 0.68f, 0.16f)
-			: FLinearColor(1.0f, 0.08f, 0.05f));
+		TelegraphCrimsonLight->SetLightColor(FLinearColor(1.0f, 0.05f, 0.03f, 1.0f));
 		TelegraphCrimsonLight->SetIntensity(ImpactLightPeakLumens);
 	}
 
@@ -5347,6 +6322,22 @@ void AAetheriaBossCharacter::ExecuteCurrentBossAttack()
 
 void AAetheriaBossCharacter::PlayBossAttackVisualAnim(int32 PreferredMontageIdx, UAnimSequence* FallbackSeq, float PlayRate)
 {
+	if (bUsingSingleNodeAnims)
+	{
+		if (PreferredMontageIdx >= 0 && PreferredMontageIdx < 3 && EnemyAttackAnims[PreferredMontageIdx])
+		{
+			PlayEnemySingleNodeAnim(EnemyAttackAnims[PreferredMontageIdx].Get(), false, PlayRate, true);
+			return;
+		}
+		if (FallbackSeq)
+		{
+			PlayEnemySingleNodeAnim(FallbackSeq, false, PlayRate, true);
+			return;
+		}
+		PlayEnemyAttackAnim(PlayRate);
+		return;
+	}
+
 	if (PreferredMontageIdx >= 0 && EnemyAttackMontages.IsValidIndex(PreferredMontageIdx) && EnemyAttackMontages[PreferredMontageIdx])
 	{
 		PlayEnemyMontage(EnemyAttackMontages[PreferredMontageIdx].Get(), PlayRate);
@@ -5549,18 +6540,15 @@ void AAetheriaBossCharacter::UpdateTelegraphVisuals(float DeltaTime)
 {
 	if (bIsTelegraphing || bCataclysmStillnessPhase)
 	{
-		// Wukong Color Law Telegraph: Amber (#FFB347) for Parryable attacks, Crimson (#FF2A2A) for Dodge-Only!
-		const bool bParryable = IsCurrentAttackParryable();
-		const FLinearColor TelegraphColor = bParryable
-			? FLinearColor(1.0f, 0.68f, 0.16f, 1.0f)
-			: FLinearColor(1.0f, 0.08f, 0.05f, 1.0f);
+		// Unmistakable intense Crimson Red Glow telegraph (0.85s) before EVERY boss strike!
+		const FLinearColor CrimsonGlow(1.0f, 0.05f, 0.03f, 1.0f);
 
 		const float TimeSec = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
 		const float Progress = bCataclysmStillnessPhase
 			? 1.0f
 			: FMath::Clamp(1.0f - (TelegraphTimer / TELEGRAPH_DURATION), 0.f, 1.f);
-		const float PulseFreq = bCataclysmStillnessPhase ? 28.f : 14.f;
-		const float Pulse = 0.85f + 0.15f * FMath::Sin(TimeSec * PulseFreq);
+		const float PulseFreq = bCataclysmStillnessPhase ? 30.f : 16.f;
+		const float Pulse = 0.86f + 0.14f * FMath::Sin(TimeSec * PulseFreq);
 
 		if (TelegraphRingMesh)
 		{
@@ -5577,34 +6565,41 @@ void AAetheriaBossCharacter::UpdateTelegraphVisuals(float DeltaTime)
 			}
 			const float ActorScale = FMath::Max(0.5f, GetActorScale3D().X);
 			const float LocalScaleXY = (WorldRadius / 50.f) / ActorScale;
-			TelegraphRingMesh->SetRelativeScale3D(FVector(LocalScaleXY, LocalScaleXY, 0.025f));
+			TelegraphRingMesh->SetRelativeScale3D(FVector(LocalScaleXY, LocalScaleXY, 0.032f));
 			TelegraphRingMesh->SetVisibility(true);
 		}
 
 		if (TelegraphCrimsonLight)
 		{
-			TelegraphCrimsonLight->SetLightColor(TelegraphColor);
-			TelegraphCrimsonLight->SetIntensity((1800.f + 1200.f * Progress) * Pulse);
+			TelegraphCrimsonLight->SetLightColor(FLinearColor(1.0f, 0.035f, 0.018f, 1.0f));
+			TelegraphCrimsonLight->SetIntensity(FMath::Lerp(9500.f, 21500.f, Progress) * Pulse);
 		}
 
 		if (TelegraphCrimsonMID)
 		{
-			const float EmissiveBoost = FMath::Lerp(1.6f, 3.2f, Progress) * Pulse;
-			const FLinearColor EmissiveCol = TelegraphColor * EmissiveBoost;
-			TelegraphCrimsonMID->SetVectorParameterValue(TEXT("Color"), EmissiveCol);
-			TelegraphCrimsonMID->SetVectorParameterValue(TEXT("EmissiveColor"), EmissiveCol);
+			const float EmissiveBoost = FMath::Lerp(1.85f, 3.35f, Progress) * Pulse;
+			const FLinearColor PureCrimson(1.0f, 0.032f, 0.016f, 1.0f);
+			TelegraphCrimsonMID->SetVectorParameterValue(TEXT("Color"), PureCrimson);
+			TelegraphCrimsonMID->SetVectorParameterValue(TEXT("EmissiveColor"), PureCrimson);
+			TelegraphCrimsonMID->SetScalarParameterValue(TEXT("EmissiveBoost"), EmissiveBoost);
+			TelegraphCrimsonMID->SetScalarParameterValue(TEXT("Opacity"), FMath::Lerp(0.62f, 0.84f, Progress));
 		}
 
-		// Keep chest orb hidden so SevarogBloodred's dark Gothic armor & spiked hammer stay 100% crisp and unobstructed
+		// Keep legacy opaque sphere hidden; drive real Niagara crimson flame aura instead!
 		if (TelegraphAuraCoreMesh)
 		{
 			TelegraphAuraCoreMesh->SetVisibility(false);
+		}
+		if (TelegraphAuraNiagara && !TelegraphAuraNiagara->IsActive())
+		{
+			TelegraphAuraNiagara->Activate(true);
 		}
 	}
 	else if (ImpactLightDecayTimer > 0.f)
 	{
 		if (TelegraphRingMesh)     { TelegraphRingMesh->SetVisibility(false); }
 		if (TelegraphAuraCoreMesh) { TelegraphAuraCoreMesh->SetVisibility(false); }
+		if (TelegraphAuraNiagara && TelegraphAuraNiagara->IsActive()) { TelegraphAuraNiagara->Deactivate(); }
 		ImpactLightDecayTimer = FMath::Max(0.f, ImpactLightDecayTimer - DeltaTime);
 		if (TelegraphCrimsonLight)
 		{
@@ -5616,6 +6611,7 @@ void AAetheriaBossCharacter::UpdateTelegraphVisuals(float DeltaTime)
 	{
 		if (TelegraphRingMesh)     { TelegraphRingMesh->SetVisibility(false); }
 		if (TelegraphAuraCoreMesh) { TelegraphAuraCoreMesh->SetVisibility(false); }
+		if (TelegraphAuraNiagara && TelegraphAuraNiagara->IsActive()) { TelegraphAuraNiagara->Deactivate(); }
 		if (TelegraphCrimsonLight)
 		{
 			// Subtle ominous sovereign aura (600 lm when engaged, 0 when dormant) so SevarogBloodred silhouette stays crisp
@@ -5736,12 +6732,12 @@ void AAetheriaBossCharacter::UpdateEnemyAI(float DeltaTime)
 	if (!bFrozen && TargetHero)
 	{
 		const FVector ToHero = (TargetHero->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
-		if (NearestHeroDist > 360.f)
+		if (NearestHeroDist > 360.f && OneShotAnimTimer <= 0.f)
 		{
 			AddMovementInput(ToHero, 1.0f);
 		}
 
-		if (BossAttackCooldown <= 0.f && NearestHeroDist <= 1650.f)
+		if (BossAttackCooldown <= 0.f && OneShotAnimTimer <= 0.f && NearestHeroDist <= 1650.f)
 		{
 			const EBossAttackKind NextAttack = ChooseNextBossAttack(NearestHeroDist);
 			BeginTelegraphedAttack(NextAttack, TargetHero);
@@ -5853,35 +6849,60 @@ void AAetheriaNPCActor::BindNPCMeshAndAnim()
 		return;
 	}
 
-	static const TCHAR* NPCMeshPool[6] = {
-		TEXT("/Game/Characters/Heroes/SKM_Hero_01.SKM_Hero_01"),
-		TEXT("/Game/Characters/Heroes/SKM_Hero_02.SKM_Hero_02"),
-		TEXT("/Game/Characters/Heroes/SKM_Hero_03.SKM_Hero_03"),
-		TEXT("/Game/Characters/Heroes/SKM_Hero_04.SKM_Hero_04"),
-		TEXT("/Game/Characters/Heroes/SKM_Hero_05.SKM_Hero_05"),
-		AetheriaActorsUtil::PathQuinnSimple
+	struct FParagonNPCPreset
+	{
+		const TCHAR* MeshPath;
+		const TCHAR* IdleAnimPath;
+	};
+	// Verified SM6 Paragon character sculpts + SingleNode looping Idle animations (zero Apex cloth streaking & zero missing material usage flags!)
+	static const FParagonNPCPreset Presets[5] = {
+		{ AetheriaActorsUtil::PathGideonToughMesh, AetheriaActorsUtil::PathGideonPedestalIdle },
+		{ AetheriaActorsUtil::PathKwangMesh,       AetheriaActorsUtil::PathGideonIdle         },
+		{ AetheriaActorsUtil::PathMorigeshMesh,    AetheriaActorsUtil::PathMorigeshIdle       },
+		{ AetheriaActorsUtil::PathKhaimeraMesh,    AetheriaActorsUtil::PathKhaimeraIdle       },
+		{ AetheriaActorsUtil::PathGruxMesh,        AetheriaActorsUtil::PathGruxIdle           }
 	};
 
-	const uint32 HashSeed = (VisualVariantIndex > 0)
-		? static_cast<uint32>(VisualVariantIndex)
-		: (NpcId.IsNone() ? 0u : GetTypeHash(NpcId));
-	const int32 PoolIdx = static_cast<int32>(HashSeed % 6u);
+	int32 PresetIdx = 0;
+	if (NpcId == FName(TEXT("Npc_CaveTutor")) || NpcId == FName(TEXT("Npc_ElderAldric")))
+	{
+		PresetIdx = 0; // Battlemage Gideon_Tough for Keeper Vaelen & Elder Aldric (zero Apex cloth streak!)
+	}
+	else
+	{
+		const uint32 HashSeed = (VisualVariantIndex > 0)
+			? static_cast<uint32>(VisualVariantIndex)
+			: (NpcId.IsNone() ? 2u : GetTypeHash(NpcId));
+		PresetIdx = 2 + static_cast<int32>(HashSeed % 3u); // Morigesh / Khaimera / Grux (all 100% SM6 usage-flag clean!)
+	}
 
-	USkeletalMesh* ChosenMesh = LoadObject<USkeletalMesh>(nullptr, NPCMeshPool[PoolIdx]);
-	if (!ChosenMesh)
-	{
-		ChosenMesh = LoadObject<USkeletalMesh>(nullptr, AetheriaActorsUtil::PathQuinnSimple);
-	}
-	if (!ChosenMesh)
-	{
-		ChosenMesh = LoadObject<USkeletalMesh>(nullptr, AetheriaActorsUtil::PathMannySimple);
-	}
+	USkeletalMesh* ChosenMesh = AetheriaActorsUtil::SafeLoadObjectIfPresent<USkeletalMesh>(Presets[PresetIdx].MeshPath);
+	UAnimSequence* ChosenIdle = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(Presets[PresetIdx].IdleAnimPath);
 
 	if (ChosenMesh)
 	{
+		NPCMesh->bDisableClothSimulation = true;
 		NPCMesh->SetSkeletalMesh(ChosenMesh);
+		NPCMesh->SetRelativeLocation(FVector(0.f, 0.f, -92.f));
+		NPCMesh->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+		if (ChosenIdle && AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, ChosenIdle->GetSkeleton()))
+		{
+			NPCMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			NPCMesh->PlayAnimation(ChosenIdle, true);
+		}
+		bMeshBound = true;
+	}
+	else if (USkeletalMesh* FallbackQuinn = LoadObject<USkeletalMesh>(nullptr, AetheriaActorsUtil::PathQuinnSimple))
+	{
+		NPCMesh->SetSkeletalMesh(FallbackQuinn);
 		AetheriaActorsUtil::TryBindCompatibleAnimBP(NPCMesh, AetheriaActorsUtil::PathABPUnarmed, AetheriaActorsUtil::PathABPCombat);
 		bMeshBound = true;
+	}
+
+	if (QuestBeaconMesh)
+	{
+		// Compact refined golden quest crystal pip instead of a giant white-clipped BasicShape cube!
+		QuestBeaconMesh->SetRelativeScale3D(FVector(0.11f, 0.11f, 0.16f));
 	}
 }
 
@@ -5921,15 +6942,15 @@ void AAetheriaNPCActor::UpdateQuestBeacon(float DeltaTime)
 				switch (Quest->State)
 				{
 				case EQuestState::Available:
-					BeaconColor = FLinearColor(10.0f, 7.2f, 1.4f, 1.0f);
+					BeaconColor = FLinearColor(1.85f, 1.25f, 0.22f, 1.0f);
 					LightLm = 360.f;
 					break;
 				case EQuestState::Active:
-					BeaconColor = FLinearColor(4.5f, 5.2f, 6.2f, 1.0f);
+					BeaconColor = FLinearColor(0.45f, 1.15f, 1.65f, 1.0f);
 					LightLm = 260.f;
 					break;
 				case EQuestState::ReadyToTurnIn:
-					BeaconColor = FLinearColor(2.4f, 11.0f, 4.5f, 1.0f);
+					BeaconColor = FLinearColor(0.35f, 1.85f, 0.65f, 1.0f);
 					LightLm = 420.f;
 					break;
 				case EQuestState::Completed:
@@ -5989,5 +7010,285 @@ void AAetheriaNPCActor::Tick(float DeltaTime)
 				SetActorRotation(FMath::RInterpTo(GetActorRotation(), TargetYawRot, DeltaTime, 4.5f));
 			}
 		}
+	}
+}
+
+// ============================================================================
+// 5. AAetheriaEarthWedgeActor — Hit-3 Martial Finisher Rising Stone Wedge
+// ============================================================================
+
+AAetheriaEarthWedgeActor::AAetheriaEarthWedgeActor()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
+	SetReplicateMovement(true);
+	InitialLifeSpan = 1.45f;
+
+	WedgeRoot = CreateDefaultSubobject<USceneComponent>(TEXT("WedgeRoot"));
+	SetRootComponent(WedgeRoot);
+
+	WedgeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WedgeMesh"));
+	WedgeMesh->SetupAttachment(WedgeRoot);
+	WedgeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WedgeMesh->SetGenerateOverlapEvents(false);
+	WedgeMesh->SetCastShadow(true);
+	WedgeMesh->SetRelativeRotation(FRotator(-16.f, 0.f, 0.f));
+	WedgeMesh->SetRelativeScale3D(FVector(0.55f, 0.55f, 1.35f));
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeFallbackFinder(AetheriaActorsUtil::PathCube);
+	if (CubeFallbackFinder.Succeeded())
+	{
+		WedgeMesh->SetStaticMesh(CubeFallbackFinder.Object);
+	}
+}
+
+void AAetheriaEarthWedgeActor::InitializeWedge(const FVector& GroundImpactPoint, const FVector& ForwardDir)
+{
+	const FVector Dir2D = ForwardDir.GetSafeNormal2D(UE_SMALL_NUMBER, FVector::ForwardVector);
+	SetActorRotation(FRotator(0.f, Dir2D.Rotation().Yaw, 0.f));
+
+	StartLoc = GroundImpactPoint - FVector(0.f, 0.f, 115.f);
+	PeakLoc  = GroundImpactPoint + FVector(0.f, 0.f, 18.f);
+	Elapsed  = 0.f;
+	bShattered = false;
+	SetActorLocation(StartLoc);
+
+	if (WedgeMesh)
+	{
+		if (UStaticMesh* StoneMesh = AetheriaActorsUtil::SafeLoadObjectIfPresent<UStaticMesh>(AetheriaActorsUtil::PathEarthWedgeMesh))
+		{
+			WedgeMesh->SetStaticMesh(StoneMesh);
+		}
+		if (UMaterialInterface* StoneMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathEarthWedgeMat))
+		{
+			WedgeMesh->SetMaterial(0, StoneMat);
+		}
+		else if (UMaterialInterface* ObsidianMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatObsidian))
+		{
+			WedgeMesh->SetMaterial(0, ObsidianMat);
+		}
+		WedgeMesh->SetRelativeScale3D(FVector(0.55f, 0.55f, 1.35f));
+	}
+
+	ShatterExplosionFX = AetheriaActorsUtil::SafeLoadObjectIfPresent<UParticleSystem>(AetheriaActorsUtil::PathBossExplosionFX);
+
+	if (!IsRunningDedicatedServer() && ShatterExplosionFX)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ShatterExplosionFX, GroundImpactPoint + FVector(0.f, 0.f, 18.f), FRotator::ZeroRotator, FVector(0.55f), true);
+	}
+}
+
+void AAetheriaEarthWedgeActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bShattered)
+	{
+		return;
+	}
+
+	Elapsed += DeltaTime;
+
+	// Rapid seismic eruption over 0.12s
+	if (Elapsed <= 0.12f)
+	{
+		const float Alpha = FMath::Clamp(Elapsed / 0.12f, 0.f, 1.f);
+		const float Eased = FMath::InterpEaseOut(0.f, 1.f, Alpha, 2.2f);
+		SetActorLocation(FMath::Lerp(StartLoc, PeakLoc, Eased));
+	}
+	else if (Elapsed < 1.10f)
+	{
+		SetActorLocation(PeakLoc);
+	}
+	else
+	{
+		bShattered = true;
+		if (!IsRunningDedicatedServer() && ShatterExplosionFX)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ShatterExplosionFX, PeakLoc + FVector(0.f, 0.f, 40.f), FRotator::ZeroRotator, FVector(0.75f), true);
+		}
+		if (WedgeMesh)
+		{
+			WedgeMesh->SetVisibility(false);
+		}
+		Destroy();
+	}
+}
+
+// ============================================================================
+// 6. AAetheriaLootOrbActor — Glowing Golden Loot Pickup Dropped on Enemy Death
+// ============================================================================
+
+AAetheriaLootOrbActor::AAetheriaLootOrbActor()
+{
+	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
+	SetReplicateMovement(true);
+	InitialLifeSpan = 28.0f;
+
+	OrbRoot = CreateDefaultSubobject<USceneComponent>(TEXT("LootOrbRoot"));
+	SetRootComponent(OrbRoot);
+
+	OrbMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("LootOrbMesh"));
+	OrbMesh->SetupAttachment(OrbRoot);
+	OrbMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OrbMesh->SetGenerateOverlapEvents(false);
+	OrbMesh->SetCastShadow(false);
+	OrbMesh->SetRelativeScale3D(FVector(0.26f));
+	OrbMesh->bDisallowNanite = true;
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(AetheriaActorsUtil::PathSphere);
+	if (SphereFinder.Succeeded())
+	{
+		OrbMesh->SetStaticMesh(SphereFinder.Object);
+	}
+
+	OrbLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("LootOrbLight"));
+	OrbLight->SetupAttachment(OrbRoot);
+	OrbLight->SetIntensityUnits(ELightUnits::Lumens);
+	OrbLight->SetIntensity(1400.f);
+	OrbLight->SetLightColor(FLinearColor(1.0f, 0.82f, 0.22f, 1.0f));
+	OrbLight->SetAttenuationRadius(540.f);
+	OrbLight->SetCastShadows(false);
+}
+
+void AAetheriaLootOrbActor::InitializeLoot(int32 InGold, int32 InXP, float InHealHP)
+{
+	GoldValue   = FMath::Max(1, InGold);
+	XPValue     = FMath::Max(1, InXP);
+	HealHP      = FMath::Max(0.f, InHealHP);
+	SpawnOrigin = GetActorLocation();
+	Elapsed     = 0.f;
+	bCollected  = false;
+
+	if (UMaterialInterface* EmissiveCoreMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatEmissiveCore))
+	{
+		OrbMID = UMaterialInstanceDynamic::Create(EmissiveCoreMat, this);
+		if (OrbMID)
+		{
+			OrbMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(1.0f, 0.80f, 0.18f, 1.0f));
+			OrbMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 3.0f);
+			OrbMID->SetScalarParameterValue(TEXT("Opacity"), 0.94f);
+		}
+	}
+	else
+	{
+		OrbMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(12.0f, 9.2f, 2.0f, 1.0f), true);
+	}
+
+	if (OrbMesh && OrbMID)
+	{
+		OrbMesh->SetMaterial(0, OrbMID);
+	}
+
+	CollectBurstFX = AetheriaActorsUtil::SafeLoadObjectIfPresent<UParticleSystem>(AetheriaActorsUtil::PathFXHealAura);
+	CollectBurstNS = AetheriaActorsUtil::SafeLoadObjectIfPresent<UNiagaraSystem>(AetheriaActorsUtil::PathNSLevelUp);
+
+	if (!IsRunningDedicatedServer() && CollectBurstFX)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CollectBurstFX, SpawnOrigin, FRotator::ZeroRotator, FVector(0.45f), true);
+	}
+}
+
+void AAetheriaLootOrbActor::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	if (bCollected)
+	{
+		return;
+	}
+
+	Elapsed += DeltaTime;
+
+	if (OrbMesh)
+	{
+		const float PulseScale = 0.24f + 0.04f * FMath::Sin(Elapsed * 6.5f);
+		OrbMesh->SetRelativeScale3D(FVector(PulseScale));
+		OrbMesh->AddRelativeRotation(FRotator(0.f, DeltaTime * 115.f, 0.f));
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	AAetheriaHeroCharacter* NearestHero = nullptr;
+	float BestDistSq = FMath::Square(2400.f);
+	const FVector CurLoc = GetActorLocation();
+
+	for (TActorIterator<AAetheriaHeroCharacter> It(World); It; ++It)
+	{
+		AAetheriaHeroCharacter* Hero = *It;
+		if (!Hero || Hero->bDead)
+		{
+			continue;
+		}
+		const float DistSq = FVector::DistSquared(CurLoc, Hero->GetActorLocation());
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			NearestHero = Hero;
+		}
+	}
+
+	if (!NearestHero)
+	{
+		SetActorLocation(SpawnOrigin + FVector(0.f, 0.f, FMath::Sin(Elapsed * 3.8f) * 14.f));
+		return;
+	}
+
+	const FVector HeroCenter = NearestHero->GetActorLocation() + FVector(0.f, 0.f, 32.f);
+	const float Dist = FVector::Dist(CurLoc, HeroCenter);
+
+	if (Dist < 260.f)
+	{
+		bCollected = true;
+
+		if (HasAuthority())
+		{
+			if (NearestHero->SkillTree)
+			{
+				NearestHero->SkillTree->AddGold(GoldValue);
+				NearestHero->SkillTree->AddXP(XPValue);
+			}
+			NearestHero->HP = FMath::Min(NearestHero->MaxHP, NearestHero->HP + HealHP);
+
+			if (UGameInstance* GI = GetGameInstance())
+			{
+				if (UQuestSubsystem* QuestSys = GI->GetSubsystem<UQuestSubsystem>())
+				{
+					QuestSys->PushNotification(FString::Printf(TEXT("+%d Gold · +%d XP (Loot)"), GoldValue, XPValue));
+				}
+			}
+		}
+
+		if (!IsRunningDedicatedServer())
+		{
+			if (CollectBurstFX)
+			{
+				UGameplayStatics::SpawnEmitterAtLocation(World, CollectBurstFX, HeroCenter, FRotator::ZeroRotator, FVector(0.55f), true);
+			}
+			if (CollectBurstNS)
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, CollectBurstNS, HeroCenter, FRotator::ZeroRotator, FVector(0.50f), true);
+			}
+		}
+
+		Destroy();
+		return;
+	}
+
+	// Float gently for 1.2s, then magnetically zip straight to the Hero
+	if (Elapsed >= 1.2f || Dist < 420.f)
+	{
+		const FVector ToHero = (HeroCenter - CurLoc).GetSafeNormal();
+		const float PullSpeed = 1150.f + Elapsed * 260.f;
+		SetActorLocation(CurLoc + ToHero * FMath::Min(Dist, PullSpeed * DeltaTime));
+	}
+	else
+	{
+		SetActorLocation(SpawnOrigin + FVector(0.f, 0.f, FMath::Sin(Elapsed * 3.8f) * 14.f));
 	}
 }

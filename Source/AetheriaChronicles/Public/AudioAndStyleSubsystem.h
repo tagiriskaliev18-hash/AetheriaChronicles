@@ -27,6 +27,7 @@ UENUM(BlueprintType)
 enum class EChronicleMusicState : uint8
 {
 	None    UMETA(DisplayName = "None"),
+	Menu    UMETA(DisplayName = "Menu"),
 	Village UMETA(DisplayName = "Village"),
 	Field   UMETA(DisplayName = "Field"),
 	Battle  UMETA(DisplayName = "Battle"),
@@ -44,8 +45,8 @@ struct AETHERIACHRONICLES_API FAetheriaStyleHarmonizer
 };
 
 /**
- * World subsystem driving dual-deck 2D music crossfades across
- * Village, Field, Battle, and Boss encounters with 2.5s combat hysteresis.
+ * World subsystem driving dual-deck 2D orchestral music crossfades + ambient loop
+ * across Main Menu, Village, Field, Battle, and Boss encounters with 2.5s combat hysteresis.
  */
 UCLASS()
 class AETHERIACHRONICLES_API UAetheriaMusicSubsystem : public UWorldSubsystem
@@ -71,11 +72,44 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Aetheria|Audio")
 	EChronicleMusicState GetCurrentState() const { return CurrentState; }
 
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Audio")
+	void SetMenuMusicActive(bool bInMenu);
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|Audio")
+	bool IsMenuMusicActive() const { return bMenuMusicActive; }
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Audio")
+	void SetMusicVolume(float NewVolume01);
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|Audio")
+	float GetMusicVolume() const { return MusicVolumeMaster; }
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Audio")
+	void SetMusicMuted(bool bMute);
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|Audio")
+	bool IsMusicMuted() const { return bMusicMuted; }
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|Audio")
+	FString GetCurrentTrackDisplayName() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Audio")
+	void PlayMenuClickSFX();
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|Audio")
+	void PlayMenuStartSFX();
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|Audio")
+	int32 GetLoadedCueCount() const;
+
 private:
-	void LoadCueForState(EChronicleMusicState State, const TCHAR* ObjectPath);
-	void TransitionToState(EChronicleMusicState NewState);
+	void LoadCueForState(EChronicleMusicState State, const TArray<const TCHAR*>& CandidatePaths);
+	USoundBase* SafeLoadSound(const TCHAR* ObjectPath, bool bForceLooping = false);
+	void TransitionToState(EChronicleMusicState NewState, float OverrideFadeIn = -1.0f, float OverrideFadeOut = -1.0f);
 	void ScheduleReturnToExploration(float DelaySeconds);
 	EChronicleMusicState GetExplorationState() const;
+	float GetTargetVolumeForState(EChronicleMusicState State) const;
+	void ApplyLiveVolumes();
 
 	UPROPERTY()
 	TObjectPtr<UAudioComponent> DeckA;
@@ -84,12 +118,27 @@ private:
 	TObjectPtr<UAudioComponent> DeckB;
 
 	UPROPERTY()
-	TObjectPtr<USoundBase> StateCues[5];
+	TObjectPtr<UAudioComponent> AmbientDeck;
+
+	UPROPERTY()
+	TObjectPtr<USoundBase> StateCues[6];
+
+	UPROPERTY()
+	TObjectPtr<USoundBase> AmbientLoopSound;
+
+	UPROPERTY()
+	TObjectPtr<USoundBase> MenuClickSound;
+
+	UPROPERTY()
+	TObjectPtr<USoundBase> MenuStartSound;
 
 	int32 ActiveDeckIndex = 0;
 	EChronicleMusicState CurrentState = EChronicleMusicState::None;
-	bool bIsInVillage = false;
+	bool bMenuMusicActive = false;
+	bool bIsInVillage = true;
 	bool bBossActive = false;
+	float MusicVolumeMaster = 0.75f;
+	bool bMusicMuted = false;
 	FTimerHandle CombatDecayTimerHandle;
 };
 

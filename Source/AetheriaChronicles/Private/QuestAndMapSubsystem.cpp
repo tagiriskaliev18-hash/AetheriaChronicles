@@ -37,7 +37,33 @@ void UQuestSubsystem::Deinitialize()
 
 void UQuestSubsystem::PopulateStoryQuests()
 {
-	Quests.Reserve(6);
+	Quests.Reserve(7);
+
+	// 0. Awakening in Aetheria (Prologue: Cave Tutor -> Cliff Overlook -> Mirror Lake Waterfall Plunge)
+	{
+		FQuestDef Q;
+		Q.QuestId = FName(TEXT("Q_PrologueAwakening"));
+		Q.GiverId = FName(TEXT("Npc_CaveTutor"));
+		Q.GiverName = NSLOCTEXT("AetheriaQuests", "Giver_CaveTutor", "Хранитель Этерии Вейлен");
+		Q.Title = NSLOCTEXT("AetheriaQuests", "Title_PrologueAwakening", "Пробуждение в Этерии");
+		Q.Summary = NSLOCTEXT("AetheriaQuests", "Summary_PrologueAwakening",
+			"Вы очнулись в факельной пещере над Зеркальным озером. Выслушайте Хранителя Вейлена, выйдите на панорамный утёс и спуститесь у водопада в долину Оукхейвена.");
+		Q.ObjectiveText = NSLOCTEXT("AetheriaQuests", "Obj_PrologueAwakening",
+			"Выйдите из пещеры на утёс и спуститесь у водопада к берегу Зеркального озера");
+		Q.OfferDialogue = NSLOCTEXT("AetheriaQuests", "Offer_PrologueAwakening",
+			"Добро пожаловать в мир Этерии, Пробуждённый. Когда Владыка Малакор расколол Древнюю Печать на вершине Хайкипа, небесные кольца рухнули, а стихии вышли из равновесия. Лишь Ткач Трёх Первосфер — Exort (Солнечный Пламень), Wex (Штормовая Молния) и Quas (Хроно-Лёд), связанный узами с алым драконом Игнисом, способен вернуть Этерии свет.\n\nОсновы боя: [LMB] — серия ударов клинком, [RMB] — блок и парирование, [Q] — уклонение, [E] — разговор или сфера Exort, [W]/[Q] — стихии, [R] — призыв заклинания, [D]/[F] — каст.\n\nИди на солнечный свет выхода из пещеры, взгляни на долину с утёса и шагни к краю водопада Зеркального озера.");
+		Q.TurnInDialogue = NSLOCTEXT("AetheriaQuests", "TurnIn_PrologueAwakening",
+			"Долина Этерии открылась перед тобой. Ступай через Каменный мост к старейшине Олдрику в Оукхейвен!");
+		Q.State = EQuestState::Available;
+		Q.Progress = 0;
+		Q.TargetCount = 1;
+		Q.RewardGold = 75;
+		Q.RewardXP = 100;
+		Q.UnlockOrbReward = EChronicleOrb::None;
+		Q.bUnlocksDragonMount = false;
+		Q.ObjectiveWorldLocation = FVector(-1980.f, -800.f, 2200.f);
+		Quests.Add(MoveTemp(Q));
+	}
 
 	// 1. Ashes of the Hearth -> Unlocks Exort (EEE Solar Cataclysm)
 	{
@@ -480,10 +506,10 @@ void UQuestSubsystem::SelectNextTrackedQuest()
 		}
 	}
 
-	// 3. Next follow canonical story order for available quests
+	// 3. Next follow canonical story order for available main quests (never loop back to skipped Prologue)
 	for (const FQuestDef& Quest : Quests)
 	{
-		if (Quest.State == EQuestState::Available)
+		if (Quest.State == EQuestState::Available && Quest.QuestId != FName(TEXT("Q_PrologueAwakening")))
 		{
 			TrackedQuestId = Quest.QuestId;
 			return;

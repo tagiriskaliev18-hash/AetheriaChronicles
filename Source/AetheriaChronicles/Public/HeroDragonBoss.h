@@ -27,6 +27,7 @@ class UCapsuleComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class UMotionWarpingComponent;
+class UNiagaraComponent;
 class UNiagaraSystem;
 class UParticleSystem;
 class UParticleSystemComponent;
@@ -272,6 +273,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
+	virtual void AddMovementInput(FVector WorldDirection, float ScaleValue = 1.0f, bool bForce = false) override;
 
 	// --- Core Components ---
 
@@ -302,6 +304,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aetheria|Combat")
 	TObjectPtr<UStaticMeshComponent> HeroWeaponMesh;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aetheria|VFX")
+	TObjectPtr<UNiagaraComponent> SprintFootAuraComp;
 
 	// --- Replicated Combat & Progression Stats ---
 
@@ -338,6 +343,10 @@ public:
 	UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Aetheria|Progression")
 	bool bDragonUnlocked = false;
 
+	/** True when God Mode (/godmode) is active — Hero is completely immortal/invulnerable and commands all 10 spells! */
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Aetheria|GodMode")
+	bool bGodMode = false;
+
 	/** Safe respawn anchor in Oakhaven Sanctuary (grounded dynamically via ECC_WorldStatic). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aetheria|World")
 	FVector OakhavenSpawnLocation = FVector(0.f, 4200.f, 450.f);
@@ -358,6 +367,8 @@ public:
 		FDamageEvent const& DamageEvent,
 		AController* EventInstigator,
 		AActor* DamageCauser) override;
+
+	virtual void FellOutOfWorld(const class UDamageType& dmgType) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Aetheria|Combat")
 	void RespawnAtOakhaven();
@@ -387,7 +398,20 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Aetheria|HeroCreator")
 	void SetCreatorStudioCameraMode(bool bEnable, float OrbitYawDeg = 165.f, int32 ZoomMode = 0);
 
+	/** Enables or disables Immortal Archmage God Mode (invulnerability + all 10 spells + infinite mana/stamina). */
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|GodMode")
+	void SetGodMode(bool bEnable);
+
+	UFUNCTION(BlueprintCallable, Category = "Aetheria|GodMode")
+	bool ToggleGodMode();
+
+	UFUNCTION(BlueprintPure, Category = "Aetheria|GodMode")
+	bool IsGodModeActive() const { return bGodMode; }
+
 protected:
+	UFUNCTION(Server, Reliable)
+	void ServerSetGodMode(bool bEnable);
+
 	UFUNCTION(Server, Reliable)
 	void ServerPerformMeleeAttack();
 
@@ -407,7 +431,9 @@ private:
 	void ExecuteMeleeAttack_Internal();
 	void ExecuteDodgeRoll_Internal(const FVector& WorldMoveDir);
 	void ExecuteRespawn_Internal();
+	void ExecuteSetGodMode_Internal(bool bEnable);
 	void PlayHeroMeleeVisualsAndAudio(int32 Step);
+	void SpawnMartialComboVFXAndEffects(int32 Step, const FVector& AttackDir, const FVector& ImpactCenter);
 	void PlayCombatAnimSequence(UAnimSequence* Seq, float PlayRate = 1.f);
 	void TriggerCombatFlash(const FLinearColor& Color, float PeakLumens, float Duration = 0.24f);
 	void SyncSkillTreeMultipliers();
@@ -465,8 +491,54 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimSequence> ActiveRunAnimSeq;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> ActiveSprintAnimSeq;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> ActiveJumpStartSeq;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> ActiveJumpLoopSeq;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> ActiveJumpLandSeq;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> ActiveRollAnimSeq;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UParticleSystem> MartialHit1FX;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UParticleSystem> MartialFireArcFX;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UParticleSystem> MartialShockwaveFX;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UParticleSystem> MartialExplosionFX;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> MartialShockwaveNS;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> MartialWindLeavesNS;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> DodgeWindFlowsNS;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> SprintFootAuraNS;
+
+	float MeleeMoveLockUntilTime = 0.0f;
+	float RollBrakeUntilTime = 0.0f;
+	float JumpLandAnimUntilTime = 0.0f;
+	float CachedMoveInputTimestamp = -10.0f;
 	float CombatAnimLockUntilTime = 0.f;
+	bool bWasFallingLastTick = false;
 	bool bPlayingRunAnim = false;
+	bool bPlayingSprintAnim = false;
+	bool bPlayingJumpAnim = false;
 	bool bPlayingCombatOneShot = false;
 
 	UPROPERTY(Transient)
@@ -602,6 +674,18 @@ protected:
 	void PlayEnemySingleNodeAnim(UAnimSequence* Seq, bool bLooping, float PlayRate = 1.f, bool bForceRestart = false);
 	void UpdateEnemySingleNodeAnimation(float DeltaTime);
 	bool BindRampageAnimsAndMontages(USkeletalMeshComponent* MeshComp);
+	bool BindParagonEnemySingleNodeAnims(
+		USkeletalMeshComponent* MeshComp,
+		const TCHAR* IdlePrimary,
+		const TCHAR* IdleFallback,
+		const TCHAR* RunPrimary,
+		const TCHAR* RunFallback1,
+		const TCHAR* RunFallback2,
+		const TCHAR* AttackAPath,
+		const TCHAR* AttackBPath,
+		const TCHAR* AttackCPath,
+		const TCHAR* HitReactPath,
+		const TCHAR* DeathPath);
 	bool BindParagonEnemyAnimsAndMontages(
 		USkeletalMeshComponent* MeshComp,
 		const TCHAR* ABPPath,
@@ -806,9 +890,16 @@ private:
 		bool bShatterArenaColumns);
 	void UpdateTelegraphVisuals(float DeltaTime);
 	void PlayBossAttackVisualAnim(int32 PreferredMontageIdx, UAnimSequence* FallbackSeq, float PlayRate = 1.f);
+	static FString GetBossAttackDisplayName(EBossAttackKind AttackKind);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> TelegraphCrimsonMID;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> TelegraphAuraShellMID;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraComponent> TelegraphAuraNiagara;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimSequence> BossHeavyAnim;
@@ -820,7 +911,7 @@ private:
 	FVector LungeTargetLocation = FVector::ZeroVector;
 	TWeakObjectPtr<AAetheriaHeroCharacter> LockedTargetHero;
 
-	static constexpr float TELEGRAPH_DURATION = 0.95f;
+	static constexpr float TELEGRAPH_DURATION = 0.85f;
 	static constexpr float ENGAGE_RADIUS = 3200.f;
 	static constexpr float DISENGAGE_RADIUS = 5400.f;
 
@@ -894,4 +985,77 @@ private:
 	float BeaconBobTime = 0.f;
 	float QuestCheckTimer = 0.f;
 	bool bMeshBound = false;
+};
+
+// ============================================================================
+// 5. AAetheriaEarthWedgeActor — Hit-3 Martial Finisher Rising Stone Wedge
+// ============================================================================
+UCLASS()
+class AETHERIACHRONICLES_API AAetheriaEarthWedgeActor : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	AAetheriaEarthWedgeActor();
+
+	virtual void Tick(float DeltaTime) override;
+
+	void InitializeWedge(const FVector& GroundImpactPoint, const FVector& ForwardDir);
+
+private:
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> WedgeRoot;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UStaticMeshComponent> WedgeMesh;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UParticleSystem> ShatterExplosionFX;
+
+	FVector StartLoc = FVector::ZeroVector;
+	FVector PeakLoc = FVector::ZeroVector;
+	float Elapsed = 0.f;
+	bool bShattered = false;
+};
+
+// ============================================================================
+// 6. AAetheriaLootOrbActor — Glowing Golden Loot Pickup Dropped on Enemy Death
+// ============================================================================
+UCLASS()
+class AETHERIACHRONICLES_API AAetheriaLootOrbActor : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	AAetheriaLootOrbActor();
+
+	virtual void Tick(float DeltaTime) override;
+
+	void InitializeLoot(int32 InGold, int32 InXP, float InHealHP);
+
+private:
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<USceneComponent> OrbRoot;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UStaticMeshComponent> OrbMesh;
+
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UPointLightComponent> OrbLight;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> OrbMID;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UParticleSystem> CollectBurstFX;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraSystem> CollectBurstNS;
+
+	FVector SpawnOrigin = FVector::ZeroVector;
+	int32 GoldValue = 35;
+	int32 XPValue = 45;
+	float HealHP = 25.f;
+	float Elapsed = 0.f;
+	bool bCollected = false;
 };

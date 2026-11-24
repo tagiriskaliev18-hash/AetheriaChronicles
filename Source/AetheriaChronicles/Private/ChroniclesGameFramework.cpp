@@ -18,6 +18,8 @@
 
 #include "Brushes/SlateDynamicImageBrush.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
 #include "CollisionQueryParams.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -29,9 +31,11 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Fonts/CompositeFont.h"
+#include "Fonts/FontMeasure.h"
 #include "Fonts/SlateFontInfo.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/InputSettings.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerStart.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
@@ -41,19 +45,25 @@
 #include "ImageUtils.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 #include "Math/RotationMatrix.h"
 #include "Misc/CommandLine.h"
 #include "Misc/CoreDelegates.h"
 #include "Misc/FileHelper.h"
+#include "Misc/PackageName.h"
 #include "Misc/Parse.h"
 #include "Modules/ModuleManager.h"
 #include "Net/UnrealNetwork.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
+#include "Particles/ParticleSystem.h"
 #include "Rendering/DrawElements.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateTypes.h"
 #include "UObject/UObjectGlobals.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -135,6 +145,7 @@ namespace ChroniclesHUDPalette
 		TSharedPtr<FSlateDynamicImageBrush> OrbGravitonDyn;
 		TSharedPtr<FSlateDynamicImageBrush> CrestSkullDyn;
 		TSharedPtr<FSlateDynamicImageBrush> MenuVignetteDyn;
+		TSharedPtr<FSlateDynamicImageBrush> MinimapFrameDyn;
 
 		// Sculpted FSlateRoundedBoxBrush fallbacks & card brushes
 		TSharedPtr<FSlateRoundedBoxBrush> PanelObsidianFallback;
@@ -143,6 +154,10 @@ namespace ChroniclesHUDPalette
 		TSharedPtr<FSlateRoundedBoxBrush> RibbonObsidianBrush;
 		TSharedPtr<FSlateRoundedBoxBrush> SocketNormFallback;
 		TSharedPtr<FSlateRoundedBoxBrush> SocketArmedFallback;
+		TSharedPtr<FSlateRoundedBoxBrush> MinimapDiscBrush;
+		TSharedPtr<FSlateRoundedBoxBrush> MinimapInnerRingBrush;
+		TSharedPtr<FSlateRoundedBoxBrush> BlipCircleBrush;
+		TSharedPtr<FSlateRoundedBoxBrush> WorldPillBrush;
 
 		FButtonStyle StoneBtnStyle;
 		FButtonStyle CrimsonBtnStyle;
@@ -159,7 +174,7 @@ namespace ChroniclesHUDPalette
 
 		UTexture2D* LoadPNGTexture(const FString& RelPath)
 		{
-			if (!GIsRunning || IsEngineExitRequested() || IsRunningCommandlet())
+			if (!FSlateApplication::IsInitialized() || IsEngineExitRequested() || IsRunningCommandlet())
 			{
 				return nullptr;
 			}
@@ -273,6 +288,7 @@ namespace ChroniclesHUDPalette
 			OrbGravitonDyn.Reset();
 			CrestSkullDyn.Reset();
 			MenuVignetteDyn.Reset();
+			MinimapFrameDyn.Reset();
 			DisplayFontData.Reset();
 			SerifFontData.Reset();
 			bInitialized = false;
@@ -317,6 +333,10 @@ namespace ChroniclesHUDPalette
 			RibbonObsidianBrush = MakeShared<FSlateRoundedBoxBrush>(RibbonBg, 3.f, HairlineGoldSubtle, 1.0f);
 			SocketNormFallback = MakeShared<FSlateRoundedBoxBrush>(FLinearColor(0.032f, 0.028f, 0.040f, 0.94f), 3.f, HairlineBronze, 1.5f);
 			SocketArmedFallback = MakeShared<FSlateRoundedBoxBrush>(FLinearColor(0.048f, 0.036f, 0.028f, 0.96f), 3.f, HairlineGold, 2.0f);
+			MinimapDiscBrush = MakeShared<FSlateRoundedBoxBrush>(FLinearColor(0.030f, 0.028f, 0.040f, 0.88f), 74.f, HairlineGoldSubtle, 1.5f);
+			MinimapInnerRingBrush = MakeShared<FSlateRoundedBoxBrush>(FLinearColor(0.f, 0.f, 0.f, 0.f), 44.f, FLinearColor(0.76f, 0.59f, 0.28f, 0.24f), 1.0f);
+			BlipCircleBrush = MakeShared<FSlateRoundedBoxBrush>(FLinearColor::White, 5.f, FLinearColor(0.02f, 0.018f, 0.028f, 0.90f), 1.0f);
+			WorldPillBrush = MakeShared<FSlateRoundedBoxBrush>(FLinearColor(0.032f, 0.028f, 0.042f, 0.80f), 4.f, FLinearColor(0.76f, 0.59f, 0.28f, 0.48f), 1.0f);
 
 			// 3. Load Custom UI Art PNGs from RawAssets/UI/
 			LoadBrush(PanelObsidianDyn,   TEXT("Chronicles_PanelObsidian"),    TEXT("RawAssets/UI/T_UI_PanelObsidian.png"),      FVector2f(512.f, 512.f), ESlateBrushDrawType::Box, FMargin(0.10f));
@@ -331,8 +351,13 @@ namespace ChroniclesHUDPalette
 			LoadBrush(OrbIgnisDyn,        TEXT("Chronicles_OrbIgnis"),         TEXT("RawAssets/UI/icon_orb_ignis.png"),          FVector2f(128.f, 128.f));
 			LoadBrush(OrbTempestDyn,      TEXT("Chronicles_OrbTempest"),       TEXT("RawAssets/UI/icon_orb_tempest.png"),        FVector2f(128.f, 128.f));
 			LoadBrush(OrbGravitonDyn,     TEXT("Chronicles_OrbGraviton"),      TEXT("RawAssets/UI/icon_orb_graviton.png"),       FVector2f(128.f, 128.f));
-			LoadBrush(CrestSkullDyn,      TEXT("Chronicles_CrestSkull"),       TEXT("RawAssets/UI/T_UI_Crest_Skull.png"),        FVector2f(64.f, 64.f));
+			LoadBrush(CrestSkullDyn,      TEXT("Chronicles_CrestSkull"),       TEXT("RawAssets/UI/Icons/T_UI_Crest_Skull.png"),  FVector2f(64.f, 64.f));
+			if (!CrestSkullDyn.IsValid())
+			{
+				LoadBrush(CrestSkullDyn,  TEXT("Chronicles_CrestSkull"),       TEXT("RawAssets/UI/T_UI_Crest_Skull.png"),        FVector2f(64.f, 64.f));
+			}
 			LoadBrush(MenuVignetteDyn,    TEXT("Chronicles_MenuVignette"),     TEXT("RawAssets/UI/T_UI_MenuVignette.png"),       FVector2f(1024.f, 1024.f));
+			LoadBrush(MinimapFrameDyn,    TEXT("Chronicles_MinimapFrame"),     TEXT("RawAssets/UI/hud_minimap_frame.png"),       FVector2f(172.f, 172.f));
 
 			// 4. Sculpted Stone Button Style (Carved Obsidian + Antique Gold Hover + Warm Bronze Press)
 			StoneBtnStyle = FCoreStyle::Get().GetWidgetStyle<FButtonStyle>(TEXT("Button"));
@@ -488,6 +513,23 @@ namespace ChroniclesHUDPalette
 		FChroniclesUIStyleCache& S = GetStyles();
 		return S.CrestSkullDyn.IsValid() ? S.CrestSkullDyn.Get() : nullptr;
 	}
+
+	static const FSlateBrush* MenuVignetteBrush()
+	{
+		FChroniclesUIStyleCache& S = GetStyles();
+		return S.MenuVignetteDyn.IsValid() ? S.MenuVignetteDyn.Get() : nullptr;
+	}
+
+	static const FSlateBrush* MinimapFrameBrush()
+	{
+		FChroniclesUIStyleCache& S = GetStyles();
+		return S.MinimapFrameDyn.IsValid() ? S.MinimapFrameDyn.Get() : nullptr;
+	}
+
+	static const FSlateBrush* MinimapDiscBrush()      { return GetStyles().MinimapDiscBrush.Get(); }
+	static const FSlateBrush* MinimapInnerRingBrush() { return GetStyles().MinimapInnerRingBrush.Get(); }
+	static const FSlateBrush* BlipCircleBrush()       { return GetStyles().BlipCircleBrush.Get(); }
+	static const FSlateBrush* WorldPillBrush()        { return GetStyles().WorldPillBrush.Get(); }
 
 	static const FButtonStyle& StoneButtonStyle()      { return GetStyles().StoneBtnStyle; }
 	static const FButtonStyle& CrimsonButtonStyle()    { return GetStyles().CrimsonBtnStyle; }
@@ -904,7 +946,28 @@ void AChroniclesGameMode::SpawnNamedQuestNPCs()
 		}
 	}
 
-	UE_LOG(LogChronicles, Log, TEXT("Spawned %d Named Story Quest NPCs across Aetheria."), SpawnedNPCs.Num());
+	// Dedicated Prologue Lore Tutor NPC inside the Awakening Cave overlooking Mirror Lake
+	{
+		const FVector TutorFloor = WorldBuilder
+			? WorldBuilder->GetPrologueTutorLocation()
+			: FVector(-2920.f, -620.f, SampleGroundZSafe(-2920.f, -620.f, 1800.f) + 2.f);
+		// AAetheriaNPCActor capsule half-height is 92 cm -> Floor + 92 places feet flush on cave stone
+		const FVector TutorLoc = TutorFloor + FVector(0.f, 0.f, 92.f);
+		const FRotator TutorRot(0.f, 165.f, 0.f);
+
+		if (AAetheriaNPCActor* CaveTutor = World->SpawnActor<AAetheriaNPCActor>(AAetheriaNPCActor::StaticClass(), TutorLoc, TutorRot, SpawnParams))
+		{
+			CaveTutor->ConfigureNPC(
+				FName(TEXT("Npc_CaveTutor")),
+				FText::FromString(TEXT("Хранитель Этерии Вейлен")),
+				FText::FromString(TEXT("Наставник Пробуждённых")),
+				FName(TEXT("Q_PrologueAwakening")),
+				0);
+			SpawnedNPCs.Add(CaveTutor);
+		}
+	}
+
+	UE_LOG(LogChronicles, Log, TEXT("Spawned %d Named Story Quest NPCs across Aetheria (including Cave Tutor)."), SpawnedNPCs.Num());
 }
 
 void AChroniclesGameMode::SpawnRoamingBiomeEnemies()
@@ -976,6 +1039,26 @@ void AChroniclesPlayerController::BeginPlay()
 
 	if (IsLocalController())
 	{
+		// Disable raw engine UConsole interception on ` / ~ / ё so our Slate Developer Console owns the key cleanly
+		if (UInputSettings* InputSettings = UInputSettings::GetInputSettings())
+		{
+			InputSettings->ConsoleKeys.Empty();
+		}
+		if (UWorld* World = GetWorld())
+		{
+			if (UGameViewportClient* Viewport = World->GetGameViewport())
+			{
+				Viewport->ViewportConsole = nullptr;
+			}
+		}
+
+		if (ConsoleLogLines.Num() == 0)
+		{
+			AppendConsoleLogLine(
+				TEXT("Aetheria Arcane Console — введите /godmode для включения Режима Бога (Бессмертие + 10/10 заклинаний) или /help"),
+				ChroniclesHUDPalette::TextGold);
+		}
+
 		// Bind Alt-Tab / window activation state safely with TWeakObjectPtr (zero phantom clicks on refocus!)
 		if (FSlateApplication::IsInitialized())
 		{
@@ -1000,7 +1083,7 @@ void AChroniclesPlayerController::BeginPlay()
 
 		if (!bSmokeTestActive && !bCaptureFramesActive)
 		{
-			PushToastMessage(TEXT("Welcome to Aetheria Chronicles — Speak to Elder Aldric [E] or open Map [M]"), 5.5f);
+			OpenMainMenuOverlay();
 		}
 	}
 }
@@ -1008,6 +1091,15 @@ void AChroniclesPlayerController::BeginPlay()
 void AChroniclesPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	ChroniclesStudioBg::RestoreHiddenActors(this);
+
+	if (ACameraActor* CutsceneCam = CutsceneCameraActor.Get())
+	{
+		if (IsValid(CutsceneCam))
+		{
+			CutsceneCam->Destroy();
+		}
+		CutsceneCameraActor.Reset();
+	}
 
 	if (AppActivationHandle.IsValid() && FSlateApplication::IsInitialized())
 	{
@@ -1028,9 +1120,16 @@ void AChroniclesPlayerController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	if (IsLocalController() && HUDWidget.IsValid())
+	if (IsLocalController())
 	{
-		HUDWidget->RefreshDynamicPanels();
+		if (ActiveOverlay == EChroniclesOverlayMode::MainMenu && !bHasEnteredGameWorld)
+		{
+			ChroniclesStudioBg::SetNearbyBystandersHidden(this, true, 4500.f);
+		}
+		if (HUDWidget.IsValid())
+		{
+			HUDWidget->RefreshDynamicPanels();
+		}
 	}
 }
 
@@ -1038,9 +1137,16 @@ void AChroniclesPlayerController::AcknowledgePossession(APawn* P)
 {
 	Super::AcknowledgePossession(P);
 
-	if (IsLocalController() && HUDWidget.IsValid())
+	if (IsLocalController())
 	{
-		HUDWidget->RefreshDynamicPanels();
+		if (ActiveOverlay == EChroniclesOverlayMode::MainMenu && !bHasEnteredGameWorld)
+		{
+			ChroniclesStudioBg::SetNearbyBystandersHidden(this, true, 4500.f);
+		}
+		if (HUDWidget.IsValid())
+		{
+			HUDWidget->RefreshDynamicPanels();
+		}
 	}
 }
 
@@ -1148,11 +1254,25 @@ void AChroniclesPlayerController::SetUIMode(bool bOpenUI)
 
 bool AChroniclesPlayerController::IsAnyModalOpen() const
 {
-	return (ActiveOverlay != EChroniclesOverlayMode::None) || IsHeroDead();
+	return bDevConsoleOpen || (ActiveOverlay != EChroniclesOverlayMode::None) || IsHeroDead();
 }
 
 void AChroniclesPlayerController::ToggleOverlay(EChroniclesOverlayMode TargetOverlay)
 {
+	if (TargetOverlay == EChroniclesOverlayMode::MainMenu)
+	{
+		if (ActiveOverlay == EChroniclesOverlayMode::MainMenu)
+		{
+			if (bHasEnteredGameWorld)
+			{
+				EnterGameFromTitleScreen(false);
+			}
+			return;
+		}
+		OpenMainMenuOverlay();
+		return;
+	}
+
 	if (TargetOverlay == EChroniclesOverlayMode::None || ActiveOverlay == TargetOverlay)
 	{
 		CloseAllOverlays();
@@ -1160,13 +1280,14 @@ void AChroniclesPlayerController::ToggleOverlay(EChroniclesOverlayMode TargetOve
 	}
 
 	const bool bWasCreator = (ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer);
+	const bool bWasMainMenu = (ActiveOverlay == EChroniclesOverlayMode::MainMenu);
 	ActiveOverlay = TargetOverlay;
 	if (TargetOverlay != EChroniclesOverlayMode::Dialogue)
 	{
 		ActiveDialogueNPC.Reset();
 	}
 
-	if (bWasCreator && TargetOverlay != EChroniclesOverlayMode::HeroCustomizer)
+	if ((bWasCreator || bWasMainMenu) && TargetOverlay != EChroniclesOverlayMode::HeroCustomizer)
 	{
 		ChroniclesStudioBg::RestoreHiddenActors(this);
 	}
@@ -1194,8 +1315,23 @@ void AChroniclesPlayerController::ToggleOverlay(EChroniclesOverlayMode TargetOve
 
 void AChroniclesPlayerController::CloseAllOverlays()
 {
+	if (bMainMenuReturnTarget && !bSmokeTestActive && !bCaptureFramesActive)
+	{
+		bMainMenuReturnTarget = false;
+		bIsNewGameCreationFlow = false;
+		if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+		{
+			Music->PlayMenuClickSFX();
+		}
+		OpenMainMenuOverlay();
+		return;
+	}
+
+	const bool bWasMainMenu = (ActiveOverlay == EChroniclesOverlayMode::MainMenu);
 	ActiveOverlay = EChroniclesOverlayMode::None;
 	ActiveDialogueNPC.Reset();
+	bMainMenuReturnTarget = false;
+	bIsNewGameCreationFlow = false;
 
 	ChroniclesStudioBg::RestoreHiddenActors(this);
 
@@ -1204,10 +1340,582 @@ void AChroniclesPlayerController::CloseAllOverlays()
 		Hero->SetCreatorStudioCameraMode(false);
 	}
 
+	if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+	{
+		if (bWasMainMenu || Music->IsMenuMusicActive())
+		{
+			Music->SetMenuMusicActive(false);
+		}
+	}
+
 	if (!IsHeroDead())
 	{
 		SetUIMode(false);
 	}
+}
+
+void AChroniclesPlayerController::OpenMainMenuOverlay()
+{
+	const bool bWasCreator = (ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer);
+	ActiveOverlay = EChroniclesOverlayMode::MainMenu;
+	ActiveDialogueNPC.Reset();
+	bMainMenuReturnTarget = false;
+	bIsNewGameCreationFlow = false;
+
+	if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+	{
+		Hero->SetBlocking(false);
+		if (bWasCreator)
+		{
+			Hero->SetCreatorStudioCameraMode(false);
+		}
+	}
+	bLastBlockKeyDown = false;
+
+	if (!bHasEnteredGameWorld)
+	{
+		TitleCameraOrbitAngle = 0.f;
+		ChroniclesStudioBg::SetNearbyBystandersHidden(this, true, 4500.f);
+		SetControlRotation(FRotator(-8.f, 90.f, 0.f));
+	}
+	else if (bWasCreator)
+	{
+		ChroniclesStudioBg::RestoreHiddenActors(this);
+	}
+
+	if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+	{
+		Music->SetMenuMusicActive(true);
+	}
+
+	if (HUDWidget.IsValid())
+	{
+		HUDWidget->RefreshDynamicPanels();
+	}
+
+	SetUIMode(true);
+}
+
+void AChroniclesPlayerController::EnterGameFromTitleScreen(bool bLoadSavedProgress)
+{
+	if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+	{
+		Music->PlayMenuStartSFX();
+		Music->SetMenuMusicActive(false);
+	}
+
+	const bool bFirstEntry = !bHasEnteredGameWorld;
+	bHasEnteredGameWorld = true;
+	bIsNewGameCreationFlow = false;
+	bMainMenuReturnTarget = false;
+	if (bLoadSavedProgress || bSmokeTestActive || bCaptureFramesActive)
+	{
+		PrologueStage = 4;
+	}
+
+	if (bLoadSavedProgress)
+	{
+		if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+		{
+			if (Hero->SkillTree)
+			{
+				if (UGameplayStatics::DoesSaveGameExist(TEXT("AetheriaChroniclesSlot0"), 0))
+				{
+					Hero->SkillTree->LoadProgress(TEXT("AetheriaChroniclesSlot0"));
+				}
+				else if (UGameplayStatics::DoesSaveGameExist(TEXT("AetheriaChroniclesSlot"), 0))
+				{
+					Hero->SkillTree->LoadProgress(TEXT("AetheriaChroniclesSlot"));
+				}
+			}
+		}
+	}
+
+	ActiveOverlay = EChroniclesOverlayMode::None;
+	ActiveDialogueNPC.Reset();
+	ChroniclesStudioBg::RestoreHiddenActors(this);
+
+	if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+	{
+		Hero->SetCreatorStudioCameraMode(false);
+		if (bFirstEntry)
+		{
+			SetControlRotation(FRotator(-10.f, 90.f, 0.f));
+		}
+	}
+
+	if (!IsHeroDead())
+	{
+		SetUIMode(false);
+	}
+
+	if (HUDWidget.IsValid())
+	{
+		HUDWidget->RefreshDynamicPanels();
+	}
+
+	if (bFirstEntry && !bSmokeTestActive && !bCaptureFramesActive)
+	{
+		PushToastMessage(TEXT("Welcome to Aetheria: Chronicles of the Drake"), 5.0f);
+	}
+}
+
+void AChroniclesPlayerController::StartNewGameCharacterCreation()
+{
+	if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+	{
+		Music->PlayMenuClickSFX();
+	}
+
+	bIsNewGameCreationFlow = true;
+	bMainMenuReturnTarget = true;
+
+	// Place Hero temporarily in sunlit Oakhaven courtyard lighting so the 3D Character Creator portrait glows warmly
+	AAetheriaWorldBuilder* Builder = FindWorldBuilder();
+	if (Builder)
+	{
+		Builder->SetTimeOfDay(0.72f);
+	}
+	if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+	{
+		const float GZ = Builder ? Builder->SampleGroundZ(0.f, 3720.f, 120.f) : 120.f;
+		Hero->SetActorLocationAndRotation(
+			FVector(0.f, 3720.f, GZ + 105.f),
+			FRotator(0.f, 145.f, 0.f),
+			false,
+			nullptr,
+			ETeleportType::TeleportPhysics);
+		SetControlRotation(FRotator(-6.f, 145.f, 0.f));
+	}
+	CreatorZoomMode = 0;
+	CreatorOrbitYaw = 162.f;
+
+	ToggleOverlay(EChroniclesOverlayMode::HeroCustomizer);
+}
+
+void AChroniclesPlayerController::ConfirmNewHeroAndAwakenInCave()
+{
+	if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+	{
+		Music->PlayMenuStartSFX();
+		Music->SetMenuMusicActive(false);
+	}
+
+	bIsNewGameCreationFlow = false;
+	bMainMenuReturnTarget = false;
+	bHasEnteredGameWorld = true;
+	PrologueStage = 0; // InCaveTalkToTutor
+
+	ActiveOverlay = EChroniclesOverlayMode::None;
+	ActiveDialogueNPC.Reset();
+	ChroniclesStudioBg::RestoreHiddenActors(this);
+
+	AAetheriaWorldBuilder* Builder = FindWorldBuilder();
+	if (Builder)
+	{
+		Builder->SetTimeOfDay(0.72f);
+	}
+
+	const FVector CaveSpawnLoc = Builder
+		? Builder->GetPrologueCaveSpawnLocation()
+		: FVector(-3320.f, -800.f, 2098.f);
+
+	if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+	{
+		Hero->SetCreatorStudioCameraMode(false);
+		Hero->SetBlocking(false);
+		Hero->HP = Hero->MaxHP;
+		Hero->Stamina = Hero->MaxStamina;
+		if (Hero->SkillTree)
+		{
+			Hero->SkillTree->SaveProgress();
+		}
+		Hero->SetActorLocationAndRotation(
+			CaveSpawnLoc,
+			FRotator(0.f, 0.f, 0.f),
+			false,
+			nullptr,
+			ETeleportType::TeleportPhysics);
+		SetControlRotation(FRotator(-4.f, 0.f, 0.f));
+	}
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UQuestSubsystem* QuestSub = GI->GetSubsystem<UQuestSubsystem>())
+		{
+			QuestSub->SetTrackedQuest(FName(TEXT("Q_PrologueAwakening")));
+		}
+		if (UFogOfWarMapSubsystem* MapSub = GI->GetSubsystem<UFogOfWarMapSubsystem>())
+		{
+			MapSub->RevealAroundWorldLocation(CaveSpawnLoc, 5500.f);
+		}
+	}
+
+	if (!IsHeroDead())
+	{
+		SetUIMode(false);
+	}
+
+	if (HUDWidget.IsValid())
+	{
+		HUDWidget->RefreshDynamicPanels();
+	}
+
+	PushToastMessage(TEXT("ПЕЩЕРА ПРОБУЖДЕНИЯ · Поговорите с Хранителем Вейленом [E]"), 6.0f);
+}
+
+void AChroniclesPlayerController::StartPrologueWaterfallCutscene()
+{
+	if (PrologueStage == 3 || bSmokeTestActive || bCaptureFramesActive)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	AAetheriaHeroCharacter* Hero = GetActiveHero();
+	if (!World || !Hero)
+	{
+		PrologueStage = 4;
+		return;
+	}
+
+	PrologueStage = 3;
+	WaterfallCutsceneTimer = 0.0f;
+	bWaterfallSplashSpawned = false;
+	CutsceneStartHeroLoc = Hero->GetActorLocation();
+
+	// Close any open console or modal & silence combat inputs cleanly during the 5.6s cinematic
+	if (bDevConsoleOpen)
+	{
+		SetDeveloperConsoleOpen(false);
+	}
+	ActiveOverlay = EChroniclesOverlayMode::None;
+	ActiveDialogueNPC.Reset();
+	Hero->SetBlocking(false);
+	Hero->InvulnTimer = 8.0f;
+	if (UCharacterMovementComponent* MoveComp = Hero->GetCharacterMovement())
+	{
+		MoveComp->StopMovementImmediately();
+		MoveComp->SetMovementMode(MOVE_Flying);
+	}
+
+	if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(World))
+	{
+		Music->PlayMenuStartSFX();
+	}
+
+	// Wind debris burst on leap from the cliff brink
+	const FString WindPath(TEXT("/Game/Vefects/Wind_VFX/VFX/Particles/NS_Wind_Debris_Tree_Leaves_01_Colored_Closer.NS_Wind_Debris_Tree_Leaves_01_Colored_Closer"));
+	if (FPackageName::DoesPackageExist(FPackageName::ObjectPathToPackageName(WindPath)))
+	{
+		if (UNiagaraSystem* WindNS = LoadObject<UNiagaraSystem>(nullptr, *WindPath))
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(World, WindNS, CutsceneStartHeroLoc, FRotator::ZeroRotator, FVector(1.8f));
+		}
+	}
+
+	if (ACameraActor* OldCam = CutsceneCameraActor.Get())
+	{
+		if (IsValid(OldCam))
+		{
+			OldCam->Destroy();
+		}
+		CutsceneCameraActor.Reset();
+	}
+
+	FActorSpawnParameters CamParams;
+	CamParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	if (ACameraActor* CineCam = World->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), CutsceneStartHeroLoc + FVector(-300.f, -420.f, 180.f), FRotator(-14.f, 32.f, 0.f), CamParams))
+	{
+		if (UCameraComponent* CamComp = CineCam->GetCameraComponent())
+		{
+			CamComp->SetFieldOfView(72.f);
+		}
+		CutsceneCameraActor = CineCam;
+		SetViewTargetWithBlend(CineCam, 0.25f, VTBlend_Cubic);
+	}
+
+	PushToastMessage(TEXT("ВОДОПАД ЗЕРКАЛЬНОГО ОЗЕРА"), 5.2f);
+}
+
+void AChroniclesPlayerController::EndPrologueWaterfallCutscene()
+{
+	AAetheriaHeroCharacter* Hero = GetActiveHero();
+	AAetheriaWorldBuilder* Builder = FindWorldBuilder();
+
+	const FVector ShoreLoc = Builder
+		? Builder->GetPrologueShoreEmergenceLocation()
+		: FVector(-480.f, 1680.f, 218.f);
+
+	if (Hero)
+	{
+		Hero->SetActorLocationAndRotation(ShoreLoc, FRotator(0.f, 68.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+		if (UCharacterMovementComponent* MoveComp = Hero->GetCharacterMovement())
+		{
+			MoveComp->StopMovementImmediately();
+			MoveComp->SetMovementMode(MOVE_Walking);
+		}
+		Hero->InvulnTimer = 2.0f;
+		SetControlRotation(FRotator(-8.f, 68.f, 0.f));
+		SetViewTargetWithBlend(Hero, 0.45f, VTBlend_Cubic);
+	}
+
+	if (ACameraActor* CineCam = CutsceneCameraActor.Get())
+	{
+		if (IsValid(CineCam))
+		{
+			CineCam->SetLifeSpan(0.55f);
+		}
+		CutsceneCameraActor.Reset();
+	}
+
+	PrologueStage = 4;
+	WaterfallCutsceneTimer = 0.0f;
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UQuestSubsystem* QuestSub = GI->GetSubsystem<UQuestSubsystem>())
+		{
+			QuestSub->AdvanceQuestProgress(FName(TEXT("Q_PrologueAwakening")), 1);
+			int32 G = 0;
+			int32 X = 0;
+			EChronicleOrb Orb = EChronicleOrb::None;
+			bool bDrag = false;
+			if (QuestSub->TurnInQuest(FName(TEXT("Q_PrologueAwakening")), G, X, Orb, bDrag) && Hero && Hero->SkillTree)
+			{
+				Hero->SkillTree->AddGold(G);
+				Hero->SkillTree->AddXP(X);
+			}
+			QuestSub->SetTrackedQuest(FName(TEXT("Q_AwakenExort")));
+		}
+		if (UFogOfWarMapSubsystem* MapSub = GI->GetSubsystem<UFogOfWarMapSubsystem>())
+		{
+			MapSub->RevealAroundWorldLocation(ShoreLoc, 8500.f);
+		}
+	}
+
+	if (!IsHeroDead())
+	{
+		SetUIMode(false);
+	}
+
+	if (HUDWidget.IsValid())
+	{
+		HUDWidget->RefreshDynamicPanels();
+	}
+
+	PushToastMessage(TEXT("Берег Зеркального озера — Ваше приключение начинается!"), 5.5f);
+}
+
+void AChroniclesPlayerController::UpdatePrologueAndWaterfallCutscene(float DeltaTime)
+{
+	if (bSmokeTestActive || bCaptureFramesActive || PrologueStage >= 4)
+	{
+		return;
+	}
+
+	AAetheriaHeroCharacter* Hero = GetActiveHero();
+	UWorld* World = GetWorld();
+	if (!Hero || !World)
+	{
+		return;
+	}
+
+	AAetheriaWorldBuilder* Builder = FindWorldBuilder();
+	const FVector BrinkLoc = Builder ? Builder->GetPrologueWaterfallBrinkLocation() : FVector(-1980.f, -800.f, 2040.f);
+	const FVector PlungeLoc = Builder ? Builder->GetPrologueLakePlungeLocation() : FVector(-1400.f, -800.f, 135.f);
+	const FVector ShoreLoc = Builder ? Builder->GetPrologueShoreEmergenceLocation() : FVector(-480.f, 1680.f, 218.f);
+	const float WaterZ = PlungeLoc.Z - 15.f;
+	const FVector HeroLoc = Hero->GetActorLocation();
+
+	// Stage 0/1 -> Stage 2: Exiting Cave onto Panoramic Cliff Overlook Ledge
+	if (PrologueStage < 2)
+	{
+		if (HeroLoc.X > -2380.f && HeroLoc.Z > WaterZ + 900.f)
+		{
+			PrologueStage = 2;
+			if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(World))
+			{
+				Music->PlayMenuStartSFX();
+			}
+			if (UGameInstance* GI = GetGameInstance())
+			{
+				if (UFogOfWarMapSubsystem* MapSub = GI->GetSubsystem<UFogOfWarMapSubsystem>())
+				{
+					MapSub->RevealAroundWorldLocation(BrinkLoc, 18000.f);
+				}
+			}
+			PushToastMessage(TEXT("ПРОСТОРЫ ЭТЕРИИ — Подойдите к краю водопада, чтобы спуститься в долину"), 6.0f);
+		}
+		return;
+	}
+
+	// Stage 2 -> Stage 3: Approaching Waterfall Brink triggers Epic 3-Shot Plunge & Shore Surfacing Cutscene
+	if (PrologueStage == 2)
+	{
+		const float Dist2DToBrink = FVector::Dist2D(HeroLoc, BrinkLoc);
+		if (Dist2DToBrink <= 290.f || (HeroLoc.X > -2050.f && HeroLoc.Z > WaterZ + 900.f))
+		{
+			StartPrologueWaterfallCutscene();
+		}
+		return;
+	}
+
+	// Stage 3: Driving the 5.6s 3-Shot Waterfall Plunge & Shore Surfacing Cutscene
+	if (PrologueStage == 3)
+	{
+		const float SafeDT = FMath::Clamp(DeltaTime, 0.001f, 0.05f);
+		WaterfallCutsceneTimer += SafeDT;
+		const float T = WaterfallCutsceneTimer;
+
+		const FVector LeapPeak = BrinkLoc + FVector(280.f, 0.f, 180.f);
+		FVector TargetHeroPos = HeroLoc;
+		FRotator TargetHeroRot = Hero->GetActorRotation();
+		FVector TargetCamPos = BrinkLoc + FVector(-300.f, -440.f, 180.f);
+		FVector TargetCamLook = BrinkLoc + FVector(400.f, 200.f, -250.f);
+
+		if (T < 1.6f)
+		{
+			// Shot 1 (0.0s .. 1.6s): Heroic Leap at the Waterfall Brink overlooking Mirror Lake, Bridge & Oakhaven
+			const float U = FMath::SmoothStep(0.f, 1.6f, T);
+			TargetHeroPos = FMath::Lerp(CutsceneStartHeroLoc, LeapPeak, U);
+			TargetHeroPos.Z += FMath::Sin(U * UE_PI) * 230.f;
+			TargetHeroRot = FRotator(-10.f * U, 0.f, 0.f);
+
+			TargetCamPos = FMath::Lerp(
+				BrinkLoc + FVector(-340.f, -460.f, 190.f),
+				BrinkLoc + FVector(-110.f, -380.f, 150.f),
+				U);
+			TargetCamLook = FMath::Lerp(TargetHeroPos + FVector(320.f, 180.f, -120.f), TargetHeroPos + FVector(160.f, 80.f, -80.f), U);
+		}
+		else if (T < 3.6f)
+		{
+			// Shot 2 (1.6s .. 3.6s): Parabolic Plunge Down the Roaring Cascade into Mirror Lake
+			const float U = FMath::Clamp((T - 1.6f) / 2.0f, 0.f, 1.f);
+			const float FallEase = U * U;
+			TargetHeroPos.X = FMath::Lerp(LeapPeak.X, PlungeLoc.X, U);
+			TargetHeroPos.Y = FMath::Lerp(LeapPeak.Y, PlungeLoc.Y, U);
+			TargetHeroPos.Z = FMath::Lerp(LeapPeak.Z, PlungeLoc.Z - 35.f, FallEase);
+			TargetHeroRot = FRotator(FMath::Lerp(-12.f, -42.f, U), 0.f, 0.f);
+
+			TargetCamPos = FMath::Lerp(
+				BrinkLoc + FVector(180.f, -520.f, -80.f),
+				PlungeLoc + FVector(240.f, -460.f, 280.f),
+				FMath::SmoothStep(0.f, 1.f, U));
+			TargetCamLook = TargetHeroPos + FVector(0.f, 0.f, -40.f);
+
+			if (T >= 3.4f && !bWaterfallSplashSpawned)
+			{
+				bWaterfallSplashSpawned = true;
+				auto SpawnSplash = [&](const TCHAR* AssetPath, float Scale)
+				{
+					const FString PathStr(AssetPath);
+					if (FPackageName::DoesPackageExist(FPackageName::ObjectPathToPackageName(PathStr)))
+					{
+						if (UParticleSystem* PS = LoadObject<UParticleSystem>(nullptr, *PathStr))
+						{
+							UGameplayStatics::SpawnEmitterAtLocation(World, PS, PlungeLoc + FVector(0.f, 0.f, 20.f), FRotator::ZeroRotator, FVector(Scale), true);
+						}
+					}
+				};
+				SpawnSplash(TEXT("/Game/FXVarietyPack/Particles/P_ky_aquaStorm.P_ky_aquaStorm"), 2.4f);
+				SpawnSplash(TEXT("/Game/FXVarietyPack/Particles/P_ky_waterBallHit.P_ky_waterBallHit"), 2.2f);
+			}
+		}
+		else if (T < 5.6f)
+		{
+			// Shot 3 (3.6s .. 5.6s): Surfacing Through Lake Mist & Rising Heroically onto Mirror Lake Shore
+			const float U = FMath::SmoothStep(3.6f, 5.6f, T);
+			const FVector SurfacePoint = FMath::Lerp(PlungeLoc, ShoreLoc, 0.38f) + FVector(0.f, 0.f, 18.f);
+			if (U < 0.45f)
+			{
+				const float SubU = U / 0.45f;
+				TargetHeroPos = FMath::Lerp(PlungeLoc - FVector(0.f, 0.f, 65.f), SurfacePoint, SubU);
+			}
+			else
+			{
+				const float SubU = (U - 0.45f) / 0.55f;
+				TargetHeroPos = FMath::Lerp(SurfacePoint, ShoreLoc, SubU);
+			}
+			TargetHeroRot = FRotator(0.f, FMath::Lerp(42.f, 68.f, U), 0.f);
+
+			TargetCamPos = FMath::Lerp(
+				ShoreLoc + FVector(-340.f, -420.f, 155.f),
+				ShoreLoc + FVector(-220.f, -340.f, 115.f),
+				U);
+			TargetCamLook = FMath::Lerp(TargetHeroPos + FVector(120.f, 240.f, 40.f), ShoreLoc + FVector(280.f, 650.f, 65.f), U);
+		}
+		else
+		{
+			EndPrologueWaterfallCutscene();
+			return;
+		}
+
+		Hero->SetActorLocationAndRotation(TargetHeroPos, TargetHeroRot, false, nullptr, ETeleportType::TeleportPhysics);
+		if (ACameraActor* CineCam = CutsceneCameraActor.Get())
+		{
+			if (IsValid(CineCam))
+			{
+				const FRotator CamLookRot = (TargetCamLook - TargetCamPos).GetSafeNormal().Rotation();
+				CineCam->SetActorLocationAndRotation(TargetCamPos, CamLookRot);
+			}
+		}
+	}
+}
+
+FVector AChroniclesPlayerController::GetActiveWaypointWorldLocation(FString& OutLabel) const
+{
+	OutLabel.Empty();
+
+	const AAetheriaWorldBuilder* Builder = FindWorldBuilder();
+	if (PrologueStage == 0)
+	{
+		OutLabel = TEXT("Хранитель Вейлен");
+		return Builder ? (Builder->GetPrologueTutorLocation() + FVector(0.f, 0.f, 115.f)) : FVector(-2920.f, -620.f, 2115.f);
+	}
+	if (PrologueStage == 1)
+	{
+		OutLabel = TEXT("Выход из пещеры");
+		const FVector Brink = Builder ? Builder->GetPrologueWaterfallBrinkLocation() : FVector(-1980.f, -800.f, 2040.f);
+		return FVector(-2250.f, -800.f, Brink.Z + 50.f);
+	}
+	if (PrologueStage == 2)
+	{
+		OutLabel = TEXT("Прыжок у водопада");
+		return Builder ? (Builder->GetPrologueWaterfallBrinkLocation() + FVector(0.f, 0.f, 65.f)) : FVector(-1980.f, -800.f, 2105.f);
+	}
+
+	const UGameInstance* GI = GetGameInstance();
+	const UQuestSubsystem* QuestSub = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
+	if (const FQuestDef* Tracked = QuestSub ? QuestSub->GetTrackedQuest() : nullptr)
+	{
+		OutLabel = Tracked->Title.ToString();
+		if (Tracked->State == EQuestState::Available || Tracked->State == EQuestState::ReadyToTurnIn)
+		{
+			if (UWorld* World = GetWorld())
+			{
+				for (TActorIterator<AAetheriaNPCActor> It(World); It; ++It)
+				{
+					if (IsValid(*It) && (*It)->NpcId == Tracked->GiverId)
+					{
+						return (*It)->GetActorLocation() + FVector(0.f, 0.f, 120.f);
+					}
+				}
+			}
+		}
+		return Tracked->ObjectiveWorldLocation;
+	}
+
+	return FVector::ZeroVector;
+}
+
+void AChroniclesPlayerController::RequestQuitApplication()
+{
+	if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+	{
+		Music->PlayMenuClickSFX();
+	}
+	UKismetSystemLibrary::QuitGame(GetWorld(), this, EQuitPreference::Quit, false);
 }
 
 void AChroniclesPlayerController::AdjustCreatorCameraOrbit(float DeltaYawDeg)
@@ -1537,6 +2245,13 @@ void AChroniclesPlayerController::PlayerTick(float DeltaTime)
 		}
 	}
 
+	if (ActiveOverlay == EChroniclesOverlayMode::MainMenu && !bHasEnteredGameWorld)
+	{
+		TitleCameraOrbitAngle += FMath::Clamp(DeltaTime, 0.001f, 0.1f) * 0.18f;
+		const float SwayYaw = 90.f + FMath::Sin(TitleCameraOrbitAngle) * 14.f;
+		SetControlRotation(FRotator(-8.f, SwayYaw, 0.f));
+	}
+
 	if (bSmokeTestActive)
 	{
 		RunSmokeTestTick(DeltaTime);
@@ -1546,6 +2261,26 @@ void AChroniclesPlayerController::PlayerTick(float DeltaTime)
 	if (bCaptureFramesActive)
 	{
 		RunCaptureFramesTick(DeltaTime);
+		return;
+	}
+
+	// Deferred next-tick Slate focus confirmation so SEditableTextBox always receives focus cleanly after PrePass
+	if (bDevConsoleOpen && bPendingConsoleFocus && HUDWidget.IsValid())
+	{
+		bPendingConsoleFocus = false;
+		HUDWidget->SyncDeveloperConsoleVisibilityAndFocus(true, true);
+	}
+
+	// Allow ` (backtick / tilde / ё) Developer Console even during Prologue cutscene if desired, or handle before cutscene early-return
+	if (WasConsoleToggleKeyJustPressed())
+	{
+		ToggleDeveloperConsole();
+		return;
+	}
+
+	UpdatePrologueAndWaterfallCutscene(DeltaTime);
+	if (IsPrologueCutsceneActive())
+	{
 		return;
 	}
 
@@ -1597,23 +2332,66 @@ void AChroniclesPlayerController::PlayerTick(float DeltaTime)
 	}
 }
 
+bool AChroniclesPlayerController::WasConsoleToggleKeyJustPressed() const
+{
+	static const FKey KeyCyrillicYoLower(TEXT("ё"));
+	static const FKey KeyCyrillicYoUpper(TEXT("Ё"));
+	static const FKey KeyGraveAccent(TEXT("GraveAccent"));
+
+	return WasInputKeyJustPressed(EKeys::Tilde)
+		|| WasInputKeyJustPressed(KeyCyrillicYoLower)
+		|| WasInputKeyJustPressed(KeyCyrillicYoUpper)
+		|| WasInputKeyJustPressed(KeyGraveAccent);
+}
+
 void AChroniclesPlayerController::HandleGlobalAndOverlayKeys()
 {
+	if (bDevConsoleOpen)
+	{
+		if (WasInputKeyJustPressed(EKeys::Escape))
+		{
+			SetDeveloperConsoleOpen(false);
+		}
+		return;
+	}
+
 	if (WasInputKeyJustPressed(EKeys::Escape))
 	{
-		if (ActiveOverlay != EChroniclesOverlayMode::None)
+		if (ActiveOverlay == EChroniclesOverlayMode::MainMenu)
+		{
+			if (bHasEnteredGameWorld)
+			{
+				EnterGameFromTitleScreen(false);
+			}
+			// Initial Launch Screen (!bHasEnteredGameWorld): [Esc] stays safely on Title Screen
+		}
+		else if (ActiveOverlay != EChroniclesOverlayMode::None)
 		{
 			CloseAllOverlays();
 		}
 		else if (!IsHeroDead())
 		{
-			ToggleMouseCapture();
+			OpenMainMenuOverlay();
 		}
 		return;
 	}
 
-	if (IsHeroDead())
+	if (IsHeroDead() || ActiveOverlay == EChroniclesOverlayMode::MainMenu)
 	{
+		return;
+	}
+
+	// While browsing Creator / RTX sub-screens launched from the initial Title Screen, allow only closing keys
+	if (!bHasEnteredGameWorld)
+	{
+		if (ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer && WasInputKeyJustPressed(EKeys::C))
+		{
+			CloseAllOverlays();
+		}
+		else if (ActiveOverlay == EChroniclesOverlayMode::GraphicsRTX && WasInputKeyJustPressed(EKeys::F10))
+		{
+			CloseAllOverlays();
+		}
 		return;
 	}
 
@@ -1952,6 +2730,32 @@ void AChroniclesPlayerController::HandleDialoguePrimaryAction()
 		return;
 	}
 
+	// Prologue Cave Tutor Lore Interaction: advances PrologueStage 0 -> 1 cleanly toward Cave Exit Overlook
+	if (NPC->NpcId == FName(TEXT("Npc_CaveTutor")))
+	{
+		if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(GetWorld()))
+		{
+			Music->PlayMenuClickSFX();
+		}
+		QuestSub->AcceptQuest(FName(TEXT("Q_PrologueAwakening")));
+		QuestSub->SetTrackedQuest(FName(TEXT("Q_PrologueAwakening")));
+		if (PrologueStage < 1)
+		{
+			PrologueStage = 1;
+		}
+		if (UFogOfWarMapSubsystem* MapSub = GI ? GI->GetSubsystem<UFogOfWarMapSubsystem>() : nullptr)
+		{
+			MapSub->RevealAroundWorldLocation(NPC->GetActorLocation(), 9500.f);
+		}
+		PushToastMessage(TEXT("Выйдите из пещеры на утёс к солнечному свету Этерии"), 5.0f);
+		if (HUDWidget.IsValid())
+		{
+			HUDWidget->RefreshDynamicPanels();
+		}
+		CloseAllOverlays();
+		return;
+	}
+
 	const FQuestDef* Quest = QuestSub->FindQuest(NPC->QuestId);
 	if (!Quest)
 	{
@@ -2166,6 +2970,318 @@ void AChroniclesPlayerController::RequestFastTravelToPin(FName PinId)
 	}
 }
 
+FString AChroniclesPlayerController::ConsoleCommand(const FString& Command, bool bWriteToLog)
+{
+	const FString Trimmed = Command.TrimStartAndEnd();
+	if (Trimmed.StartsWith(TEXT("/")) || Trimmed.Equals(TEXT("godmode"), ESearchCase::IgnoreCase))
+	{
+		ExecuteDeveloperConsoleCommand(Trimmed);
+		return FString();
+	}
+	return Super::ConsoleCommand(Command, bWriteToLog);
+}
+
+void AChroniclesPlayerController::GodMode()
+{
+	ExecuteDeveloperConsoleCommand(TEXT("/godmode"));
+}
+
+void AChroniclesPlayerController::ToggleDeveloperConsole()
+{
+	const double NowReal = FPlatformTime::Seconds();
+	if (NowReal - LastConsoleToggleRealTime < 0.12)
+	{
+		return;
+	}
+	SetDeveloperConsoleOpen(!bDevConsoleOpen);
+}
+
+void AChroniclesPlayerController::SetDeveloperConsoleOpen(bool bOpen)
+{
+	if (bDevConsoleOpen == bOpen)
+	{
+		if (bOpen && HUDWidget.IsValid())
+		{
+			HUDWidget->SyncDeveloperConsoleVisibilityAndFocus(true, true);
+		}
+		return;
+	}
+
+	LastConsoleToggleRealTime = FPlatformTime::Seconds();
+	bDevConsoleOpen = bOpen;
+
+	if (bOpen)
+	{
+		LastConsoleOpenRealTime = LastConsoleToggleRealTime;
+		bPendingConsoleFocus = true;
+
+		if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+		{
+			Hero->SetBlocking(false);
+			if (UCharacterMovementComponent* MoveComp = Hero->GetCharacterMovement())
+			{
+				MoveComp->StopMovementImmediately();
+			}
+		}
+		bLastBlockKeyDown = false;
+
+		SetUIMode(true);
+		if (HUDWidget.IsValid())
+		{
+			HUDWidget->RebuildConsoleLogBox();
+			HUDWidget->SyncDeveloperConsoleVisibilityAndFocus(true, true);
+		}
+	}
+	else
+	{
+		bPendingConsoleFocus = false;
+		if (HUDWidget.IsValid())
+		{
+			HUDWidget->SyncDeveloperConsoleVisibilityAndFocus(false, false);
+		}
+
+		// Restore gameplay mouse capture ONLY when no other modal overlay, prologue cutscene, or death screen is active underneath
+		if (ActiveOverlay == EChroniclesOverlayMode::None && !IsHeroDead() && !IsPrologueCutsceneActive() && !bCaptureFramesActive)
+		{
+			SetUIMode(false);
+		}
+		else if (!IsPrologueCutsceneActive())
+		{
+			SetUIMode(true);
+		}
+	}
+}
+
+void AChroniclesPlayerController::AppendConsoleLogLine(const FString& Line, const FLinearColor& Color)
+{
+	if (Line.IsEmpty())
+	{
+		return;
+	}
+
+	ConsoleLogLines.Emplace(Line, Color);
+	while (ConsoleLogLines.Num() > 40)
+	{
+		ConsoleLogLines.RemoveAt(0);
+	}
+
+	if (HUDWidget.IsValid())
+	{
+		HUDWidget->RebuildConsoleLogBox();
+	}
+}
+
+bool AChroniclesPlayerController::ExecuteDeveloperConsoleCommand(const FString& RawCommand)
+{
+	FString Cleaned = RawCommand.TrimStartAndEnd();
+	// Strip any accidental leading/trailing backtick, tilde, or Russian 'ё'/'Ё' from opening keystroke
+	while (!Cleaned.IsEmpty())
+	{
+		const TCHAR First = Cleaned[0];
+		if (First == TEXT('`') || First == TEXT('~') || First == 0x0451 || First == 0x0401)
+		{
+			Cleaned.RightChopInline(1, EAllowShrinking::No);
+			Cleaned.TrimStartAndEndInline();
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	if (Cleaned.IsEmpty())
+	{
+		return false;
+	}
+
+	ConsoleCommandHistory.Remove(Cleaned);
+	ConsoleCommandHistory.Add(Cleaned);
+	while (ConsoleCommandHistory.Num() > 24)
+	{
+		ConsoleCommandHistory.RemoveAt(0);
+	}
+
+	AppendConsoleLogLine(FString::Printf(TEXT("> %s"), *Cleaned), ChroniclesHUDPalette::TextSecondary);
+
+	FString CmdToken = Cleaned;
+	FString ArgString;
+	Cleaned.Split(TEXT(" "), &CmdToken, &ArgString);
+	CmdToken = CmdToken.ToLower();
+	ArgString = ArgString.TrimStartAndEnd();
+
+	// --- /godmode (or godmode / /god) ---
+	if (CmdToken == TEXT("/godmode") || CmdToken == TEXT("godmode") || CmdToken == TEXT("/god"))
+	{
+		AAetheriaHeroCharacter* Hero = GetActiveHero();
+		if (!Hero)
+		{
+			AppendConsoleLogLine(TEXT("[Ошибка] Персонаж героя еще не создан в мире."), ChroniclesHUDPalette::TextCrimson);
+			return false;
+		}
+
+		bool bTargetGodMode = !Hero->IsGodModeActive();
+		if (!ArgString.IsEmpty())
+		{
+			if (ArgString.Equals(TEXT("on"), ESearchCase::IgnoreCase) || ArgString == TEXT("1") || ArgString.Equals(TEXT("true"), ESearchCase::IgnoreCase))
+			{
+				bTargetGodMode = true;
+			}
+			else if (ArgString.Equals(TEXT("off"), ESearchCase::IgnoreCase) || ArgString == TEXT("0") || ArgString.Equals(TEXT("false"), ESearchCase::IgnoreCase))
+			{
+				bTargetGodMode = false;
+			}
+		}
+
+		Hero->SetGodMode(bTargetGodMode);
+		bLastKnownHeroDead = Hero->bDead;
+
+		if (!bDevConsoleOpen && ActiveOverlay == EChroniclesOverlayMode::None && !Hero->bDead && !IsPrologueCutsceneActive() && !bCaptureFramesActive)
+		{
+			SetUIMode(false);
+		}
+
+		if (HUDWidget.IsValid())
+		{
+			HUDWidget->RefreshDynamicPanels();
+		}
+
+		if (bTargetGodMode)
+		{
+			const int32 UnlockedSpells = Hero->SpellSystem ? Hero->SpellSystem->GetUnlockedSpellCount() : 10;
+			AppendConsoleLogLine(
+				FString::Printf(
+					TEXT("[GOD MODE: ON] Режим Бога ВКЛЮЧЕН — Бессмертие активно · Открыты все %d/10 заклинаний (Exort · Wex · Quas) · Бесконечная мана и 0с КД!"),
+					UnlockedSpells),
+				ChroniclesHUDPalette::TextGold);
+			PushToastMessage(TEXT("РЕЖИМ БОГА ВКЛЮЧЕН — Бессмертие и все 10/10 заклинаний открыты!"), 5.0f);
+		}
+		else
+		{
+			AppendConsoleLogLine(
+				TEXT("[GOD MODE: OFF] Режим Бога ВЫКЛЮЧЕН — Восстановлены обычные правила смертности и магии."),
+				ChroniclesHUDPalette::TextAmber);
+			PushToastMessage(TEXT("Режим Бога выключен"), 3.6f);
+		}
+		return true;
+	}
+
+	// --- /help ---
+	if (CmdToken == TEXT("/help") || CmdToken == TEXT("help") || CmdToken == TEXT("/?"))
+	{
+		AppendConsoleLogLine(TEXT("Доступные команды консоли Aetheria:"), ChroniclesHUDPalette::TextGold);
+		AppendConsoleLogLine(TEXT("  /godmode       — Вкл/Выкл Режим Бога (бессмертие + все 10 заклинаний + бесконечная мана)"), ChroniclesHUDPalette::TextPrimary);
+		AppendConsoleLogLine(TEXT("  /restore       — Мгновенное магическое восстановление ландшафта и разрушенных объектов"), ChroniclesHUDPalette::TextPrimary);
+		AppendConsoleLogLine(TEXT("  /heal          — Полностью восстановить HP, ману и выносливость"), ChroniclesHUDPalette::TextPrimary);
+		AppendConsoleLogLine(TEXT("  /gold [сумма]  — Добавить золото (по умолчанию +500G)"), ChroniclesHUDPalette::TextPrimary);
+		AppendConsoleLogLine(TEXT("  /time          — Сменить время суток (Закат / Полная Луна / Рассвет / Полдень)"), ChroniclesHUDPalette::TextPrimary);
+		AppendConsoleLogLine(TEXT("  /clear         — Очистить журнал консоли"), ChroniclesHUDPalette::TextPrimary);
+		return true;
+	}
+
+	// --- /restore ---
+	if (CmdToken == TEXT("/restore") || CmdToken == TEXT("restore"))
+	{
+		int32 ScarsHealed = 0;
+		int32 PropsRegrown = 0;
+		if (AAetheriaWorldBuilder* Builder = FindWorldBuilder())
+		{
+			ScarsHealed = Builder->RestoreAllActiveTerrainScarsNow();
+			for (ADestructiblePropActor* Prop : Builder->GetDestructibleProps())
+			{
+				if (IsValid(Prop) && Prop->IsBroken())
+				{
+					Prop->TriggerMagicalRestoration();
+					++PropsRegrown;
+				}
+			}
+		}
+		AppendConsoleLogLine(
+			FString::Printf(TEXT("[Магическое восстановление] Исцелено следов заклинаний: %d · Восстановлено объектов: %d"), ScarsHealed, PropsRegrown),
+			ChroniclesHUDPalette::TextEmerald);
+		return true;
+	}
+
+	// --- /heal ---
+	if (CmdToken == TEXT("/heal") || CmdToken == TEXT("heal"))
+	{
+		if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+		{
+			Hero->HP = Hero->MaxHP;
+			Hero->Stamina = Hero->MaxStamina;
+			if (Hero->SpellSystem)
+			{
+				Hero->SpellSystem->Mana = Hero->SpellSystem->MaxMana;
+			}
+			AppendConsoleLogLine(TEXT("[Исцеление] HP, мана и выносливость полностью восстановлены."), ChroniclesHUDPalette::TextEmerald);
+			return true;
+		}
+		return false;
+	}
+
+	// --- /gold [amount] ---
+	if (CmdToken == TEXT("/gold") || CmdToken == TEXT("gold"))
+	{
+		if (AAetheriaHeroCharacter* Hero = GetActiveHero())
+		{
+			if (Hero->SkillTree)
+			{
+				const int32 AddAmount = ArgString.IsNumeric() ? FMath::Clamp(FCString::Atoi(*ArgString), 1, 999999) : 500;
+				Hero->SkillTree->AddGold(AddAmount);
+				if (HUDWidget.IsValid())
+				{
+					HUDWidget->RefreshDynamicPanels();
+				}
+				AppendConsoleLogLine(FString::Printf(TEXT("[Золото] Получено +%d G (всего: %d G)."), AddAmount, Hero->SkillTree->Gold), ChroniclesHUDPalette::TextGold);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// --- /time ---
+	if (CmdToken == TEXT("/time") || CmdToken == TEXT("time"))
+	{
+		RequestCycleTimeOfDay();
+		const AAetheriaWorldBuilder* Builder = FindWorldBuilder();
+		AppendConsoleLogLine(
+			FString::Printf(TEXT("[Время суток] %s"), Builder ? *Builder->GetTimeOfDayLabel() : TEXT("Переключено")),
+			ChroniclesHUDPalette::TextCyan);
+		return true;
+	}
+
+	// --- /clear ---
+	if (CmdToken == TEXT("/clear") || CmdToken == TEXT("clear") || CmdToken == TEXT("cls"))
+	{
+		ConsoleLogLines.Empty();
+		if (HUDWidget.IsValid())
+		{
+			HUDWidget->RebuildConsoleLogBox();
+		}
+		return true;
+	}
+
+	// Unknown slash command feedback
+	if (CmdToken.StartsWith(TEXT("/")))
+	{
+		AppendConsoleLogLine(
+			FString::Printf(TEXT("Неизвестная команда '%s'. Введите /godmode или /help."), *Cleaned),
+			ChroniclesHUDPalette::TextCrimson);
+		return false;
+	}
+
+	// Forward non-slash engine/multiplayer commands (e.g. stat fps, HostCoop)
+	const FString EngineOut = Super::ConsoleCommand(Cleaned, true);
+	if (!EngineOut.IsEmpty())
+	{
+		AppendConsoleLogLine(EngineOut, ChroniclesHUDPalette::TextPrimary);
+	}
+	else
+	{
+		AppendConsoleLogLine(FString::Printf(TEXT("Выполнена команда движка: %s"), *Cleaned), ChroniclesHUDPalette::TextSecondary);
+	}
+	return true;
+}
+
 void AChroniclesPlayerController::HostCoop()
 {
 	if (UWorld* World = GetWorld())
@@ -2304,13 +3420,36 @@ void AChroniclesPlayerController::RunSmokeTestTick(float DeltaTime)
 			? TEXT("CrimsonRTXUltra")
 			: TEXT("ClassicPerformance");
 
+		int32 LoadedMusicCues = 0;
+		bool bMenuMusicOK = false;
+		bool bBgMusicOK = false;
+		if (UAetheriaMusicSubsystem* MusicSub = UAetheriaMusicSubsystem::Get(GetWorld()))
+		{
+			LoadedMusicCues = MusicSub->GetLoadedCueCount();
+			MusicSub->SetMenuMusicActive(true);
+			bMenuMusicOK = MusicSub->IsMenuMusicActive() && (MusicSub->GetCurrentState() == EChronicleMusicState::Menu);
+			MusicSub->SetMenuMusicActive(false);
+			MusicSub->SetExplorationZone(true);
+			bBgMusicOK = !MusicSub->IsMenuMusicActive()
+				&& (MusicSub->GetCurrentState() == EChronicleMusicState::Village
+					|| MusicSub->GetCurrentState() == EChronicleMusicState::Field);
+		}
+
+		const AAetheriaWorldBuilder* WB = FindWorldBuilder();
+		const bool bPrologueGeomOK = (WB != nullptr)
+			&& (WB->GetPrologueCaveSpawnLocation().Z > WB->GetPrologueLakePlungeLocation().Z + 400.f);
+
 		UE_LOG(LogWizardsmoke, Display,
-			TEXT("STEP 1 OK | GPU='%s' | Tier=%s | RTXSupported=%d | RTXActive=%d | DLSSActive=%d | TexturePool=%dMB"),
+			TEXT("STEP 1 OK | GPU='%s' | Tier=%s | RTXSupported=%d | RTXActive=%d | DLSSActive=%d | TexturePool=%dMB | MusicCues=%d/5 | MenuMusic=%d | BgMusic=%d | PrologueReady=%d"),
 			*Tel.GPUAdapterName, TierStr,
 			Tel.bHardwareRTXSupported ? 1 : 0,
 			Tel.bHardwareRTXActive ? 1 : 0,
 			Tel.bDLSSActive ? 1 : 0,
-			Tel.TexturePoolMB);
+			Tel.TexturePoolMB,
+			LoadedMusicCues,
+			bMenuMusicOK ? 1 : 0,
+			bBgMusicOK ? 1 : 0,
+			bPrologueGeomOK ? 1 : 0);
 
 		SmokeStepIndex = 1;
 		SmokeStepElapsed = 0.f;
@@ -2737,9 +3876,173 @@ void AChroniclesPlayerController::RunSmokeTestTick(float DeltaTime)
 				return;
 			}
 
+			int32 RestoredScars = 0;
+			bool bMagicalPropRegrowth = false;
+			if (IsValid(PostGCWorld) && IsValid(PostGCHero))
+			{
+				// Ensure clean baseline, create a fresh 60s terrain scar, and verify 59.0s -> still scarred, 60.5s -> automatically restored via Tick!
+				PostGCWorld->RestoreAllActiveTerrainScarsNow();
+				const float SavedTOD = PostGCWorld->TimeOfDay;
+				PostGCWorld->NotifySpellTerrainImpact(
+					PostGCHero->GetActorLocation() + FVector(320.f, 0.f, 0.f),
+					320.f,
+					EChronicleOrb::Exort);
+				const int32 ScarsAt0s = PostGCWorld->GetActiveTerrainScarCount();
+				for (int32 StepIdx = 0; StepIdx < 590; ++StepIdx)
+				{
+					PostGCWorld->Tick(0.1f); // 59.0s elapsed (< 60.0s)
+				}
+				const int32 ScarsAt59s = PostGCWorld->GetActiveTerrainScarCount();
+				for (int32 StepIdx = 0; StepIdx < 15; ++StepIdx)
+				{
+					PostGCWorld->Tick(0.1f); // 60.5s elapsed (> 60.0s -> auto-restores!)
+				}
+				const int32 ScarsAt60_5s = PostGCWorld->GetActiveTerrainScarCount();
+				PostGCWorld->SetTimeOfDay(SavedTOD);
+				if (ScarsAt0s >= 1 && ScarsAt59s >= 1 && ScarsAt60_5s == 0)
+				{
+					RestoredScars = ScarsAt0s;
+				}
+
+				ADestructiblePropActor* TestProp = nullptr;
+				for (ADestructiblePropActor* Candidate : PostGCWorld->GetDestructibleProps())
+				{
+					if (IsValid(Candidate) && !Candidate->IsBroken())
+					{
+						TestProp = Candidate;
+						break;
+					}
+				}
+				if (IsValid(TestProp))
+				{
+					const bool bDefault60sConfig = FMath::IsNearlyEqual(TestProp->MagicalRestoreDelaySeconds, 60.f, 0.1f);
+					TestProp->ForceShatter(PostGCHero->GetActorLocation());
+					const bool bBrokenAt0s = TestProp->IsBroken();
+					for (int32 StepIdx = 0; StepIdx < 590; ++StepIdx)
+					{
+						TestProp->Tick(0.1f); // 59.0s elapsed (< 60.0s)
+					}
+					const bool bStillBrokenAt59s = TestProp->IsBroken();
+					for (int32 StepIdx = 0; StepIdx < 15; ++StepIdx)
+					{
+						TestProp->Tick(0.1f); // 60.5s elapsed (> 60.0s -> auto-restores via Tick!)
+					}
+					bMagicalPropRegrowth = bDefault60sConfig && bBrokenAt0s && bStillBrokenAt59s && !TestProp->IsBroken();
+				}
+			}
+
+			// Verify in-game ` / ~ / ё Console + /godmode (Slate key-event toggle, 10/10 spells, stature bypass, 99999 dmg + FellOutOfWorld immortality, 0 mana/CD cast, toggle OFF)
+			bool bGodModeConsoleVerified = false;
+			if (IsValid(PostGCHero) && PostGCHero->SpellSystem && PostGCHero->Customization)
+			{
+				USpellSystemComponent* Spells = PostGCHero->SpellSystem;
+				UHeroCustomizationComponent* Custom = PostGCHero->Customization;
+
+				const bool bSavedE = Spells->bUnlockedExort;
+				const bool bSavedW = Spells->bUnlockedWex;
+				const bool bSavedQ = Spells->bUnlockedQuas;
+				const FVector SavedHeroLoc = PostGCHero->GetActorLocation();
+
+				// Lock out all orbs & set small stature (< 1.45m) before entering /godmode
+				Spells->bUnlockedExort = false;
+				Spells->bUnlockedWex = false;
+				Spells->bUnlockedQuas = false;
+				Spells->ActiveOrbs.Reset();
+				Spells->SlotD = EChronicleSpellId::None;
+				Spells->SlotF = EChronicleSpellId::None;
+				Custom->SetHeightMeters(1.25f);
+
+				// Test real Slate ` (VK_OEM_3 = 0xC0 / EKeys::Tilde) key event opening the console!
+				SetDeveloperConsoleOpen(false);
+				LastConsoleToggleRealTime = -10.0;
+				bool bConsoleOpenedOK = false;
+				if (HUDWidget.IsValid())
+				{
+					const FKeyEvent BacktickDownEvent(EKeys::Tilde, FModifierKeysState(), 0, false, TEXT('`'), 0xC0);
+					HUDWidget->OnPreviewKeyDown(FGeometry(), BacktickDownEvent);
+					bConsoleOpenedOK = IsDeveloperConsoleOpen();
+				}
+				else
+				{
+					SetDeveloperConsoleOpen(true);
+					bConsoleOpenedOK = IsDeveloperConsoleOpen();
+				}
+
+				const bool bCmdExecOK = ExecuteDeveloperConsoleCommand(TEXT("/godmode"));
+
+				const bool bGodActiveOK = PostGCHero->IsGodModeActive()
+					&& (Spells->GetUnlockedOrbCount() == 3)
+					&& (Spells->GetUnlockedSpellCount() == 10)
+					&& (Spells->ActiveOrbs.Num() == 3)
+					&& PostGCHero->CanCastSpellsByStature();
+
+				// Verify true immortality against BOTH lethal 99,999 damage AND FellOutOfWorld (KillZ)!
+				PostGCHero->InvulnTimer = 0.f;
+				const float HPBeforeLethal = PostGCHero->HP;
+				const float TakenDmg = UGameplayStatics::ApplyDamage(
+					PostGCHero,
+					99999.f,
+					this,
+					PostGCBoss,
+					UDamageType::StaticClass());
+				PostGCHero->FellOutOfWorld(*UDamageType::StaticClass()->GetDefaultObject<UDamageType>());
+				PostGCHero->SetActorLocation(SavedHeroLoc, false, nullptr, ETeleportType::TeleportPhysics);
+				const bool bImmortalOK = (TakenDmg == 0.f)
+					&& IsValid(PostGCHero)
+					&& !PostGCHero->bDead
+					&& FMath::IsNearlyEqual(PostGCHero->HP, HPBeforeLethal, 0.1f);
+
+				// Verify casting a God Mode spell costs 0 Mana & leaves 0s cooldown
+				const FVector CastOrig = PostGCHero->GetActorLocation() + FVector(0.f, 0.f, 65.f);
+				const FVector CastDir = PostGCHero->GetActorForwardVector().GetSafeNormal();
+				const bool bGodCastOK = Spells->CastSpellSlot(false, CastOrig, CastDir, CastOrig + CastDir * 700.f, 0.5f)
+					&& FMath::IsNearlyEqual(Spells->Mana, Spells->MaxMana, 0.1f)
+					&& (Spells->GetSpellCooldownRemaining(Spells->SlotD) == 0.f);
+
+				// Toggle /godmode OFF and verify Russian 'ё' (0x0451 / VK_OEM_3) key event closes the console cleanly!
+				ExecuteDeveloperConsoleCommand(TEXT("/godmode"));
+				LastConsoleToggleRealTime = -10.0;
+				if (HUDWidget.IsValid())
+				{
+					const FKeyEvent RussianYoCloseEvent(FKey(TEXT("ё")), FModifierKeysState(), 0, false, 0x0451, 0xC0);
+					HUDWidget->OnPreviewKeyDown(FGeometry(), RussianYoCloseEvent);
+				}
+				else
+				{
+					SetDeveloperConsoleOpen(false);
+				}
+				const bool bGodToggledOffOK = !PostGCHero->IsGodModeActive()
+					&& !IsDeveloperConsoleOpen()
+					&& (Spells->GetUnlockedSpellCount() == 0);
+
+				// Restore post-smoke state
+				Spells->bUnlockedExort = bSavedE;
+				Spells->bUnlockedWex = bSavedW;
+				Spells->bUnlockedQuas = bSavedQ;
+				Custom->SetHeightMeters(1.85f);
+				PostGCHero->HP = PostGCHero->MaxHP;
+
+				bGodModeConsoleVerified = bConsoleOpenedOK && bCmdExecOK && bGodActiveOK && bImmortalOK && bGodCastOK && bGodToggledOffOK;
+				if (!bGodModeConsoleVerified || RestoredScars < 1 || !bMagicalPropRegrowth)
+				{
+					AbortSmokeTestWithError(FString::Printf(
+						TEXT("60sRestore/GodMode gate failed (Scars60s=%d Prop60s=%d Open=%d Cmd=%d Active10Spells=%d Immortal=%d Cast0CD=%d ToggleOff=%d)."),
+						RestoredScars,
+						bMagicalPropRegrowth ? 1 : 0,
+						bConsoleOpenedOK ? 1 : 0,
+						bCmdExecOK ? 1 : 0,
+						bGodActiveOK ? 1 : 0,
+						bImmortalOK ? 1 : 0,
+						bGodCastOK ? 1 : 0,
+						bGodToggledOffOK ? 1 : 0));
+					return;
+				}
+			}
+
 			UE_LOG(LogWizardsmoke, Display,
-				TEXT("STEP 6 OK | BossEngaged=%d | CrimsonTelegraph=%d | CleanDisengage=%d | PostGCValid=%d"),
-				bSmokeBossEngaged ? 1 : 0, bSmokeBossTelegraphed ? 1 : 0, bCleanDisengage ? 1 : 0, bPostGCValid ? 1 : 0);
+				TEXT("STEP 6 OK | BossEngaged=%d | CrimsonTelegraph=%d | CleanDisengage=%d | PostGCValid=%d | TerrainScarsRestored=%d | MagicalPropRegrowth=%d | GodModeConsole=%d"),
+				bSmokeBossEngaged ? 1 : 0, bSmokeBossTelegraphed ? 1 : 0, bCleanDisengage ? 1 : 0, bPostGCValid ? 1 : 0,
+				RestoredScars, bMagicalPropRegrowth ? 1 : 0, bGodModeConsoleVerified ? 1 : 0);
 
 			SmokeStepIndex = 6;
 			SmokeSubPhase = 0;
@@ -2806,12 +4109,36 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 
 	switch (CaptureStage)
 	{
-	case 0: // Stage 0: Oakhaven Village Plaza + Full-Body Kwang Hero + 3 Orbs + Golden Sunset Vista
+	case 0: // Stage 0: AAA Dark-Fantasy Launch / Title Screen over sunlit Oakhaven Abbey & Hero
 		if (!bCaptureStageSetupDone)
 		{
 			bCaptureStageSetupDone = true;
 			CaptureStageElapsed = 0.f;
-			CloseAllOverlays();
+			if (Builder) { Builder->SetTimeOfDay(0.72f); }
+			Hero->HP = Hero->MaxHP;
+			Hero->InvulnTimer = 30.f;
+			Hero->bDragonUnlocked = true;
+			const float GZ = Builder ? Builder->SampleGroundZ(0.f, 3450.f, 120.f) : 120.f;
+			Hero->SetActorLocationAndRotation(FVector(0.f, 3450.f, GZ + 105.f), FRotator(0.f, 90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+			bHasEnteredGameWorld = false;
+			OpenMainMenuOverlay();
+		}
+		else if (CaptureStageElapsed >= 1.15f)
+		{
+			// IMPORTANT: Keep MainMenu visible through frame end so RequestScreenshot captures the Launch Screen!
+			SnapFrame(TEXT("00_launch_title_screen.png"));
+			CaptureStage = 1;
+			bCaptureStageSetupDone = false;
+			CaptureStageElapsed = 0.f;
+		}
+		break;
+
+	case 1: // Stage 1: Oakhaven Village Plaza + Full-Body Kwang Hero + 3 Orbs + Golden Sunset Vista
+		if (!bCaptureStageSetupDone)
+		{
+			bCaptureStageSetupDone = true;
+			CaptureStageElapsed = 0.f;
+			EnterGameFromTitleScreen(false);
 			if (Builder) { Builder->SetTimeOfDay(0.72f); }
 			Hero->HP = Hero->MaxHP;
 			Hero->InvulnTimer = 30.f;
@@ -2830,7 +4157,7 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 			Hero->SetActorLocationAndRotation(FVector(0.f, 3450.f, GZ + 105.f), FRotator(0.f, 90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
 			SetControlRotation(FRotator(-6.f, 90.f, 0.f));
 		}
-		else if (CaptureStageElapsed >= 2.2f)
+		else if (CaptureStageElapsed >= 1.85f)
 		{
 			if (UWorld* World = GetWorld())
 			{
@@ -2843,7 +4170,7 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 				CamParams.AddIgnoredActor(Hero);
 				const bool bObstructed = World->LineTraceSingleByChannel(CamHit, CamLoc, HeroChest, ECC_Visibility, CamParams);
 				UE_LOG(LogWizardsmoke, Display,
-					TEXT("[CaptureFrames] Stage 0 Camera->Hero Trace: Obstructed=%d | HitActor=%s | HitComp=%s | Dist=%.1fcm"),
+					TEXT("[CaptureFrames] Stage 1 Camera->Hero Trace: Obstructed=%d | HitActor=%s | HitComp=%s | Dist=%.1fcm"),
 					bObstructed ? 1 : 0,
 					(bObstructed && CamHit.GetActor()) ? *CamHit.GetActor()->GetName() : TEXT("None"),
 					(bObstructed && CamHit.GetComponent()) ? *CamHit.GetComponent()->GetName() : TEXT("None"),
@@ -2851,13 +4178,13 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 			}
 
 			SnapFrame(TEXT("01_oakhaven_kwang_hero.png"));
-			CaptureStage = 1;
+			CaptureStage = 2;
 			bCaptureStageSetupDone = false;
 			CaptureStageElapsed = 0.f;
 		}
 		break;
 
-	case 1: // Stage 1: Real Niagara + Cascade Invoker Spell (SunStrike 7.5m ahead in open sunlit plaza)
+	case 2: // Stage 2: Real Niagara + Cascade Invoker Spell (SunStrike 7.5m ahead in open sunlit plaza)
 		if (!bCaptureStageSetupDone)
 		{
 			bCaptureStageSetupDone = true;
@@ -2877,24 +4204,25 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 		else if (CaptureStageElapsed >= 0.55f)
 		{
 			SnapFrame(TEXT("02_spell_sunstrike_niagara.png"));
-			CaptureStage = 2;
+			CaptureStage = 3;
 			bCaptureStageSetupDone = false;
 			CaptureStageElapsed = 0.f;
 		}
 		break;
 
-	case 2: // Stage 2: DragonTheUsurperSK Full-Wingspan Mounted Flight + Blazing Fire Breath over Mirror Lake & Golden Sunset
+	case 3: // Stage 3: Crimson Red Dragon Ignis Full-Wingspan Mounted Flight + Blazing Fire Breath over Mirror Lake & Stone Bridge toward Oakhaven!
 		if (!bCaptureStageSetupDone)
 		{
 			bCaptureStageSetupDone = true;
 			CaptureStageElapsed = 0.f;
+			if (Builder) { Builder->SetTimeOfDay(0.72f); }
 			if (Dragon)
 			{
-				const float LakeZ = Builder ? Builder->SampleGroundZ(-650.f, 1100.f, 120.f) : 120.f;
-				const FVector FlyLoc(-650.f, 1100.f, LakeZ + 820.f);
-				Dragon->SetActorLocationAndRotation(FlyLoc, FRotator(0.f, -80.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+				const float LakeZ = Builder ? Builder->SampleGroundZ(-780.f, -1480.f, 120.f) : 120.f;
+				const FVector FlyLoc(-780.f, -1480.f, LakeZ + 460.f);
+				Dragon->SetActorLocationAndRotation(FlyLoc, FRotator(0.f, 58.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
 				Dragon->MountRider(Hero, this);
-				SetControlRotation(FRotator(-8.f, -80.f, 0.f));
+				SetControlRotation(FRotator(-10.f, 58.f, 0.f));
 				Dragon->FireEnergy = Dragon->MaxFireEnergy;
 			}
 		}
@@ -2902,20 +4230,20 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 		{
 			if (Dragon && Dragon->bMounted)
 			{
-				Dragon->ApplyFlightInput(0.75f, 0.06f, 0.0f, 0.f, 0.f, true, SafeDT);
+				Dragon->ApplyFlightInput(0.55f, 0.02f, 0.0f, 0.f, 0.f, true, SafeDT);
 			}
-			if (CaptureStageElapsed >= 1.00f)
+			if (CaptureStageElapsed >= 0.85f)
 			{
 				// IMPORTANT: Never DismountRider on the same tick as SnapFrame — RequestScreenshot renders at frame end!
 				SnapFrame(TEXT("03_dragon_ignis_flight.png"));
-				CaptureStage = 3;
+				CaptureStage = 4;
 				bCaptureStageSetupDone = false;
 				CaptureStageElapsed = 0.f;
 			}
 		}
 		break;
 
-	case 3: // Stage 3: Highkeep Citadel Open-Air Courtyard facing towering SevarogBloodred Malakor Boss
+	case 4: // Stage 4: Highkeep Citadel Courtyard facing towering SevarogBloodred Malakor Boss WITH active Crimson Telegraph Glow!
 		if (!bCaptureStageSetupDone)
 		{
 			bCaptureStageSetupDone = true;
@@ -2927,7 +4255,8 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 			if (Boss)
 			{
 				const FVector BossLoc = Boss->GetActorLocation();
-				const FVector HeroPos = BossLoc + FVector(0.f, 880.f, 45.f);
+				const float ArenaGroundZ = Builder ? Builder->SampleGroundZ(BossLoc.X, BossLoc.Y + 880.f, BossLoc.Z) : BossLoc.Z;
+				const FVector HeroPos(BossLoc.X, BossLoc.Y + 880.f, ArenaGroundZ + 104.f);
 				Hero->InvulnTimer = 30.f;
 				Hero->SetActorLocationAndRotation(HeroPos, FRotator(0.f, -90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
 				SetControlRotation(FRotator(-6.f, -90.f, 0.f));
@@ -2936,31 +4265,31 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 		else if (CaptureStageElapsed >= 1.45f)
 		{
 			SnapFrame(TEXT("04_highkeep_malakor_boss.png"));
-			CaptureStage = 4;
-			bCaptureStageSetupDone = false;
-			CaptureStageElapsed = 0.f;
-		}
-		break;
-
-	case 4: // Stage 4: Ash Caldera & Ember Crypt Moody Gothic Lava Hall (positioned cleanly INSIDE past the entrance gate)
-		if (!bCaptureStageSetupDone)
-		{
-			bCaptureStageSetupDone = true;
-			CaptureStageElapsed = 0.f;
-			const float GZ = Builder ? Builder->SampleGroundZ(9800.f, -2080.f, 120.f) : 120.f;
-			Hero->SetActorLocationAndRotation(FVector(9800.f, -2080.f, GZ + 115.f), FRotator(0.f, -90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
-			SetControlRotation(FRotator(-10.f, -90.f, 0.f));
-		}
-		else if (CaptureStageElapsed >= 1.35f)
-		{
-			SnapFrame(TEXT("05_ember_crypt_lava.png"));
 			CaptureStage = 5;
 			bCaptureStageSetupDone = false;
 			CaptureStageElapsed = 0.f;
 		}
 		break;
 
-	case 5: // Stage 5: 4km x 4km Fog-of-War World Map Overlay
+	case 5: // Stage 5: Ash Caldera & Ember Crypt Moody Gothic Lava Hall (positioned 440 cm past North Doorway so CameraBoom stays 100% inside!)
+		if (!bCaptureStageSetupDone)
+		{
+			bCaptureStageSetupDone = true;
+			CaptureStageElapsed = 0.f;
+			const float GZ = Builder ? Builder->SampleGroundZ(9800.f, -2220.f, 120.f) : 120.f;
+			Hero->SetActorLocationAndRotation(FVector(9800.f, -2220.f, GZ + 104.f), FRotator(0.f, -90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+			SetControlRotation(FRotator(-10.f, -90.f, 0.f));
+		}
+		else if (CaptureStageElapsed >= 1.35f)
+		{
+			SnapFrame(TEXT("05_ember_crypt_lava.png"));
+			CaptureStage = 6;
+			bCaptureStageSetupDone = false;
+			CaptureStageElapsed = 0.f;
+		}
+		break;
+
+	case 6: // Stage 6: 4km x 4km Fog-of-War World Map Overlay
 		if (!bCaptureStageSetupDone)
 		{
 			bCaptureStageSetupDone = true;
@@ -2983,13 +4312,13 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 		else if (CaptureStageElapsed >= 0.85f)
 		{
 			SnapFrame(TEXT("06_world_map_overlay.png"));
-			CaptureStage = 6;
+			CaptureStage = 7;
 			bCaptureStageSetupDone = false;
 			CaptureStageElapsed = 0.f;
 		}
 		break;
 
-	case 6: // Stage 6: Live 3D Hero Customizer Studio Overlay facing sunlit Oakhaven shrine & courtyard
+	case 7: // Stage 7: Live 3D Hero Customizer Studio Overlay facing sunlit Oakhaven shrine & courtyard
 		if (!bCaptureStageSetupDone)
 		{
 			bCaptureStageSetupDone = true;
@@ -3006,16 +4335,110 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 		else if (CaptureStageElapsed >= 1.35f)
 		{
 			SnapFrame(TEXT("07_hero_customizer_studio.png"));
-			CaptureStage = 7;
+			CaptureStage = 8;
 			bCaptureStageSetupDone = false;
 			CaptureStageElapsed = 0.f;
 		}
 		break;
 
-	default: // Stage 7: Flush last PNG to disk then exit cleanly
+	case 8: // Stage 8: Prologue Panoramic Cliff Overlook Vista beside Roaring Waterfall over Mirror Lake, Stone Bridge, Meadows & Oakhaven!
+		if (!bCaptureStageSetupDone)
+		{
+			bCaptureStageSetupDone = true;
+			CaptureStageElapsed = 0.f;
+			CloseAllOverlays();
+			if (Builder) { Builder->SetTimeOfDay(0.72f); }
+			const FVector BrinkLoc = Builder
+				? Builder->GetPrologueWaterfallBrinkLocation()
+				: FVector(-1980.f, -800.f, 2040.f);
+			// Stand on Natural Megascans Rocky Overlook Brink (-1985, -560, CliffZ + 68) looking East-Northeast (Yaw +18, Pitch -19)
+			// across Gleaming Oval Mirror Lake, the 9-Arch Stone Bridge, Roaring Waterfall Mist, Lush Wildflower Meadows & Oakhaven Village!
+			const FVector OverlookPos(BrinkLoc.X - 5.f, -560.f, BrinkLoc.Z + 68.f);
+			Hero->SetActorLocationAndRotation(OverlookPos, FRotator(0.f, 18.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+			SetControlRotation(FRotator(-19.f, 18.f, 0.f));
+		}
+		else if (CaptureStageElapsed >= 1.45f)
+		{
+			SnapFrame(TEXT("08_prologue_cliff_overlook_vista.png"));
+			CaptureStage = 9;
+			bCaptureStageSetupDone = false;
+			CaptureStageElapsed = 0.f;
+		}
+		break;
+
+	case 9: // Stage 9: In-Game ` Developer Console + /godmode Active (Immortal + 10/10 Spells + Meadow Spell Terrain Scar — 100% clear of tree canopies!)
+		if (!bCaptureStageSetupDone)
+		{
+			bCaptureStageSetupDone = true;
+			CaptureStageElapsed = 0.f;
+			CloseAllOverlays();
+			if (Builder) { Builder->SetTimeOfDay(0.70f); }
+			// Wide-open sunlit King's Road & grassy wildflower verge at (0, 2650) facing South (-90) toward Mirror Lake & Stone Bridge!
+			const float GZ = Builder ? Builder->SampleGroundZ(0.f, 2650.f, 120.f) : 120.f;
+			Hero->SetActorLocationAndRotation(FVector(0.f, 2650.f, GZ + 104.f), FRotator(0.f, -90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+			SetControlRotation(FRotator(-9.f, -90.f, 0.f));
+
+			Hero->SetGodMode(false);
+			SetDeveloperConsoleOpen(true);
+			ExecuteDeveloperConsoleCommand(TEXT("/godmode"));
+			if (HUDWidget.IsValid() && HUDWidget->SupportsKeyboardFocus())
+			{
+				HUDWidget->SyncDeveloperConsoleVisibilityAndFocus(true, true);
+			}
+
+			if (Hero->SpellSystem)
+			{
+				Hero->SpellSystem->PushOrb(EChronicleOrb::Exort);
+				Hero->SpellSystem->PushOrb(EChronicleOrb::Exort);
+				Hero->SpellSystem->PushOrb(EChronicleOrb::Exort);
+				Hero->SpellSystem->InvokeCurrentSpell();
+				Hero->SpellSystem->PushOrb(EChronicleOrb::Exort);
+				Hero->SpellSystem->PushOrb(EChronicleOrb::Wex);
+				Hero->SpellSystem->PushOrb(EChronicleOrb::Quas);
+				const FVector Fwd = Hero->GetActorForwardVector();
+				const FVector Target = Hero->GetActorLocation() + Fwd * 620.f + FVector(-220.f, 0.f, 0.f);
+				Hero->SpellSystem->CastSpellSlot(false, Hero->GetActorLocation() + FVector(0.f, 0.f, 68.f), (Target - Hero->GetActorLocation()).GetSafeNormal(), Target, 0.85f);
+			}
+		}
+		else if (CaptureStageElapsed >= 0.65f)
+		{
+			SnapFrame(TEXT("09_dev_console_godmode.png"));
+			CaptureStage = 10;
+			bCaptureStageSetupDone = false;
+			CaptureStageElapsed = 0.f;
+		}
+		break;
+
+	case 10: // Stage 10: Inside Warm Torchlit Rocky Prologue Awakening Cave facing Tutor Vaelen & Sunlit Cave Mouth!
+		if (!bCaptureStageSetupDone)
+		{
+			bCaptureStageSetupDone = true;
+			CaptureStageElapsed = 0.f;
+			SetDeveloperConsoleOpen(false);
+			SetUIMode(false);
+			Hero->SetGodMode(false);
+			PushToastMessage(TEXT("ПЕЩЕРА ПРОБУЖДЕНИЯ · Поговорите с Хранителем Вейленом [E]"), 5.0f);
+			if (Builder) { Builder->SetTimeOfDay(0.72f); }
+			const FVector CaveSpawnLoc = Builder
+				? (Builder->GetPrologueCaveSpawnLocation() + FVector(0.f, 115.f, 0.f))
+				: FVector(-3210.f, -685.f, 2098.f);
+			Hero->SetActorLocationAndRotation(CaveSpawnLoc, FRotator(0.f, -12.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+			SetControlRotation(FRotator(-4.f, -12.f, 0.f));
+		}
+		else if (CaptureStageElapsed >= 1.25f)
+		{
+			SnapFrame(TEXT("10_prologue_awakening_cave_tutor.png"));
+			CaptureStage = 11;
+			bCaptureStageSetupDone = false;
+			CaptureStageElapsed = 0.f;
+		}
+		break;
+
+	default: // Stage 11: Flush last PNG to disk then exit cleanly
 		if (CaptureStageElapsed >= 0.90f)
 		{
-			UE_LOG(LogWizardsmoke, Display, TEXT("[CaptureFrames] All 7 critic frames saved cleanly! Exiting."));
+			SetDeveloperConsoleOpen(false);
+			UE_LOG(LogWizardsmoke, Display, TEXT("[CaptureFrames] All 11 critic frames saved cleanly! Exiting."));
 			bCaptureFramesActive = false;
 			FGenericPlatformMisc::RequestExit(false);
 		}
@@ -3516,7 +4939,623 @@ int32 SFogOfWarMapWidget::OnPaint(
 }
 
 // ============================================================================
-// 4B. SAetheriaChroniclesHUD — Production Slate HUD & Interactive Overlays
+// 4B. SChroniclesMinimapWidget — 172x172 Round Bottom-Right Radar Minimap
+// ============================================================================
+
+void SChroniclesMinimapWidget::Construct(const FArguments& InArgs)
+{
+	OwnerPC = InArgs._OwnerPC;
+	DesiredSizePx = FMath::Max(120.f, InArgs._MinimapSize);
+}
+
+FVector2D SChroniclesMinimapWidget::ComputeDesiredSize(float LayoutScaleMultiplier) const
+{
+	return FVector2D(DesiredSizePx, DesiredSizePx);
+}
+
+int32 SChroniclesMinimapWidget::OnPaint(
+	const FPaintArgs& Args,
+	const FGeometry& AllottedGeometry,
+	const FSlateRect& MyCullingRect,
+	FSlateWindowElementList& OutDrawElements,
+	int32 LayerId,
+	const FWidgetStyle& InWidgetStyle,
+	bool bParentEnabled) const
+{
+	const FVector2f LocalSize = AllottedGeometry.GetLocalSize();
+	const float Side = FMath::Min(LocalSize.X, LocalSize.Y);
+	const FVector2f Center = LocalSize * 0.5f;
+	const float DiscRadius = Side * 0.43f;  // ~74px at 172x172
+	const float PlotRadius = DiscRadius - 11.f;
+	const float RadarRangeCm = 4200.f;
+
+	const FSlateBrush* DiscBrush = ChroniclesHUDPalette::MinimapDiscBrush();
+	const FSlateBrush* BlipBrush = ChroniclesHUDPalette::BlipCircleBrush();
+
+	// 1. Circular Dark Obsidian Radar Disc (GPU SDF Anti-Aliased Circle — pass dark obsidian tint explicitly because MakeBox ignores Brush->TintColor!)
+	const float OuterRimR = DiscRadius + 5.5f;
+	FSlateDrawElement::MakeBox(
+		OutDrawElements, LayerId,
+		AllottedGeometry.ToPaintGeometry(
+			FVector2f(OuterRimR * 2.f, OuterRimR * 2.f),
+			FSlateLayoutTransform(Center - FVector2f(OuterRimR, OuterRimR))),
+		DiscBrush, ESlateDrawEffect::None, FLinearColor(0.018f, 0.016f, 0.026f, 0.95f));
+
+	FSlateDrawElement::MakeBox(
+		OutDrawElements, LayerId + 1,
+		AllottedGeometry.ToPaintGeometry(
+			FVector2f(DiscRadius * 2.f, DiscRadius * 2.f),
+			FSlateLayoutTransform(Center - FVector2f(DiscRadius, DiscRadius))),
+		DiscBrush, ESlateDrawEffect::None, FLinearColor(0.032f, 0.029f, 0.044f, 0.92f));
+
+	const AChroniclesPlayerController* PC = OwnerPC.Get();
+	const APawn* ActivePawn = PC ? PC->GetPawn() : nullptr;
+	const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+	UWorld* World = PC ? PC->GetWorld() : nullptr;
+	UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+	const UFogOfWarMapSubsystem* MapSub = GI ? GI->GetSubsystem<UFogOfWarMapSubsystem>() : nullptr;
+	const UQuestSubsystem* QuestSub = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
+
+	// Subtle biome tint inside radar disc
+	if (ActivePawn && MapSub)
+	{
+		const EChronicleBiome Biome = MapSub->GetBiomeAtLocation(ActivePawn->GetActorLocation());
+		FLinearColor BiomeTint(0.24f, 0.30f, 0.16f, 0.14f);
+		switch (Biome)
+		{
+		case EChronicleBiome::BlueLeafWoods:   BiomeTint = FLinearColor(0.12f, 0.30f, 0.38f, 0.16f); break;
+		case EChronicleBiome::HighkeepCitadel: BiomeTint = FLinearColor(0.32f, 0.14f, 0.18f, 0.16f); break;
+		case EChronicleBiome::AshCalderaCrypt: BiomeTint = FLinearColor(0.42f, 0.18f, 0.10f, 0.18f); break;
+		case EChronicleBiome::CrystalGlacier:  BiomeTint = FLinearColor(0.22f, 0.36f, 0.48f, 0.16f); break;
+		default: break;
+		}
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, LayerId + 2,
+			AllottedGeometry.ToPaintGeometry(
+				FVector2f((DiscRadius - 3.f) * 2.f, (DiscRadius - 3.f) * 2.f),
+				FSlateLayoutTransform(Center - FVector2f(DiscRadius - 3.f, DiscRadius - 3.f))),
+			DiscBrush, ESlateDrawEffect::None, BiomeTint);
+	}
+
+	// 2. Concentric Range Ring & Subtle Cardinal Crosshair Hairlines (drawn via antialiased MakeLines — zero white fill!)
+	const int32 GridLayer = LayerId + 3;
+	const float InnerR = DiscRadius * 0.56f;
+	{
+		TArray<FVector2f> InnerRingPts;
+		InnerRingPts.Reserve(37);
+		for (int32 i = 0; i <= 36; ++i)
+		{
+			const float Ang = (static_cast<float>(i) / 36.f) * UE_TWO_PI;
+			InnerRingPts.Add(Center + FVector2f(FMath::Cos(Ang) * InnerR, FMath::Sin(Ang) * InnerR));
+		}
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, GridLayer, AllottedGeometry.ToPaintGeometry(),
+			MoveTemp(InnerRingPts), ESlateDrawEffect::None, FLinearColor(0.76f, 0.59f, 0.28f, 0.24f), true, 1.0f);
+	}
+
+	const FLinearColor CrossCol(0.76f, 0.59f, 0.28f, 0.15f);
+	const float CrossHalf = DiscRadius - 8.f;
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, GridLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{ Center + FVector2f(0.f, -CrossHalf), Center + FVector2f(0.f, CrossHalf) },
+		ESlateDrawEffect::None, CrossCol, true, 1.0f);
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, GridLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{ Center + FVector2f(-CrossHalf, 0.f), Center + FVector2f(CrossHalf, 0.f) },
+		ESlateDrawEffect::None, CrossCol, true, 1.0f);
+
+	const int32 BlipLayer = GridLayer + 1;
+	auto DrawDotBlip = [&](const FVector2f& Pos, float Radius, const FLinearColor& Col, int32 Layer)
+	{
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, Layer,
+			AllottedGeometry.ToPaintGeometry(
+				FVector2f(Radius * 2.f, Radius * 2.f),
+				FSlateLayoutTransform(Pos - FVector2f(Radius, Radius))),
+			BlipBrush, ESlateDrawEffect::None, Col);
+	};
+
+	auto DrawDiamondBlip = [&](const FVector2f& Pos, float HalfSize, const FLinearColor& OuterCol, const FLinearColor& CoreCol, int32 Layer)
+	{
+		TArray<FVector2f> Pts{
+			Pos + FVector2f(0.f, -HalfSize),
+			Pos + FVector2f(HalfSize, 0.f),
+			Pos + FVector2f(0.f, HalfSize),
+			Pos + FVector2f(-HalfSize, 0.f),
+			Pos + FVector2f(0.f, -HalfSize)
+		};
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, Layer, AllottedGeometry.ToPaintGeometry(),
+			MoveTemp(Pts), ESlateDrawEffect::None, OuterCol, true, 1.8f);
+		DrawDotBlip(Pos, FMath::Max(2.0f, HalfSize * 0.42f), CoreCol, Layer + 1);
+	};
+
+	if (PC && ActivePawn && World)
+	{
+		const FVector Origin = ActivePawn->GetActorLocation();
+		const float Pulse = 0.5f + 0.5f * FMath::Sin(World->GetTimeSeconds() * 4.5f);
+
+		auto WorldToRadarPos = [&](const FVector& TargetLoc, bool bClampToRim, FVector2f& OutPos) -> bool
+		{
+			// North (-Y) is UP on screen, East (+X) is RIGHT — 100% aligned with Aetheria compass & Atlas Map
+			FVector2f Offset(
+				static_cast<float>((TargetLoc.X - Origin.X) / RadarRangeCm) * PlotRadius,
+				static_cast<float>((TargetLoc.Y - Origin.Y) / RadarRangeCm) * PlotRadius);
+			const float Len = Offset.Size();
+			if (Len > PlotRadius)
+			{
+				if (!bClampToRim)
+				{
+					return false;
+				}
+				Offset = (Offset / FMath::Max(0.001f, Len)) * PlotRadius;
+			}
+			OutPos = Center + Offset;
+			return true;
+		};
+
+		// 3A. Roaming Enemies (Crimson Dots) & Boss Malakor (Larger Pulsing Blood-Red Marker)
+		for (TActorIterator<AAetheriaEnemyCharacter> It(World); It; ++It)
+		{
+			const AAetheriaEnemyCharacter* Enemy = *It;
+			if (!IsValid(Enemy) || Enemy->bDead || Enemy->IsHidden())
+			{
+				continue;
+			}
+			const bool bIsBoss = Enemy->IsA<AAetheriaBossCharacter>();
+			const float Dist2D = FVector::Dist2D(Origin, Enemy->GetActorLocation());
+			if (bIsBoss)
+			{
+				if (Dist2D <= 15000.f)
+				{
+					FVector2f Pos;
+					if (WorldToRadarPos(Enemy->GetActorLocation(), true, Pos))
+					{
+						DrawDotBlip(Pos, 6.5f + Pulse * 2.0f, FLinearColor(0.95f, 0.14f, 0.16f, 0.34f), BlipLayer);
+						DrawDotBlip(Pos, 4.8f, FLinearColor(0.98f, 0.18f, 0.20f, 1.0f), BlipLayer + 1);
+					}
+				}
+			}
+			else if (Dist2D <= RadarRangeCm)
+			{
+				FVector2f Pos;
+				if (WorldToRadarPos(Enemy->GetActorLocation(), false, Pos))
+				{
+					DrawDotBlip(Pos, 3.4f, ChroniclesHUDPalette::TextCrimson, BlipLayer);
+				}
+			}
+		}
+
+		// 3B. Villager Quest NPCs (Bright Emerald / Burnished Gold Dots)
+		for (TActorIterator<AAetheriaNPCActor> It(World); It; ++It)
+		{
+			const AAetheriaNPCActor* NPC = *It;
+			if (!IsValid(NPC) || NPC->IsHidden())
+			{
+				continue;
+			}
+			FVector2f Pos;
+			if (WorldToRadarPos(NPC->GetActorLocation(), false, Pos))
+			{
+				const FQuestDef* Q = ChroniclesHUDPalette::ResolveQuestForNPC(QuestSub, NPC);
+				const bool bHasImportantQuest = Q && (Q->State == EQuestState::Available || Q->State == EQuestState::ReadyToTurnIn);
+				const FLinearColor DotCol = bHasImportantQuest
+					? ChroniclesHUDPalette::TextGold
+					: ChroniclesHUDPalette::TextEmerald;
+				DrawDotBlip(Pos, bHasImportantQuest ? 4.2f : 3.5f, DotCol, BlipLayer + 1);
+			}
+		}
+
+		// 3C. Dragon Ignis (Fiery Orange Drake Diamond)
+		for (TActorIterator<AAetheriaDragonActor> It(World); It; ++It)
+		{
+			const AAetheriaDragonActor* Drag = *It;
+			if (!IsValid(Drag) || Drag->IsHidden())
+			{
+				continue;
+			}
+			const bool bClampDragon = (Hero && Hero->bDragonUnlocked);
+			const float Dist2D = FVector::Dist2D(Origin, Drag->GetActorLocation());
+			if (bClampDragon || Dist2D <= 6500.f)
+			{
+				FVector2f Pos;
+				if (WorldToRadarPos(Drag->GetActorLocation(), bClampDragon, Pos))
+				{
+					DrawDiamondBlip(Pos, 5.2f, FLinearColor(1.0f, 0.45f, 0.10f, 0.98f), FLinearColor(1.0f, 0.80f, 0.35f, 1.0f), BlipLayer + 1);
+				}
+			}
+		}
+
+		// 3D. Tracked Quest / Prologue Objective (Glowing Gold/Amber Vector Diamond, Clamped to Rim!)
+		FString WaypointLabel;
+		const FVector ObjectiveLoc = PC->GetActiveWaypointWorldLocation(WaypointLabel);
+		if (!ObjectiveLoc.IsNearlyZero())
+		{
+			FVector2f Pos;
+			if (WorldToRadarPos(ObjectiveLoc, true, Pos))
+			{
+				DrawDiamondBlip(
+					Pos,
+					5.5f + Pulse * 1.2f,
+					FLinearColor(1.0f, 0.80f, 0.28f, 0.96f),
+					FLinearColor(1.0f, 0.95f, 0.72f, 1.0f),
+					BlipLayer + 2);
+			}
+		}
+
+		// 3E. Center Hero Directional Gold Chevron (rotates smoothly with camera/facing Yaw)
+		const float YawRad = FMath::DegreesToRadians(PC->GetControlRotation().Yaw);
+		const FVector2f Fwd(FMath::Cos(YawRad), FMath::Sin(YawRad));
+		const FVector2f Right(-Fwd.Y, Fwd.X);
+		const FVector2f Tip = Center + Fwd * 9.5f;
+		const FVector2f LeftWing = Center - Fwd * 6.0f - Right * 6.2f;
+		const FVector2f Notch = Center - Fwd * 2.2f;
+		const FVector2f RightWing = Center - Fwd * 6.0f + Right * 6.2f;
+
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, BlipLayer + 3, AllottedGeometry.ToPaintGeometry(),
+			TArray<FVector2f>{ LeftWing, Tip, RightWing, Notch, LeftWing },
+			ESlateDrawEffect::None, FLinearColor(0.02f, 0.015f, 0.025f, 0.92f), true, 4.0f);
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, BlipLayer + 4, AllottedGeometry.ToPaintGeometry(),
+			TArray<FVector2f>{ LeftWing, Tip, RightWing, Notch, LeftWing },
+			ESlateDrawEffect::None, ChroniclesHUDPalette::TextGold, true, 2.0f);
+	}
+
+	// 4. Pure Circular Sculpted Antique-Gold Double Compass Bezel & Radial Degree Ticks (100% round — zero square frame corners!)
+	const int32 FrameLayer = BlipLayer + 5;
+	{
+		TArray<FVector2f> OuterBezelRing;
+		TArray<FVector2f> InnerBezelRing;
+		OuterBezelRing.Reserve(65);
+		InnerBezelRing.Reserve(65);
+		for (int32 i = 0; i <= 64; ++i)
+		{
+			const float Ang = (static_cast<float>(i) / 64.f) * UE_TWO_PI;
+			const FVector2f Dir(FMath::Cos(Ang), FMath::Sin(Ang));
+			OuterBezelRing.Add(Center + Dir * (DiscRadius + 5.0f));
+			InnerBezelRing.Add(Center + Dir * DiscRadius);
+		}
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, FrameLayer, AllottedGeometry.ToPaintGeometry(),
+			MoveTemp(OuterBezelRing), ESlateDrawEffect::None, ChroniclesHUDPalette::HairlineBronze, true, 1.6f);
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, FrameLayer, AllottedGeometry.ToPaintGeometry(),
+			MoveTemp(InnerBezelRing), ESlateDrawEffect::None, ChroniclesHUDPalette::HairlineGold, true, 2.0f);
+
+		// 24 subtle brass compass degree tick marks inside the circular bezel
+		for (int32 TickIdx = 0; TickIdx < 24; ++TickIdx)
+		{
+			if ((TickIdx % 6) == 0) { continue; } // Cardinal slots reserved for N/E/S/W pips
+			const float Ang = (static_cast<float>(TickIdx) / 24.f) * UE_TWO_PI;
+			const FVector2f Dir(FMath::Cos(Ang), FMath::Sin(Ang));
+			FSlateDrawElement::MakeLines(
+				OutDrawElements, FrameLayer, AllottedGeometry.ToPaintGeometry(),
+				TArray<FVector2f>{ Center + Dir * (DiscRadius + 0.8f), Center + Dir * (DiscRadius + 4.2f) },
+				ESlateDrawEffect::None, FLinearColor(0.76f, 0.59f, 0.28f, 0.55f), true, 1.1f);
+		}
+
+		// East, South, West antique gold diamond pips
+		DrawDiamondBlip(Center + FVector2f(DiscRadius + 2.5f, 0.f), 3.2f, ChroniclesHUDPalette::HairlineGold, ChroniclesHUDPalette::TextGold, FrameLayer);
+		DrawDiamondBlip(Center + FVector2f(0.f, DiscRadius + 2.5f), 3.2f, ChroniclesHUDPalette::HairlineGold, ChroniclesHUDPalette::TextGold, FrameLayer);
+		DrawDiamondBlip(Center + FVector2f(-DiscRadius - 2.5f, 0.f), 3.2f, ChroniclesHUDPalette::HairlineGold, ChroniclesHUDPalette::TextGold, FrameLayer);
+	}
+
+	// 5. Crisp Cardinal 'N' Burnished Gold Badge at Top of Rim
+	const int32 NorthLayer = FrameLayer + 1;
+	const FVector2f NorthPos(Center.X, Center.Y - DiscRadius + 1.f);
+	DrawDotBlip(NorthPos, 9.5f, FLinearColor(0.035f, 0.030f, 0.045f, 0.95f), NorthLayer);
+	FSlateDrawElement::MakeText(
+		OutDrawElements, NorthLayer + 1,
+		AllottedGeometry.ToPaintGeometry(FVector2f(16.f, 14.f), FSlateLayoutTransform(NorthPos - FVector2f(4.5f, 6.5f))),
+		TEXT("N"), ChroniclesHUDPalette::FontBold(8), ESlateDrawEffect::None, ChroniclesHUDPalette::TextGold);
+
+	return NorthLayer + 2;
+}
+
+// ============================================================================
+// 4C. SChroniclesWorldSpaceOverlay — Overhead Villager Names, Enemy HP Bars,
+//     Floating Golden Objective Diamond & Minimalist Center Dot Reticle
+// ============================================================================
+
+void SChroniclesWorldSpaceOverlay::Construct(const FArguments& InArgs)
+{
+	OwnerPC = InArgs._OwnerPC;
+}
+
+FVector2D SChroniclesWorldSpaceOverlay::ComputeDesiredSize(float LayoutScaleMultiplier) const
+{
+	return FVector2D::ZeroVector;
+}
+
+int32 SChroniclesWorldSpaceOverlay::OnPaint(
+	const FPaintArgs& Args,
+	const FGeometry& AllottedGeometry,
+	const FSlateRect& MyCullingRect,
+	FSlateWindowElementList& OutDrawElements,
+	int32 LayerId,
+	const FWidgetStyle& InWidgetStyle,
+	bool bParentEnabled) const
+{
+	const AChroniclesPlayerController* PC = OwnerPC.Get();
+	if (!PC || PC->ActiveOverlay != EChroniclesOverlayMode::None || PC->IsHeroDead() || PC->IsPrologueCutsceneActive())
+	{
+		return LayerId;
+	}
+
+	UWorld* World = PC->GetWorld();
+	const APawn* ActivePawn = PC->GetPawn();
+	if (!World || !ActivePawn)
+	{
+		return LayerId;
+	}
+
+	int32 ViewX = 0;
+	int32 ViewY = 0;
+	PC->GetViewportSize(ViewX, ViewY);
+	const FVector2f LocalSize = AllottedGeometry.GetLocalSize();
+	if (ViewX <= 0 || ViewY <= 0 || LocalSize.X <= 1.f || LocalSize.Y <= 1.f)
+	{
+		return LayerId;
+	}
+
+	const float PixelToLocalX = LocalSize.X / static_cast<float>(ViewX);
+	const float PixelToLocalY = LocalSize.Y / static_cast<float>(ViewY);
+
+	FVector CamLoc = FVector::ZeroVector;
+	FRotator CamRot = FRotator::ZeroRotator;
+	PC->GetPlayerViewPoint(CamLoc, CamRot);
+	const FVector CamFwd = CamRot.Vector();
+	const FVector HeroLoc = ActivePawn->GetActorLocation();
+
+	const FSlateBrush* WhiteBrush = ChroniclesHUDPalette::WhiteBrush();
+	const FSlateBrush* PillBrush = ChroniclesHUDPalette::WorldPillBrush();
+	const FSlateFontInfo NameFont = ChroniclesHUDPalette::FontBold(10);
+	const FSlateFontInfo EnemyFont = ChroniclesHUDPalette::FontBold(9);
+	const FSlateFontInfo DistFont = ChroniclesHUDPalette::FontBold(9);
+
+	TSharedPtr<FSlateFontMeasure> FontMeasure;
+	if (FSlateApplication::IsInitialized() && FSlateApplication::Get().GetRenderer())
+	{
+		FontMeasure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+	}
+
+	auto ProjectToLocal = [&](const FVector& WorldPos, float MarginPx, FVector2f& OutLocal) -> bool
+	{
+		const FVector ToTarget = WorldPos - CamLoc;
+		if (FVector::DotProduct(ToTarget, CamFwd) <= 25.f)
+		{
+			return false;
+		}
+		FVector2D ScreenPx = FVector2D::ZeroVector;
+		if (!PC->ProjectWorldLocationToScreen(WorldPos, ScreenPx, true))
+		{
+			return false;
+		}
+		const float LX = static_cast<float>(ScreenPx.X) * PixelToLocalX;
+		const float LY = static_cast<float>(ScreenPx.Y) * PixelToLocalY;
+		if (LX < MarginPx || LX > LocalSize.X - MarginPx || LY < MarginPx || LY > LocalSize.Y - MarginPx)
+		{
+			return false;
+		}
+		OutLocal = FVector2f(LX, LY);
+		return true;
+	};
+
+	const UGameInstance* GI = PC->GetGameInstance();
+	const UQuestSubsystem* QuestSub = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
+
+	// 1. Minimalist Crimson-Desert Center Dot Reticle (3x3 warm ivory/gold dot, Alpha 0.55)
+	if (PC->bMouseCaptured)
+	{
+		const FVector2f Mid = LocalSize * 0.5f;
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, LayerId,
+			AllottedGeometry.ToPaintGeometry(FVector2f(5.f, 5.f), FSlateLayoutTransform(Mid - FVector2f(2.5f, 2.5f))),
+			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.02f, 0.015f, 0.025f, 0.42f));
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, LayerId + 1,
+			AllottedGeometry.ToPaintGeometry(FVector2f(3.f, 3.f), FSlateLayoutTransform(Mid - FVector2f(1.5f, 1.5f))),
+			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.98f, 0.92f, 0.76f, 0.55f));
+	}
+
+	const int32 NPCLayer = LayerId + 2;
+
+	// 2. Overhead Villager & Quest NPC Nameplates (within 2400 cm, same elevation band, and unobstructed line-of-sight)
+	for (TActorIterator<AAetheriaNPCActor> It(World); It; ++It)
+	{
+		const AAetheriaNPCActor* NPC = *It;
+		if (!IsValid(NPC) || NPC->IsHidden())
+		{
+			continue;
+		}
+		const FVector NPCLoc = NPC->GetActorLocation();
+		const float Dist = FVector::Dist(HeroLoc, NPCLoc);
+		if (Dist > 2400.f || FMath::Abs(HeroLoc.Z - NPCLoc.Z) > 520.f)
+		{
+			continue;
+		}
+		{
+			FCollisionQueryParams LOSParams(SCENE_QUERY_STAT(NPCNameplateLOS), false, ActivePawn);
+			LOSParams.AddIgnoredActor(NPC);
+			if (const AAetheriaDragonActor* DragPawn = Cast<AAetheriaDragonActor>(ActivePawn))
+			{
+				if (DragPawn->GetRiderHero()) { LOSParams.AddIgnoredActor(DragPawn->GetRiderHero()); }
+			}
+			FHitResult LOSHit;
+			if (World->LineTraceSingleByChannel(LOSHit, CamLoc, NPCLoc + FVector(0.f, 0.f, 85.f), ECC_Visibility, LOSParams))
+			{
+				continue;
+			}
+		}
+
+		FVector2f ScreenPos;
+		if (!ProjectToLocal(NPCLoc + FVector(0.f, 0.f, 115.f), 28.f, ScreenPos))
+		{
+			continue;
+		}
+
+		const FQuestDef* Q = ChroniclesHUDPalette::ResolveQuestForNPC(QuestSub, NPC);
+		FString LabelStr = NPC->DisplayName.ToString();
+		FLinearColor TextCol = ChroniclesHUDPalette::TextPrimary;
+		if (Q && Q->State == EQuestState::Available)
+		{
+			LabelStr = FString::Printf(TEXT("[!] %s"), *LabelStr);
+			TextCol = ChroniclesHUDPalette::TextGold;
+		}
+		else if (Q && Q->State == EQuestState::ReadyToTurnIn)
+		{
+			LabelStr = FString::Printf(TEXT("[?] %s"), *LabelStr);
+			TextCol = ChroniclesHUDPalette::TextEmerald;
+		}
+
+		const FVector2D Measured = FontMeasure.IsValid()
+			? FontMeasure->Measure(LabelStr, NameFont)
+			: FVector2D(static_cast<double>(LabelStr.Len()) * 7.5, 16.0);
+		const float TextW = static_cast<float>(Measured.X);
+		const float TextH = static_cast<float>(Measured.Y);
+		const float PillW = TextW + 16.f;
+		const float PillH = TextH + 6.f;
+		const FVector2f PillPos(ScreenPos.X - PillW * 0.5f, ScreenPos.Y - PillH);
+
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, NPCLayer,
+			AllottedGeometry.ToPaintGeometry(FVector2f(PillW, PillH), FSlateLayoutTransform(PillPos)),
+			PillBrush, ESlateDrawEffect::None, FLinearColor(0.028f, 0.024f, 0.038f, 0.88f));
+		FSlateDrawElement::MakeText(
+			OutDrawElements, NPCLayer + 1,
+			AllottedGeometry.ToPaintGeometry(FVector2f(TextW + 4.f, TextH + 2.f), FSlateLayoutTransform(PillPos + FVector2f(8.f, 3.f))),
+			LabelStr, NameFont, ESlateDrawEffect::None, TextCol);
+	}
+
+	const int32 EnemyLayer = NPCLayer + 2;
+
+	// 3. Overhead Enemy Health Bars (84x7 recessed obsidian track + crimson fill) & Names (within 2200 cm, non-boss)
+	for (TActorIterator<AAetheriaEnemyCharacter> It(World); It; ++It)
+	{
+		const AAetheriaEnemyCharacter* Enemy = *It;
+		if (!IsValid(Enemy) || Enemy->bDead || Enemy->IsHidden() || Enemy->IsA<AAetheriaBossCharacter>())
+		{
+			continue;
+		}
+		const float Dist = FVector::Dist(HeroLoc, Enemy->GetActorLocation());
+		if (Dist > 2200.f)
+		{
+			continue;
+		}
+
+		const float HalfH = Enemy->GetCapsuleComponent() ? Enemy->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() : 88.f;
+		FVector2f ScreenPos;
+		if (!ProjectToLocal(Enemy->GetActorLocation() + FVector(0.f, 0.f, HalfH + 32.f), 32.f, ScreenPos))
+		{
+			continue;
+		}
+
+		const float BarW = 84.f;
+		const float BarH = 7.f;
+		const float HPFrac = (Enemy->MaxHP > 0.f) ? FMath::Clamp(Enemy->HP / Enemy->MaxHP, 0.f, 1.f) : 0.f;
+		const FVector2f BarPos(ScreenPos.X - BarW * 0.5f, ScreenPos.Y - BarH);
+
+		// Name centered right above HP bar
+		const FString EnemyName = Enemy->EnemyDisplayName.IsEmpty() ? TEXT("Foe") : Enemy->EnemyDisplayName.ToString();
+		const FVector2D NameSize = FontMeasure.IsValid()
+			? FontMeasure->Measure(EnemyName, EnemyFont)
+			: FVector2D(static_cast<double>(EnemyName.Len()) * 6.5, 14.0);
+		FSlateDrawElement::MakeText(
+			OutDrawElements, EnemyLayer + 1,
+			AllottedGeometry.ToPaintGeometry(
+				FVector2f(static_cast<float>(NameSize.X) + 4.f, static_cast<float>(NameSize.Y) + 2.f),
+				FSlateLayoutTransform(FVector2f(ScreenPos.X - static_cast<float>(NameSize.X) * 0.5f, BarPos.Y - static_cast<float>(NameSize.Y) - 3.f))),
+			EnemyName, EnemyFont, ESlateDrawEffect::None, ChroniclesHUDPalette::TextPrimary);
+
+		// Outer antique-bronze border + recessed obsidian track
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, EnemyLayer,
+			AllottedGeometry.ToPaintGeometry(FVector2f(BarW + 2.f, BarH + 2.f), FSlateLayoutTransform(BarPos - FVector2f(1.f, 1.f))),
+			WhiteBrush, ESlateDrawEffect::None, ChroniclesHUDPalette::HairlineBronze);
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, EnemyLayer + 1,
+			AllottedGeometry.ToPaintGeometry(FVector2f(BarW, BarH), FSlateLayoutTransform(BarPos)),
+			WhiteBrush, ESlateDrawEffect::None, ChroniclesHUDPalette::TrackRecessed);
+
+		// Deep Crimson HP Fill + subtle highlight rim
+		if (HPFrac > 0.005f)
+		{
+			const float FillW = FMath::Max(2.f, BarW * HPFrac);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements, EnemyLayer + 2,
+				AllottedGeometry.ToPaintGeometry(FVector2f(FillW, BarH), FSlateLayoutTransform(BarPos)),
+				WhiteBrush, ESlateDrawEffect::None, ChroniclesHUDPalette::BarHP);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements, EnemyLayer + 2,
+				AllottedGeometry.ToPaintGeometry(FVector2f(FillW, 1.5f), FSlateLayoutTransform(BarPos)),
+				WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.96f, 0.40f, 0.36f, 0.45f));
+		}
+	}
+
+	// 4. Floating Golden Objective Waypoint Diamond (vector-drawn hollow diamond + distance in meters)
+	const int32 WaypointLayer = EnemyLayer + 3;
+	FString WaypointLabel;
+	const FVector ObjectiveLoc = PC->GetActiveWaypointWorldLocation(WaypointLabel);
+	if (!ObjectiveLoc.IsNearlyZero())
+	{
+		const float DistCm = FVector::Dist(HeroLoc, ObjectiveLoc);
+		if (DistCm > 260.f)
+		{
+			FVector2f WayPos;
+			if (ProjectToLocal(ObjectiveLoc + FVector(0.f, 0.f, 65.f), 44.f, WayPos))
+			{
+				const float Pulse = 0.5f + 0.5f * FMath::Sin(World->GetTimeSeconds() * 3.6f);
+				const float OuterR = 9.0f + Pulse * 1.4f;
+				const float InnerR = 4.2f;
+
+				TArray<FVector2f> OuterDiamond{
+					WayPos + FVector2f(0.f, -OuterR),
+					WayPos + FVector2f(OuterR, 0.f),
+					WayPos + FVector2f(0.f, OuterR),
+					WayPos + FVector2f(-OuterR, 0.f),
+					WayPos + FVector2f(0.f, -OuterR)
+				};
+				FSlateDrawElement::MakeLines(
+					OutDrawElements, WaypointLayer, AllottedGeometry.ToPaintGeometry(),
+					OuterDiamond, ESlateDrawEffect::None, FLinearColor(0.02f, 0.015f, 0.025f, 0.78f), true, 3.6f);
+				FSlateDrawElement::MakeLines(
+					OutDrawElements, WaypointLayer + 1, AllottedGeometry.ToPaintGeometry(),
+					MoveTemp(OuterDiamond), ESlateDrawEffect::None, ChroniclesHUDPalette::TextGold, true, 1.8f);
+
+				TArray<FVector2f> InnerDiamond{
+					WayPos + FVector2f(0.f, -InnerR),
+					WayPos + FVector2f(InnerR, 0.f),
+					WayPos + FVector2f(0.f, InnerR),
+					WayPos + FVector2f(-InnerR, 0.f),
+					WayPos + FVector2f(0.f, -InnerR)
+				};
+				FSlateDrawElement::MakeLines(
+					OutDrawElements, WaypointLayer + 2, AllottedGeometry.ToPaintGeometry(),
+					MoveTemp(InnerDiamond), ESlateDrawEffect::None, FLinearColor(1.0f, 0.96f, 0.76f, 0.95f), true, 1.4f);
+
+				const int32 DistMeters = FMath::Max(1, FMath::RoundToInt(DistCm / 100.f));
+				const FString DistStr = (PC->PrologueStage < 3 && !WaypointLabel.IsEmpty())
+					? FString::Printf(TEXT("%s · %dm"), *WaypointLabel, DistMeters)
+					: FString::Printf(TEXT("%dm"), DistMeters);
+				const FVector2D DistSize = FontMeasure.IsValid()
+					? FontMeasure->Measure(DistStr, DistFont)
+					: FVector2D(static_cast<double>(DistStr.Len()) * 6.5, 14.0);
+				FSlateDrawElement::MakeText(
+					OutDrawElements, WaypointLayer + 2,
+					AllottedGeometry.ToPaintGeometry(
+						FVector2f(static_cast<float>(DistSize.X) + 4.f, static_cast<float>(DistSize.Y) + 2.f),
+						FSlateLayoutTransform(FVector2f(WayPos.X - static_cast<float>(DistSize.X) * 0.5f, WayPos.Y + OuterR + 3.f))),
+					DistStr, DistFont, ESlateDrawEffect::None, ChroniclesHUDPalette::TextGold);
+			}
+		}
+	}
+
+	return WaypointLayer + 3;
+}
+
+// ============================================================================
+// 4D. SAetheriaChroniclesHUD — Production Slate HUD & Interactive Overlays
 // ============================================================================
 
 void SAetheriaChroniclesHUD::Construct(const FArguments& InArgs)
@@ -3527,7 +5566,17 @@ void SAetheriaChroniclesHUD::Construct(const FArguments& InArgs)
 	[
 		SNew(SOverlay)
 
-		// --- Layer 0: Top-Center Compass & Contextual Boss Health/Stagger Bar ---
+		// --- Layer 0: World-Space Overhead NPC Names, Enemy HP Bars, Waypoint Diamond & Center Reticle ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			SNew(SChroniclesWorldSpaceOverlay)
+			.OwnerPC(OwnerPC)
+			.Visibility(EVisibility::HitTestInvisible)
+		]
+
+		// --- Layer 1: Top-Center Compass & Contextual Boss Health/Stagger Bar ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Top)
@@ -3536,7 +5585,7 @@ void SAetheriaChroniclesHUD::Construct(const FArguments& InArgs)
 			BuildTopCenterCompassAndBossBar()
 		]
 
-		// --- Layer 1: Top-Right Gold / Level / Exploration / RTX Tier & Hotkeys ---
+		// --- Layer 2: Top-Right Gold / Level / Exploration / RTX Tier & Hotkeys ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Right)
 		.VAlign(VAlign_Top)
@@ -3545,7 +5594,7 @@ void SAetheriaChroniclesHUD::Construct(const FArguments& InArgs)
 			BuildTopRightStatusAndHotkeys()
 		]
 
-		// --- Layer 2: Bottom-Left Vitals, 3-Orb Queue, D/F Spells & Dragon Bar ---
+		// --- Layer 3: Bottom-Left Vitals, 3-Orb Queue, D/F Spells & Dragon Bar ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Bottom)
@@ -3554,7 +5603,16 @@ void SAetheriaChroniclesHUD::Construct(const FArguments& InArgs)
 			BuildBottomLeftVitalsAndInvokerPanel()
 		]
 
-		// --- Layer 3: Bottom-Center Interaction Prompt & Toast Notifications ---
+		// --- Layer 4: Bottom-Right Round Minimap Radar, Objective Distance & Burnished Gold Corner ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.f, 0.f, 24.f, 24.f))
+		[
+			BuildBottomRightMinimapAndGold()
+		]
+
+		// --- Layer 5: Bottom-Center Interaction Prompt & Toast Notifications ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Bottom)
@@ -3563,7 +5621,15 @@ void SAetheriaChroniclesHUD::Construct(const FArguments& InArgs)
 			BuildBottomCenterPromptsAndToast()
 		]
 
-		// --- Layer 4: Fullscreen Fog-of-War World Map [M] ---
+		// --- Layer 6: Cinematic AAA Launch / Title & Pause Menu Overlay ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			BuildMainMenuOverlay()
+		]
+
+		// --- Layer 5: Fullscreen Fog-of-War World Map [M] ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Fill)
 		.VAlign(VAlign_Fill)
@@ -3626,6 +5692,22 @@ void SAetheriaChroniclesHUD::Construct(const FArguments& InArgs)
 		[
 			BuildGameOverOverlay()
 		]
+
+		// --- Layer 12: Cinematic Cutscene Letterbox Bars (Prologue Waterfall Plunge) ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			BuildCutsceneLetterboxOverlay()
+		]
+
+		// --- Layer 13: In-Game Arcane Developer Console (` / ~ / ё -> /godmode) ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Top)
+		[
+			BuildDeveloperConsoleOverlay()
+		]
 	];
 
 	RefreshDynamicPanels();
@@ -3673,7 +5755,9 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 		{
 			AChroniclesPlayerController* PC = WeakPC.Get();
-			return (PC && PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer) ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible;
+			return (PC && (PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer || PC->ActiveOverlay == EChroniclesOverlayMode::MainMenu || PC->IsPrologueCutsceneActive()))
+				? EVisibility::Collapsed
+				: EVisibility::SelfHitTestInvisible;
 		})
 
 		// Sleek Translucent Dark Obsidian Compass & Tracked Quest Ribbon with 1px Antique Gold Top/Bottom Hairlines
@@ -4017,7 +6101,9 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopRightStatusAndHotkeys()
 		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 		{
 			AChroniclesPlayerController* PC = WeakPC.Get();
-			return (PC && PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer) ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible;
+			return (PC && (PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer || PC->ActiveOverlay == EChroniclesOverlayMode::MainMenu || PC->IsPrologueCutsceneActive()))
+				? EVisibility::Collapsed
+				: EVisibility::SelfHitTestInvisible;
 		})
 		[
 			SNew(SVerticalBox)
@@ -4145,6 +6231,35 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopRightStatusAndHotkeys()
 				})
 			]
 
+			// Live God Mode Immortal Archmage Banner (visible when /godmode is active)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
+			[
+				SNew(SBorder)
+				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+				.BorderBackgroundColor(FLinearColor(0.86f, 0.68f, 0.20f, 0.92f))
+				.Padding(FMargin(1.f))
+				.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+					return (Hero && Hero->IsGodModeActive()) ? EVisibility::Visible : EVisibility::Collapsed;
+				})
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+					.BorderBackgroundColor(FLinearColor::White)
+					.Padding(FMargin(8.f, 3.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(9))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text(LOCTEXT("GodModeActiveBadge", "GOD MODE · БЕССМЕРТИЕ · 10/10 ЗАКЛИНАНИЙ"))
+					]
+				]
+			]
+
 			// Thin Antique Gold Divider + Compact Keybind Footer
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -4164,7 +6279,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopRightStatusAndHotkeys()
 				SNew(STextBlock)
 				.Font(ChroniclesHUDPalette::FontRegular(9))
 				.ColorAndOpacity(ChroniclesHUDPalette::TextSecondary)
-				.Text(LOCTEXT("HotkeyHint", "[M] Map  [K] Skills  [C] Hero  [J] Quests  [Tab] Grimoire  [T] Time  [F10] RTX"))
+				.Text(LOCTEXT("HotkeyHint", "[M] Map  [K] Skills  [C] Hero  [J] Quests  [Tab] Grimoire  [T] Time  [~] Console"))
 			]
 		];
 }
@@ -4413,7 +6528,9 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomLeftVitalsAndInvokerPanel
 		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 		{
 			AChroniclesPlayerController* PC = WeakPC.Get();
-			return (PC && PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer) ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible;
+			return (PC && (PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer || PC->ActiveOverlay == EChroniclesOverlayMode::MainMenu || PC->IsPrologueCutsceneActive()))
+				? EVisibility::Collapsed
+				: EVisibility::SelfHitTestInvisible;
 		})
 
 		// Dragon Fire Breath Energy Bar (visible ONLY when riding Ignis!)
@@ -4507,7 +6624,10 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomLeftVitalsAndInvokerPanel
 							{
 								AChroniclesPlayerController* PC = WeakPC.Get();
 								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-								return Hero ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Hero->HP, Hero->MaxHP)) : LOCTEXT("ZeroVal", "0 / 0");
+								if (!Hero) return LOCTEXT("ZeroVal", "0 / 0");
+								return Hero->IsGodModeActive()
+									? FText::FromString(FString::Printf(TEXT("∞ %.0f"), Hero->MaxHP))
+									: FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Hero->HP, Hero->MaxHP));
 							}))
 					]
 
@@ -4531,7 +6651,10 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomLeftVitalsAndInvokerPanel
 								AChroniclesPlayerController* PC = WeakPC.Get();
 								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
 								const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
-								return Spells ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Spells->Mana, Spells->MaxMana)) : LOCTEXT("ZeroVal", "0 / 0");
+								if (!Spells) return LOCTEXT("ZeroVal", "0 / 0");
+								return Spells->IsGodModeActive()
+									? FText::FromString(FString::Printf(TEXT("∞ %.0f"), Spells->MaxMana))
+									: FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Spells->Mana, Spells->MaxMana));
 							}))
 					]
 
@@ -4646,6 +6769,613 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomLeftVitalsAndInvokerPanel
 		];
 }
 
+TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomRightMinimapAndGold()
+{
+	return SNew(SVerticalBox)
+		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
+		{
+			AChroniclesPlayerController* PC = WeakPC.Get();
+			return (PC && PC->ActiveOverlay == EChroniclesOverlayMode::None && !PC->IsHeroDead() && !PC->IsPrologueCutsceneActive())
+				? EVisibility::SelfHitTestInvisible
+				: EVisibility::Collapsed;
+		})
+
+		// 172x172 Round Minimap Radar Framed by hud_minimap_frame.png
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
+		[
+			SNew(SChroniclesMinimapWidget)
+			.OwnerPC(OwnerPC)
+			.MinimapSize(172.f)
+		]
+
+		// Tracked Objective Distance Pill + Unmistakable Burnished Gold Corner Readout
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.HAlign(HAlign_Center)
+		.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+		[
+			SNew(SBorder)
+			.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+			.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.92f))
+			.Padding(FMargin(14.f, 7.f))
+			[
+				SNew(SVerticalBox)
+
+				// Compact Tracked Objective Distance Readout (e.g. "◊ 84m · Oakhaven")
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+				[
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontRegular(9))
+					.ColorAndOpacity(ChroniclesHUDPalette::TextAmber)
+					.Justification(ETextJustify::Center)
+					.Text_Lambda([WeakPC = OwnerPC]() -> FText
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						const APawn* P = PC ? PC->GetPawn() : nullptr;
+						if (!PC || !P) return FText::GetEmpty();
+
+						FString Label;
+						const FVector ObjLoc = PC->GetActiveWaypointWorldLocation(Label);
+						if (ObjLoc.IsNearlyZero())
+						{
+							return LOCTEXT("MinimapRealmClear", "◊ Aetheria Free Roam");
+						}
+						const int32 DistM = FMath::Max(1, FMath::RoundToInt(FVector::Dist(P->GetActorLocation(), ObjLoc) / 100.f));
+						return FText::FromString(FString::Printf(TEXT("◊ %dm"), DistM));
+					})
+				]
+
+				// Thin Antique Gold Hairline
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
+				[
+					SNew(SBox)
+					.HeightOverride(1.f)
+					[
+						SNew(SBorder)
+						.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+						.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+					]
+				]
+
+				// Unmistakable Burnished Gold Corner Counter
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				[
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontBold(11))
+					.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+					.Justification(ETextJustify::Center)
+					.Text_Lambda([WeakPC = OwnerPC]() -> FText
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+						const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
+						const int32 GoldVal = Skills ? Skills->Gold : 0;
+						return FText::FromString(FString::Printf(TEXT("GOLD: %d G"), GoldVal));
+					})
+				]
+			]
+		];
+}
+
+TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildCutsceneLetterboxOverlay()
+{
+	return SNew(SOverlay)
+		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
+		{
+			AChroniclesPlayerController* PC = WeakPC.Get();
+			return (PC && PC->IsPrologueCutsceneActive())
+				? EVisibility::HitTestInvisible
+				: EVisibility::Collapsed;
+		})
+
+		// Top 64px Black Cinema Letterbox Bar + Subtle Gold Rim
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Top)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(64.f)
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(FLinearColor(0.01f, 0.008f, 0.014f, 0.98f))
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(1.f)
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+				]
+			]
+		]
+
+		// Bottom 64px Black Cinema Letterbox Bar + Subtle Gold Rim & Caption
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Bottom)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(1.f)
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(64.f)
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(FLinearColor(0.01f, 0.008f, 0.014f, 0.98f))
+					.HAlign(HAlign_Center)
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(13))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Justification(ETextJustify::Center)
+						.Text(LOCTEXT("WaterfallCutsceneCaption", "ВОДОПАД ЗЕРКАЛЬНОГО ОЗЕРА  ·  FALLS OF MIRROR LAKE"))
+					]
+				]
+			]
+		];
+}
+
+FReply SAetheriaChroniclesHUD::OnPreviewKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
+{
+	AChroniclesPlayerController* PC = OwnerPC.Get();
+	if (!PC)
+	{
+		return SCompoundWidget::OnPreviewKeyDown(MyGeometry, InKeyEvent);
+	}
+
+	const FKey Key = InKeyEvent.GetKey();
+	const uint32 CharCode = InKeyEvent.GetCharacter();
+	const uint32 KeyCode = InKeyEvent.GetKeyCode();
+	static const FKey KeyCyrillicYoLower(TEXT("ё"));
+	static const FKey KeyCyrillicYoUpper(TEXT("Ё"));
+	static const FKey KeyGraveAccent(TEXT("GraveAccent"));
+
+	const bool bIsConsoleKey = (Key == EKeys::Tilde)
+		|| (Key == KeyCyrillicYoLower)
+		|| (Key == KeyCyrillicYoUpper)
+		|| (Key == KeyGraveAccent)
+		|| (KeyCode == 0xC0) // Physical VK_OEM_3 (` / ~ / ё) across all Windows keyboard layouts!
+		|| (CharCode == TEXT('`'))
+		|| (CharCode == TEXT('~'))
+		|| (CharCode == 0x0451)
+		|| (CharCode == 0x0401);
+
+	if (bIsConsoleKey)
+	{
+		PC->ToggleDeveloperConsole();
+		return FReply::Handled();
+	}
+
+	if (PC->IsDeveloperConsoleOpen())
+	{
+		if (Key == EKeys::Escape)
+		{
+			PC->SetDeveloperConsoleOpen(false);
+			return FReply::Handled();
+		}
+
+		// Up/Down command history navigation inside the console input box
+		if ((Key == EKeys::Up || Key == EKeys::Down) && ConsoleInputBox.IsValid())
+		{
+			const TArray<FString>& History = PC->GetConsoleCommandHistory();
+			if (History.Num() == 0 && Key == EKeys::Up)
+			{
+				ConsoleInputBox->SetText(FText::FromString(TEXT("/godmode")));
+				return FReply::Handled();
+			}
+			if (History.Num() > 0)
+			{
+				if (Key == EKeys::Up)
+				{
+					ConsoleHistoryBrowseIndex = (ConsoleHistoryBrowseIndex < 0)
+						? (History.Num() - 1)
+						: FMath::Max(0, ConsoleHistoryBrowseIndex - 1);
+				}
+				else
+				{
+					ConsoleHistoryBrowseIndex = (ConsoleHistoryBrowseIndex < 0)
+						? (History.Num() - 1)
+						: FMath::Min(History.Num() - 1, ConsoleHistoryBrowseIndex + 1);
+				}
+				if (History.IsValidIndex(ConsoleHistoryBrowseIndex))
+				{
+					ConsoleInputBox->SetText(FText::FromString(History[ConsoleHistoryBrowseIndex]));
+				}
+				return FReply::Handled();
+			}
+		}
+	}
+
+	return SCompoundWidget::OnPreviewKeyDown(MyGeometry, InKeyEvent);
+}
+
+void SAetheriaChroniclesHUD::RebuildConsoleLogBox()
+{
+	if (!ConsoleLogListBox.IsValid())
+	{
+		return;
+	}
+
+	ConsoleLogListBox->ClearChildren();
+	AChroniclesPlayerController* PC = OwnerPC.Get();
+	if (!PC)
+	{
+		return;
+	}
+
+	for (const TPair<FString, FLinearColor>& Entry : PC->GetConsoleLogLines())
+	{
+		ConsoleLogListBox->AddSlot()
+		.AutoHeight()
+		.Padding(FMargin(0.f, 2.f))
+		[
+			SNew(STextBlock)
+			.Font(ChroniclesHUDPalette::FontRegular(10))
+			.ColorAndOpacity(Entry.Value)
+			.AutoWrapText(true)
+			.Text(FText::FromString(Entry.Key))
+		];
+	}
+
+	if (ConsoleScrollBox.IsValid())
+	{
+		ConsoleScrollBox->ScrollToEnd();
+	}
+}
+
+void SAetheriaChroniclesHUD::SyncDeveloperConsoleVisibilityAndFocus(bool bOpen, bool bForceFocus)
+{
+	if (ConsoleOverlayContainer.IsValid())
+	{
+		ConsoleOverlayContainer->SetVisibility(bOpen ? EVisibility::Visible : EVisibility::Collapsed);
+	}
+
+	if (bOpen)
+	{
+		ConsoleHistoryBrowseIndex = -1;
+		if (ConsoleInputBox.IsValid())
+		{
+			// Strip any stray opening ` / ~ / ё character that WM_CHAR might have queued
+			FString CurStr = ConsoleInputBox->GetText().ToString();
+			if (CurStr == TEXT("`") || CurStr == TEXT("~") || CurStr == TEXT("ё") || CurStr == TEXT("Ё"))
+			{
+				ConsoleInputBox->SetText(FText::GetEmpty());
+			}
+			else if (!bForceFocus)
+			{
+				ConsoleInputBox->SetText(FText::GetEmpty());
+			}
+
+			if (FSlateApplication::IsInitialized())
+			{
+				ConsoleOverlayContainer->SlatePrepass();
+				FSlateApplication::Get().SetKeyboardFocus(ConsoleInputBox.ToSharedRef(), EFocusCause::SetDirectly);
+				FSlateApplication::Get().SetUserFocus(0, ConsoleInputBox.ToSharedRef(), EFocusCause::SetDirectly);
+			}
+		}
+	}
+	else if (ConsoleInputBox.IsValid())
+	{
+		ConsoleInputBox->SetText(FText::GetEmpty());
+	}
+}
+
+TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildDeveloperConsoleOverlay()
+{
+	static const FEditableTextBoxStyle ConsoleBoxStyle = []()
+	{
+		FEditableTextBoxStyle Style = FCoreStyle::Get().GetWidgetStyle<FEditableTextBoxStyle>(TEXT("NormalEditableTextBox"));
+		if (const FSlateBrush* White = ChroniclesHUDPalette::WhiteBrush())
+		{
+			Style.SetBackgroundImageNormal(*White);
+			Style.SetBackgroundImageHovered(*White);
+			Style.SetBackgroundImageFocused(*White);
+			Style.SetBackgroundImageReadOnly(*White);
+		}
+		Style.SetBackgroundColor(FLinearColor(0.016f, 0.014f, 0.022f, 0.98f));
+		Style.SetForegroundColor(ChroniclesHUDPalette::TextPrimary);
+		Style.SetFocusedForegroundColor(ChroniclesHUDPalette::TextGold);
+		Style.SetPadding(FMargin(10.f, 7.f));
+		Style.TextStyle.SetFont(ChroniclesHUDPalette::FontBold(11));
+		Style.TextStyle.SetColorAndOpacity(ChroniclesHUDPalette::TextPrimary);
+		return Style;
+	}();
+
+	SAssignNew(ConsoleLogListBox, SVerticalBox);
+	SAssignNew(ConsoleScrollBox, SScrollBox)
+	+ SScrollBox::Slot()
+	[
+		ConsoleLogListBox.ToSharedRef()
+	];
+
+	SAssignNew(ConsoleInputBox, SEditableTextBox)
+		.Style(&ConsoleBoxStyle)
+		.HintText(LOCTEXT("ConsoleInputHint", "Введите команду (например: /godmode или /help) и нажмите Enter..."))
+		.ClearKeyboardFocusOnCommit(false)
+		.SelectAllTextOnCommit(false)
+		.OnTextChanged_Lambda([this, WeakPC = OwnerPC](const FText& NewText)
+		{
+			const FString Raw = NewText.ToString();
+			FString Sanitized;
+			Sanitized.Reserve(Raw.Len());
+			const AChroniclesPlayerController* PC = WeakPC.Get();
+			const bool bJustOpened = PC && ((FPlatformTime::Seconds() - PC->GetLastConsoleOpenRealTime()) < 0.20);
+
+			for (int32 Idx = 0; Idx < Raw.Len(); ++Idx)
+			{
+				const TCHAR Ch = Raw[Idx];
+				if (Ch == TEXT('`') || Ch == TEXT('~'))
+				{
+					continue;
+				}
+				if (bJustOpened && (Ch == 0x0451 || Ch == 0x0401))
+				{
+					continue;
+				}
+				Sanitized.AppendChar(Ch);
+			}
+
+			if (Sanitized != Raw && ConsoleInputBox.IsValid())
+			{
+				ConsoleInputBox->SetText(FText::FromString(Sanitized));
+			}
+		})
+		.OnTextCommitted_Lambda([this, WeakPC = OwnerPC](const FText& CommittedText, ETextCommit::Type CommitType)
+		{
+			if (CommitType == ETextCommit::OnEnter)
+			{
+				if (AChroniclesPlayerController* PC = WeakPC.Get())
+				{
+					const FString Cmd = CommittedText.ToString();
+					if (ConsoleInputBox.IsValid())
+					{
+						ConsoleInputBox->SetText(FText::GetEmpty());
+					}
+					ConsoleHistoryBrowseIndex = -1;
+					if (!Cmd.TrimStartAndEnd().IsEmpty())
+					{
+						PC->ExecuteDeveloperConsoleCommand(Cmd);
+					}
+					if (PC->IsDeveloperConsoleOpen() && ConsoleInputBox.IsValid() && FSlateApplication::IsInitialized())
+					{
+						FSlateApplication::Get().SetKeyboardFocus(ConsoleInputBox.ToSharedRef(), EFocusCause::SetDirectly);
+					}
+				}
+			}
+		});
+
+	SAssignNew(ConsoleOverlayContainer, SBox)
+		.Visibility(EVisibility::Collapsed)
+		.Padding(FMargin(28.f, 14.f, 28.f, 0.f))
+		[
+			SNew(SBorder)
+			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+			.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
+			.Padding(FMargin(1.5f))
+			[
+				SNew(SBorder)
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.97f))
+				.Padding(FMargin(18.f, 12.f))
+				[
+					SNew(SVerticalBox)
+
+					// Console Header Bar
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(12))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Text(LOCTEXT("DevConsoleTitle", "AETHERIA ARCANE CONSOLE  ·  [~ / Ё] КОНСОЛЬ РАЗРАБОТЧИКА"))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(8.f, 0.f, 8.f, 0.f))
+						[
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+							.BorderBackgroundColor(FLinearColor(0.86f, 0.68f, 0.20f, 0.94f))
+							.Padding(FMargin(1.f))
+							.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								return (Hero && Hero->IsGodModeActive()) ? EVisibility::Visible : EVisibility::Collapsed;
+							})
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+								.BorderBackgroundColor(FLinearColor::White)
+								.Padding(FMargin(8.f, 2.f))
+								[
+									SNew(STextBlock)
+									.Font(ChroniclesHUDPalette::FontBold(9))
+									.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+									.Text(LOCTEXT("ConsoleGodModePill", "GOD MODE ACTIVE · БЕССМЕРТИЕ · 10/10 SPELLS"))
+								]
+							]
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(12.f, 0.f, 12.f, 0.f))
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontRegular(9))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextSecondary)
+							.Text(LOCTEXT("DevConsoleHint", "[Enter] Выполнить  ·  [/godmode] Режим Бога  ·  [~ / Esc] Закрыть"))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+							.ContentPadding(FMargin(10.f, 3.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get())
+								{
+									PC->SetDeveloperConsoleOpen(false);
+								}
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(9))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+								.Text(LOCTEXT("CloseConsoleBtn", "ЗАКРЫТЬ [~]"))
+							]
+						]
+					]
+
+					// Hairline Gold Divider
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+					[
+						SNew(SBox)
+						.HeightOverride(1.f)
+						[
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+							.BorderBackgroundColor(ChroniclesHUDPalette::HairlineBronze)
+						]
+					]
+
+					// Scrollable Output Log
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+					[
+						SNew(SBox)
+						.HeightOverride(132.f)
+						[
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::ObsidianCardLockedBrush())
+							.BorderBackgroundColor(FLinearColor::White)
+							.Padding(FMargin(10.f, 6.f))
+							[
+								ConsoleScrollBox.ToSharedRef()
+							]
+						]
+					]
+
+					// Command Prompt Input Row
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(4.f, 0.f, 10.f, 0.f))
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(13))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Text(FText::FromString(TEXT(">")))
+						]
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Center)
+						[
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+							.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+							.Padding(FMargin(1.f))
+							[
+								ConsoleInputBox.ToSharedRef()
+							]
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.VAlign(VAlign_Center)
+						.Padding(FMargin(8.f, 0.f, 0.f, 0.f))
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::ActiveGoldButtonStyle())
+							.ContentPadding(FMargin(14.f, 6.f))
+							.OnClicked_Lambda([this, WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get())
+								{
+									if (ConsoleInputBox.IsValid())
+									{
+										const FString Cmd = ConsoleInputBox->GetText().ToString();
+										ConsoleInputBox->SetText(FText::GetEmpty());
+										if (!Cmd.TrimStartAndEnd().IsEmpty())
+										{
+											PC->ExecuteDeveloperConsoleCommand(Cmd);
+										}
+										else
+										{
+											PC->ExecuteDeveloperConsoleCommand(TEXT("/godmode"));
+										}
+										if (FSlateApplication::IsInitialized())
+										{
+											FSlateApplication::Get().SetKeyboardFocus(ConsoleInputBox.ToSharedRef(), EFocusCause::SetDirectly);
+										}
+									}
+								}
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(10))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+								.Text(LOCTEXT("RunCmdBtn", "ENTER"))
+							]
+						]
+					]
+				]
+			]
+		];
+
+	RebuildConsoleLogBox();
+	return ConsoleOverlayContainer.ToSharedRef();
+}
+
 TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomCenterPromptsAndToast()
 {
 	return SNew(SVerticalBox)
@@ -4668,7 +7398,9 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomCenterPromptsAndToast()
 			.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 			{
 				AChroniclesPlayerController* PC = WeakPC.Get();
-				return (PC && PC->GetActiveToastAlpha() > 0.01f) ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
+				return (PC && PC->ActiveOverlay != EChroniclesOverlayMode::MainMenu && !PC->IsPrologueCutsceneActive() && PC->GetActiveToastAlpha() > 0.01f)
+					? EVisibility::HitTestInvisible
+					: EVisibility::Collapsed;
 			})
 			[
 				SNew(STextBlock)
@@ -4699,7 +7431,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomCenterPromptsAndToast()
 			.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 			{
 				AChroniclesPlayerController* PC = WeakPC.Get();
-				if (!PC || PC->IsAnyModalOpen())
+				if (!PC || PC->IsAnyModalOpen() || PC->IsPrologueCutsceneActive())
 				{
 					return EVisibility::Collapsed;
 				}
@@ -4753,6 +7485,549 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomCenterPromptsAndToast()
 // ============================================================================
 // Interactive Modal Overlays
 // ============================================================================
+
+TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildMainMenuOverlay()
+{
+	auto HasSavedJourney = []() -> bool
+	{
+		return UGameplayStatics::DoesSaveGameExist(TEXT("AetheriaChroniclesSlot0"), 0)
+			|| UGameplayStatics::DoesSaveGameExist(TEXT("AetheriaChroniclesSlot"), 0);
+	};
+
+	auto MakeMenuButton = [WeakPC = OwnerPC](
+		TAttribute<FText> LabelAttr,
+		bool bPrimaryCrimson,
+		const FLinearColor& BezelColor,
+		const FLinearColor& LabelColor,
+		int32 FontSize,
+		TFunction<void(AChroniclesPlayerController*)> OnClickFn) -> TSharedRef<SWidget>
+	{
+		return SNew(SBorder)
+			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+			.BorderBackgroundColor(BezelColor)
+			.Padding(FMargin(1.5f))
+			[
+				SNew(SButton)
+				.ButtonStyle(bPrimaryCrimson ? &ChroniclesHUDPalette::CrimsonButtonStyle() : &ChroniclesHUDPalette::StoneButtonStyle())
+				.ContentPadding(FMargin(18.f, 12.f))
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				.OnClicked_Lambda([WeakPC, OnClickFn]() -> FReply
+				{
+					if (AChroniclesPlayerController* PC = WeakPC.Get())
+					{
+						OnClickFn(PC);
+					}
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontBold(FontSize))
+					.ColorAndOpacity(LabelColor)
+					.Justification(ETextJustify::Center)
+					.Text(MoveTemp(LabelAttr))
+				]
+			];
+	};
+
+	TSharedRef<SWidget> VignetteBackdrop = [&]() -> TSharedRef<SWidget>
+	{
+		if (const FSlateBrush* VignetteBrush = ChroniclesHUDPalette::MenuVignetteBrush())
+		{
+			return SNew(SImage)
+				.Image(VignetteBrush)
+				.ColorAndOpacity(FLinearColor(1.f, 1.f, 1.f, 0.78f))
+				.Visibility(EVisibility::HitTestInvisible);
+		}
+		return SNew(SBorder)
+			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+			.BorderBackgroundColor(FLinearColor(0.015f, 0.012f, 0.020f, 0.42f))
+			.Visibility(EVisibility::HitTestInvisible);
+	}();
+
+	TSharedRef<SWidget> TopCrestWidget = [&]() -> TSharedRef<SWidget>
+	{
+		if (const FSlateBrush* Skull = ChroniclesHUDPalette::SkullCrestBrush())
+		{
+			return SNew(SBox)
+				.WidthOverride(56.f)
+				.HeightOverride(56.f)
+				[
+					SNew(SImage)
+					.Image(Skull)
+					.ColorAndOpacity(FLinearColor(0.98f, 0.88f, 0.68f, 0.96f))
+				];
+		}
+		return SNew(SBox)
+			.WidthOverride(28.f)
+			.HeightOverride(28.f)
+			[
+				SNew(SBorder)
+				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
+			];
+	}();
+
+	return SNew(SOverlay)
+		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
+		{
+			AChroniclesPlayerController* PC = WeakPC.Get();
+			return (PC && PC->ActiveOverlay == EChroniclesOverlayMode::MainMenu)
+				? EVisibility::Visible
+				: EVisibility::Collapsed;
+		})
+
+		// --- Layer 0: Atmospheric Dark-Fantasy Edge Vignette over Live 3D Oakhaven Sunset Vista ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			VignetteBackdrop
+		]
+
+		// --- Layer 1: Left-Aligned Sculpted Obsidian Title Column (480px) ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Fill)
+		.Padding(FMargin(64.f, 52.f, 0.f, 52.f))
+		[
+			SNew(SBox)
+			.WidthOverride(480.f)
+			[
+				SNew(SBorder)
+				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
+				.Padding(FMargin(1.5f))
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+					.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.94f))
+					.Padding(FMargin(32.f, 26.f))
+					[
+						SNew(SVerticalBox)
+
+						// Top Skull Crest Emblem
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+						[
+							TopCrestWidget
+						]
+
+						// Monumental Burnished Gold Title
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(38))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Justification(ETextJustify::Center)
+							.Text(LOCTEXT("MainMenuTitle", "AETHERIA"))
+						]
+
+						// Subtitle Lockup
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						.Padding(FMargin(0.f, 2.f, 0.f, 14.f))
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(14))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+							.Justification(ETextJustify::Center)
+							.Text(LOCTEXT("MainMenuSubtitle", "CHRONICLES OF THE DRAKE"))
+						]
+
+						// Gold 1px Hairline Divider
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(12.f, 0.f, 12.f, 10.f))
+						[
+							SNew(SBox)
+							.HeightOverride(1.f)
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
+							]
+						]
+
+						// Live Hardware & NVIDIA DLSS 4.5 Telemetry Strip
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.HAlign(HAlign_Center)
+						.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontRegular(10))
+							.Justification(ETextJustify::Center)
+							.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+								const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+								if (RTXSub && RTXSub->IsRTXActive())
+								{
+									return FSlateColor(ChroniclesHUDPalette::TextCyan);
+								}
+								return FSlateColor(ChroniclesHUDPalette::TextSecondary);
+							})
+							.Text_Lambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+								const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+								if (!RTXSub)
+								{
+									return LOCTEXT("MenuHwFallback", "UE 5.8 · D3D12 SM6 · INITIALIZING");
+								}
+								const FGraphicsTelemetry& Tel = RTXSub->GetTelemetry();
+								if (Tel.ActiveTier == EChronicleRenderTier::CrimsonRTXUltra)
+								{
+									if (Tel.bDLSSActive)
+									{
+										const FString ModeLabel = RTXSub->GetDLSSModeLabel();
+										const TCHAR* RRTag = RTXSub->IsDLSSRayReconstructionEnabled() ? TEXT("+RR") : TEXT("");
+										const TCHAR* FGTag = RTXSub->IsDLSSFrameGenEnabled() ? TEXT("+FG") : TEXT("");
+										return FText::FromString(FString::Printf(
+											TEXT("UE 5.8 · RTX HWRT · NVIDIA DLSS 4.5 %s%s%s"),
+											ModeLabel.IsEmpty() ? TEXT("Quality") : *ModeLabel,
+											RRTag,
+											FGTag));
+									}
+									return LOCTEXT("MenuHwRTXTSR", "UE 5.8 · RTX HWRT · LUMEN · TSR");
+								}
+								return LOCTEXT("MenuHwClassic", "UE 5.8 · D3D12 SM6 · CLASSIC MODE");
+							})
+						]
+
+						// Upper Breathing Spacer
+						+ SVerticalBox::Slot()
+						.FillHeight(0.35f)
+						[
+							SNew(SSpacer)
+						]
+
+						// 1. Primary Forged Crimson CTA: New Journey (-> Hero Creator -> Cave Awakening) / Resume
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+						[
+							MakeMenuButton(
+								TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
+								{
+									AChroniclesPlayerController* PC = WeakPC.Get();
+									if (PC && PC->bHasEnteredGameWorld)
+									{
+										return LOCTEXT("MainMenuResumeCTA", "ПРОДОЛЖИТЬ ИГРУ · RESUME");
+									}
+									return LOCTEXT("MainMenuStartCTA", "НАЧАТЬ ПРИКЛЮЧЕНИЕ · NEW JOURNEY");
+								}),
+								true,
+								ChroniclesHUDPalette::HairlineGold,
+								ChroniclesHUDPalette::TextPrimary,
+								11,
+								[](AChroniclesPlayerController* PC)
+								{
+									if (PC->bHasEnteredGameWorld)
+									{
+										PC->EnterGameFromTitleScreen(false);
+									}
+									else
+									{
+										PC->StartNewGameCharacterCreation();
+									}
+								})
+						]
+
+						// 2. Secondary Continue Saved Journey Button (visible only on initial launch if save exists)
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+						[
+							SNew(SBox)
+							.Visibility_Lambda([WeakPC = OwnerPC, HasSavedJourney]() -> EVisibility
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								return (PC && !PC->bHasEnteredGameWorld && HasSavedJourney())
+									? EVisibility::Visible
+									: EVisibility::Collapsed;
+							})
+							[
+								MakeMenuButton(
+									LOCTEXT("MainMenuContinueCTA", "ЗАГРУЗИТЬ СОХРАНЕНИЕ · CONTINUE"),
+									false,
+									ChroniclesHUDPalette::HairlineGoldSubtle,
+									ChroniclesHUDPalette::TextGold,
+									10,
+									[](AChroniclesPlayerController* PC)
+									{
+										PC->EnterGameFromTitleScreen(true);
+									})
+							]
+						]
+
+						// 3. Hero Creator Studio
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+						[
+							MakeMenuButton(
+								LOCTEXT("MainMenuCreatorCTA", "СОЗДАНИЕ ГЕРОЯ · HERO CREATOR"),
+								false,
+								ChroniclesHUDPalette::HairlineBronze,
+								ChroniclesHUDPalette::TextPrimary,
+								10,
+								[](AChroniclesPlayerController* PC)
+								{
+									if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+									{
+										Music->PlayMenuClickSFX();
+									}
+									PC->bMainMenuReturnTarget = !PC->bHasEnteredGameWorld;
+									PC->ToggleOverlay(EChroniclesOverlayMode::HeroCustomizer);
+								})
+						]
+
+						// 4. Graphics RTX / DLSS 4.5 & Audio
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+						[
+							MakeMenuButton(
+								LOCTEXT("MainMenuGraphicsCTA", "ГРАФИКА RTX / DLSS 4.5 И ЗВУК"),
+								false,
+								ChroniclesHUDPalette::HairlineBronze,
+								ChroniclesHUDPalette::TextPrimary,
+								10,
+								[](AChroniclesPlayerController* PC)
+								{
+									if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+									{
+										Music->PlayMenuClickSFX();
+									}
+									PC->bMainMenuReturnTarget = !PC->bHasEnteredGameWorld;
+									PC->ToggleOverlay(EChroniclesOverlayMode::GraphicsRTX);
+								})
+						]
+
+						// 5. Quit to Desktop
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							MakeMenuButton(
+								LOCTEXT("MainMenuQuitCTA", "ВЫХОД НА РАБОЧИЙ СТОЛ · QUIT"),
+								false,
+								ChroniclesHUDPalette::HairlineBronze,
+								ChroniclesHUDPalette::TextSecondary,
+								10,
+								[](AChroniclesPlayerController* PC)
+								{
+									PC->RequestQuitApplication();
+								})
+						]
+
+						// Lower Breathing Spacer
+						+ SVerticalBox::Slot()
+						.FillHeight(0.65f)
+						[
+							SNew(SSpacer)
+						]
+
+						// Gold Hairline Above Live Audio Strip
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 12.f, 0.f, 10.f))
+						[
+							SNew(SBox)
+							.HeightOverride(1.f)
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+							]
+						]
+
+						// Live Soundtrack Track Readout
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontRegular(11))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.AutoWrapText(true)
+							.Text_Lambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+								const FString TrackName = Music ? Music->GetCurrentTrackDisplayName() : TEXT("Aetheria Main Theme");
+								return FText::FromString(FString::Printf(
+									TEXT("OST · %s"),
+									TrackName.IsEmpty() ? TEXT("Aetheria Main Theme") : *TrackName));
+							})
+						]
+
+						// Inline Music Volume & Mute Controls
+						+ SVerticalBox::Slot()
+						.AutoHeight()
+						[
+							SNew(SHorizontalBox)
+
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor(ChroniclesHUDPalette::HairlineBronze)
+								.Padding(FMargin(1.f))
+								[
+									SNew(SButton)
+									.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+									.ContentPadding(FMargin(12.f, 5.f))
+									.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+									{
+										if (AChroniclesPlayerController* PC = WeakPC.Get())
+										{
+											if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+											{
+												Music->SetMusicVolume(FMath::Clamp(Music->GetMusicVolume() - 0.10f, 0.f, 1.f));
+												Music->PlayMenuClickSFX();
+											}
+										}
+										return FReply::Handled();
+									})
+									[
+										SNew(STextBlock)
+										.Font(ChroniclesHUDPalette::FontBold(11))
+										.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+										.Text(LOCTEXT("MenuVolDown", "−"))
+									]
+								]
+							]
+
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.f)
+							.HAlign(HAlign_Center)
+							.VAlign(VAlign_Center)
+							.Padding(FMargin(8.f, 0.f))
+							[
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(10))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Text_Lambda([WeakPC = OwnerPC]() -> FText
+								{
+									AChroniclesPlayerController* PC = WeakPC.Get();
+									const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+									const int32 VolPct = Music ? FMath::RoundToInt(FMath::Clamp(Music->GetMusicVolume(), 0.f, 1.f) * 100.f) : 75;
+									return FText::FromString(FString::Printf(TEXT("Музыка: %d%%"), VolPct));
+								})
+							]
+
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor(ChroniclesHUDPalette::HairlineBronze)
+								.Padding(FMargin(1.f))
+								[
+									SNew(SButton)
+									.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+									.ContentPadding(FMargin(12.f, 5.f))
+									.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+									{
+										if (AChroniclesPlayerController* PC = WeakPC.Get())
+										{
+											if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+											{
+												Music->SetMusicVolume(FMath::Clamp(Music->GetMusicVolume() + 0.10f, 0.f, 1.f));
+												Music->PlayMenuClickSFX();
+											}
+										}
+										return FReply::Handled();
+									})
+									[
+										SNew(STextBlock)
+										.Font(ChroniclesHUDPalette::FontBold(11))
+										.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+										.Text(LOCTEXT("MenuVolUp", "+"))
+									]
+								]
+							]
+
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+								{
+									AChroniclesPlayerController* PC = WeakPC.Get();
+									const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+									const bool bMuted = Music && Music->IsMusicMuted();
+									return bMuted ? FSlateColor(ChroniclesHUDPalette::HairlineCrimson) : FSlateColor(ChroniclesHUDPalette::TextEmerald);
+								})
+								.Padding(FMargin(1.f))
+								[
+									SNew(SButton)
+									.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+									.ContentPadding(FMargin(12.f, 5.f))
+									.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+									{
+										if (AChroniclesPlayerController* PC = WeakPC.Get())
+										{
+											if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+											{
+												Music->SetMusicMuted(!Music->IsMusicMuted());
+												Music->PlayMenuClickSFX();
+											}
+										}
+										return FReply::Handled();
+									})
+									[
+										SNew(STextBlock)
+										.Font(ChroniclesHUDPalette::FontBold(10))
+										.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+										{
+											AChroniclesPlayerController* PC = WeakPC.Get();
+											const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+											const bool bMuted = Music && Music->IsMusicMuted();
+											return bMuted ? FSlateColor(ChroniclesHUDPalette::TextCrimson) : FSlateColor(ChroniclesHUDPalette::TextEmerald);
+										})
+										.Text_Lambda([WeakPC = OwnerPC]() -> FText
+										{
+											AChroniclesPlayerController* PC = WeakPC.Get();
+											const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+											const bool bMuted = Music && Music->IsMusicMuted();
+											return bMuted
+												? LOCTEXT("MenuSoundOff", "Звук: ВЫКЛ")
+												: LOCTEXT("MenuSoundOn", "Звук: ВКЛ");
+										})
+									]
+								]
+							]
+						]
+					]
+				]
+			]
+		]
+
+		// --- Layer 2: Subtle Bottom-Right Version & Engine Watermark over the 3D Scene ---
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Bottom)
+		.Padding(FMargin(0.f, 0.f, 28.f, 22.f))
+		[
+			SNew(STextBlock)
+			.Font(ChroniclesHUDPalette::FontRegular(11))
+			.ColorAndOpacity(FLinearColor(0.84f, 0.80f, 0.72f, 0.84f))
+			.Text(LOCTEXT("MainMenuWatermark", "AETHERIA: CHRONICLES OF THE DRAKE  ·  UE 5.8.4  ·  D3D12 SM6 RTX"))
+		];
+}
 
 TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildWorldMapOverlay()
 {
@@ -5972,6 +9247,10 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildDialogueOverlay()
 								{
 									AChroniclesPlayerController* PC = WeakPC.Get();
 									const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
+									if (NPC && NPC->NpcId == FName(TEXT("Npc_CaveTutor")))
+									{
+										return LOCTEXT("CaveTutorProceedBtn", "Выйти к свету Этерии · Step into the Light");
+									}
 									UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
 									const UQuestSubsystem* QS = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
 									const FQuestDef* Q = ChroniclesHUDPalette::ResolveQuestForNPC(QS, NPC);
@@ -6156,7 +9435,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(16))
 							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-							.Text(LOCTEXT("RTXPanelHdr", "RTX HWRT  ·  NVIDIA DLSS 4.5  ·  TELEMETRY"))
+							.Text(LOCTEXT("RTXPanelHdr", "RTX HWRT  ·  NVIDIA DLSS 4.5  ·  AUDIO & TELEMETRY"))
 						]
 						+ SHorizontalBox::Slot()
 						.AutoWidth()
@@ -6173,7 +9452,13 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 								SNew(STextBlock)
 								.Font(ChroniclesHUDPalette::FontBold(10))
 								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
-								.Text(LOCTEXT("CloseRTXBtn", "Close [F10 / Esc]"))
+								.Text_Lambda([WeakPC = OwnerPC]() -> FText
+								{
+									AChroniclesPlayerController* PC = WeakPC.Get();
+									return (PC && PC->bMainMenuReturnTarget)
+										? LOCTEXT("BackToMenuRTXBtn", "Back to Menu [Esc]")
+										: LOCTEXT("CloseRTXBtn", "Close [F10 / Esc]");
+								})
 							]
 						]
 					]
@@ -6398,6 +9683,206 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 								[](UGraphicsRTXSubsystem* S, bool bOn) { S->SetReflexEnabled(bOn); })
 						]
 					]
+
+					// Hairline Divider
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 14.f, 0.f, 10.f))
+					[
+						SNew(SBox)
+						.HeightOverride(1.f)
+						[
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+							.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+						]
+					]
+
+					// Section 4: Audio & Soundtrack Controls
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 6.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(10))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text(LOCTEXT("AudioSecHdr", "AUDIO & SOUNDTRACK  ·  МУЗЫКА И ЗВУК"))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SBorder)
+						.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+						.BorderBackgroundColor(FLinearColor::White)
+						.Padding(FMargin(14.f, 9.f))
+						[
+							SNew(SHorizontalBox)
+
+							+ SHorizontalBox::Slot()
+							.FillWidth(1.f)
+							.VAlign(VAlign_Center)
+							.Padding(FMargin(0.f, 0.f, 12.f, 0.f))
+							[
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								[
+									SNew(STextBlock)
+									.Font(ChroniclesHUDPalette::FontBold(10))
+									.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+									.Text_Lambda([WeakPC = OwnerPC]() -> FText
+									{
+										AChroniclesPlayerController* PC = WeakPC.Get();
+										const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+										const FString Track = Music ? Music->GetCurrentTrackDisplayName() : TEXT("Aetheria Soundtrack");
+										return FText::FromString(FString::Printf(
+											TEXT("OST · %s"),
+											Track.IsEmpty() ? TEXT("Aetheria Soundtrack") : *Track));
+									})
+								]
+								+ SVerticalBox::Slot()
+								.AutoHeight()
+								.Padding(FMargin(0.f, 2.f, 0.f, 0.f))
+								[
+									SNew(STextBlock)
+									.Font(ChroniclesHUDPalette::FontRegular(9))
+									.ColorAndOpacity(ChroniclesHUDPalette::TextSecondary)
+									.Text_Lambda([WeakPC = OwnerPC]() -> FText
+									{
+										AChroniclesPlayerController* PC = WeakPC.Get();
+										const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+										const int32 VolPct = Music ? FMath::RoundToInt(FMath::Clamp(Music->GetMusicVolume(), 0.f, 1.f) * 100.f) : 75;
+										const bool bMuted = Music && Music->IsMusicMuted();
+										return FText::FromString(FString::Printf(
+											TEXT("Громкость музыки: %d%%  ·  %s"),
+											VolPct,
+											bMuted ? TEXT("Заглушено (Muted)") : TEXT("Активно (Active)")));
+									})
+								]
+							]
+
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(FMargin(0.f, 0.f, 6.f, 0.f))
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor(ChroniclesHUDPalette::HairlineBronze)
+								.Padding(FMargin(1.f))
+								[
+									SNew(SButton)
+									.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+									.ContentPadding(FMargin(12.f, 6.f))
+									.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+									{
+										if (AChroniclesPlayerController* PC = WeakPC.Get())
+										{
+											if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+											{
+												Music->SetMusicVolume(FMath::Clamp(Music->GetMusicVolume() - 0.10f, 0.f, 1.f));
+												Music->PlayMenuClickSFX();
+											}
+										}
+										return FReply::Handled();
+									})
+									[
+										SNew(STextBlock)
+										.Font(ChroniclesHUDPalette::FontBold(9))
+										.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+										.Text(LOCTEXT("RTXAudioVolDown", "− 10%"))
+									]
+								]
+							]
+
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor(ChroniclesHUDPalette::HairlineBronze)
+								.Padding(FMargin(1.f))
+								[
+									SNew(SButton)
+									.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+									.ContentPadding(FMargin(12.f, 6.f))
+									.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+									{
+										if (AChroniclesPlayerController* PC = WeakPC.Get())
+										{
+											if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+											{
+												Music->SetMusicVolume(FMath::Clamp(Music->GetMusicVolume() + 0.10f, 0.f, 1.f));
+												Music->PlayMenuClickSFX();
+											}
+										}
+										return FReply::Handled();
+									})
+									[
+										SNew(STextBlock)
+										.Font(ChroniclesHUDPalette::FontBold(9))
+										.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+										.Text(LOCTEXT("RTXAudioVolUp", "+ 10%"))
+									]
+								]
+							]
+
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+								{
+									AChroniclesPlayerController* PC = WeakPC.Get();
+									const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+									const bool bMuted = Music && Music->IsMusicMuted();
+									return bMuted ? FSlateColor(ChroniclesHUDPalette::HairlineCrimson) : FSlateColor(ChroniclesHUDPalette::TextEmerald);
+								})
+								.Padding(FMargin(1.f))
+								[
+									SNew(SButton)
+									.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+									.ContentPadding(FMargin(12.f, 6.f))
+									.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+									{
+										if (AChroniclesPlayerController* PC = WeakPC.Get())
+										{
+											if (UAetheriaMusicSubsystem* Music = UAetheriaMusicSubsystem::Get(PC))
+											{
+												Music->SetMusicMuted(!Music->IsMusicMuted());
+												Music->PlayMenuClickSFX();
+											}
+										}
+										return FReply::Handled();
+									})
+									[
+										SNew(STextBlock)
+										.Font(ChroniclesHUDPalette::FontBold(9))
+										.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+										{
+											AChroniclesPlayerController* PC = WeakPC.Get();
+											const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+											const bool bMuted = Music && Music->IsMusicMuted();
+											return bMuted ? FSlateColor(ChroniclesHUDPalette::TextCrimson) : FSlateColor(ChroniclesHUDPalette::TextEmerald);
+										})
+										.Text_Lambda([WeakPC = OwnerPC]() -> FText
+										{
+											AChroniclesPlayerController* PC = WeakPC.Get();
+											const UAetheriaMusicSubsystem* Music = PC ? UAetheriaMusicSubsystem::Get(PC) : nullptr;
+											const bool bMuted = Music && Music->IsMusicMuted();
+											return bMuted
+												? LOCTEXT("RTXAudioUnmute", "Unmute · ВКЛ")
+												: LOCTEXT("RTXAudioMute", "Mute · ВЫКЛ");
+										})
+									]
+								]
+							]
+						]
+					]
 				]
 			]
 		];
@@ -6555,9 +10040,82 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildHeroCustomizerOverlay()
 						[](AChroniclesPlayerController* PC) { PC->SetCreatorCameraZoom(2); },
 						[](const AChroniclesPlayerController* PC) { return PC->GetCreatorCameraZoom() == 2; })
 				]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 6.f, 0.f))
+				[
+					SNew(SBox)
+					.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						return (PC && PC->bIsNewGameCreationFlow) ? EVisibility::Visible : EVisibility::Collapsed;
+					})
+					[
+						SNew(SBorder)
+						.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+						.BorderBackgroundColor(ChroniclesHUDPalette::HairlineBronze)
+						.Padding(FMargin(1.f))
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+							.ContentPadding(FMargin(10.f, 4.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get())
+								{
+									PC->CloseAllOverlays();
+								}
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(9))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Text(LOCTEXT("CamBackTitleBtn", "< Title"))
+							]
+						]
+					]
+				]
 				+ SHorizontalBox::Slot().AutoWidth()
 				[
-					MakeStudioCamBtn(LOCTEXT("CamCloseBtn", "Close [C/Esc]"), [](AChroniclesPlayerController* PC) { PC->CloseAllOverlays(); }, nullptr, true)
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
+					.Padding(FMargin(1.f))
+					[
+						SNew(SButton)
+						.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+						.ContentPadding(FMargin(12.f, 4.f))
+						.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+						{
+							if (AChroniclesPlayerController* PC = WeakPC.Get())
+							{
+								if (PC->bIsNewGameCreationFlow)
+								{
+									PC->ConfirmNewHeroAndAwakenInCave();
+								}
+								else
+								{
+									PC->CloseAllOverlays();
+								}
+							}
+							return FReply::Handled();
+						})
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(9))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Text_Lambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								if (PC && PC->bIsNewGameCreationFlow)
+								{
+									return LOCTEXT("CamBeginJourneyTopBtn", "ПРОБУДИТЬСЯ В ЭТЕРИИ · BEGIN JOURNEY");
+								}
+								return (PC && PC->bMainMenuReturnTarget)
+									? LOCTEXT("CamBackMenuBtn", "Back to Menu [Esc]")
+									: LOCTEXT("CamCloseBtn", "Close [C/Esc]");
+							})
+						]
+					]
 				]
 			]
 		]
@@ -6648,6 +10206,46 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildHeroCustomizerOverlay()
 						+ SScrollBox::Slot()
 						[
 							SAssignNew(CreatorRightStatsBox, SVerticalBox)
+						]
+					]
+
+					// Prominent Forged Crimson Bottom-Right CTA for New Game Creation -> Awakening Cave
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 10.f, 0.f, 0.f))
+					[
+						SNew(SBox)
+						.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
+						{
+							AChroniclesPlayerController* PC = WeakPC.Get();
+							return (PC && PC->bIsNewGameCreationFlow) ? EVisibility::Visible : EVisibility::Collapsed;
+						})
+						[
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+							.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
+							.Padding(FMargin(1.5f))
+							[
+								SNew(SButton)
+								.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+								.ContentPadding(FMargin(12.f, 11.f))
+								.HAlign(HAlign_Center)
+								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+								{
+									if (AChroniclesPlayerController* PC = WeakPC.Get())
+									{
+										PC->ConfirmNewHeroAndAwakenInCave();
+									}
+									return FReply::Handled();
+								})
+								[
+									SNew(STextBlock)
+									.Font(ChroniclesHUDPalette::FontBold(10))
+									.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+									.Justification(ETextJustify::Center)
+									.Text(LOCTEXT("CreatorBeginJourneyBottomCTA", "ПРОБУДИТЬСЯ В ЭТЕРИИ · BEGIN JOURNEY"))
+								]
+							]
 						]
 					]
 				]
