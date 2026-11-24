@@ -13,7 +13,9 @@
 #include "Components/DirectionalLightComponent.h"
 #include "Components/ExponentialHeightFogComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/MeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkyAtmosphereComponent.h"
 #include "Components/SkyLightComponent.h"
@@ -29,10 +31,14 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/Pawn.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "Net/UnrealNetwork.h"
+#include "Particles/ParticleSystem.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "UObject/UnrealType.h"
 
 namespace AetheriaWorldConst
 {
@@ -44,6 +50,66 @@ namespace AetheriaWorldConst
 	static constexpr TCHAR MatBasicShape[]          = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
 	static constexpr TCHAR MatEmissive[]            = TEXT("/Engine/EngineMaterials/EmissiveMeshMaterial.EmissiveMeshMaterial");
 	static constexpr TCHAR MatSimpleCloud[]         = TEXT("/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst.m_SimpleVolumetricCloud_Inst");
+
+	// Verified AAA Landscape Auto-Materials
+	static constexpr TCHAR MatLandscapeMountain[]   = TEXT("/Game/MWLandscapeAutoMaterial/Materials/Landscape/MTL_MWAM_Landscape_MountainRangeExample.MTL_MWAM_Landscape_MountainRangeExample");
+	static constexpr TCHAR MatLandscapeIsland[]     = TEXT("/Game/MWLandscapeAutoMaterial/Materials/Landscape/MTL_MWAM_Landscape_IslandExample.MTL_MWAM_Landscape_IslandExample");
+
+	// Verified AAA Stone Floor, Masonry, Obsidian, Iron & Element Materials
+	static constexpr TCHAR MatStoneAltar[]          = TEXT("/Game/MedievalDungeon/Materials/M_Stone_Altar_Inst.M_Stone_Altar_Inst");
+	static constexpr TCHAR MatBrickFloorClean[]     = TEXT("/Game/MedievalDungeon/Materials/M_BrickFloor_Clean_Inst.M_BrickFloor_Clean_Inst");
+	static constexpr TCHAR MatStoneWall[]           = TEXT("/Game/MedievalDungeon/Materials/M_StoneWall_Inst.M_StoneWall_Inst");
+	static constexpr TCHAR MatCryptWallA[]          = TEXT("/Game/MedievalDungeon/Materials/M_Crypt_Wall_Decorative_A_Inst.M_Crypt_Wall_Decorative_A_Inst");
+	static constexpr TCHAR MatDecorativeArches[]    = TEXT("/Game/MedievalDungeon/Materials/M_Decorative_Arches_Inst.M_Decorative_Arches_Inst");
+	static constexpr TCHAR MatPillarInst[]          = TEXT("/Game/MedievalDungeon/Materials/M_Pillar_Inst.M_Pillar_Inst");
+	static constexpr TCHAR MatFirePitInst[]         = TEXT("/Game/MedievalDungeon/Materials/M_Fire_Pit_Inst.M_Fire_Pit_Inst");
+	static constexpr TCHAR MatEdgeStonesInst[]      = TEXT("/Game/MedievalDungeon/Materials/M_Edge_Stones_Inst.M_Edge_Stones_Inst");
+	static constexpr TCHAR MatStoneCoffin[]         = TEXT("/Game/MedievalDungeon/Materials/M_Stone_Coffin_Inst.M_Stone_Coffin_Inst");
+	static constexpr TCHAR MatDirtMounds[]          = TEXT("/Game/MedievalDungeon/Materials/M_Dirt_Mounds_Inst.M_Dirt_Mounds_Inst");
+	static constexpr TCHAR MatMedievalWood[]        = TEXT("/Game/MedievalDungeon/Materials/M_Wood_Inst.M_Wood_Inst");
+	static constexpr TCHAR MatNamaqualandCliff[]    = TEXT("/Game/Namaqualand/Materials/MI_Cliff_Side.MI_Cliff_Side");
+	static constexpr TCHAR MatAetheriaMasterPBR[]   = TEXT("/Game/Materials/M_AetheriaMasterPBR.M_AetheriaMasterPBR");
+	static constexpr TCHAR MatAetheriaGothicStone[] = TEXT("/Game/Materials/M_AetheriaGothicStone.M_AetheriaGothicStone");
+	static constexpr TCHAR MatAetheriaObsidian[]    = TEXT("/Game/Materials/M_AetheriaObsidian.M_AetheriaObsidian");
+	static constexpr TCHAR MatAetheriaDarkIron[]    = TEXT("/Game/Materials/M_AetheriaDarkIron.M_AetheriaDarkIron");
+	static constexpr TCHAR MatAetheriaFireball[]    = TEXT("/Game/Materials/M_AetheriaFireball.M_AetheriaFireball");
+	static constexpr TCHAR MatAetheriaPrismWall[]   = TEXT("/Game/Materials/M_AetheriaPrismWall.M_AetheriaPrismWall");
+
+	// Verified MedievalDungeon Architecture & Props Meshes
+	static constexpr TCHAR MeshDungeonFloor[]       = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Floor.SM_Floor");
+	static constexpr TCHAR MeshCryptFloor[]         = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Crypt/SM_Crypt_Floor.SM_Crypt_Floor");
+	static constexpr TCHAR MeshEdgeStones[]         = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Edge_Stones.SM_Edge_Stones");
+	static constexpr TCHAR MeshDungeonWallA[]       = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Dungeon_Wall_Decorative_A.SM_Dungeon_Wall_Decorative_A");
+	static constexpr TCHAR MeshDungeonWallHalf[]    = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Dungeon_Wall_Half.SM_Dungeon_Wall_Half");
+	static constexpr TCHAR MeshDecorativeArches[]   = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Decorative_Arches.SM_Decorative_Arches");
+	static constexpr TCHAR MeshDungeonPillar[]      = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Pillar.SM_Pillar");
+	static constexpr TCHAR MeshHalfArch[]           = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Half_Arch.SM_Half_Arch");
+	static constexpr TCHAR MeshFirePit[]            = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Fire_Pit.SM_Fire_Pit");
+	static constexpr TCHAR MeshDoorWay[]            = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_DoorWay.SM_DoorWay");
+	static constexpr TCHAR MeshCryptWallA[]         = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Crypt/SM_Crypt_Wall_Decorative_A.SM_Crypt_Wall_Decorative_A");
+	static constexpr TCHAR MeshCryptPillar[]        = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Crypt/SM_Crypt_Pillar.SM_Crypt_Pillar");
+	static constexpr TCHAR MeshCryptCeilingArch[]   = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Crypt/SM_Crypt_Ceiling_Arch_A.SM_Crypt_Ceiling_Arch_A");
+	static constexpr TCHAR MeshMausoleum[]          = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Crypt/SM_Mausoleum.SM_Mausoleum");
+	static constexpr TCHAR MeshMedievalAltar[]      = TEXT("/Game/MedievalDungeon/Meshes/Props/SM_Alter.SM_Alter");
+	static constexpr TCHAR MeshStoneCoffin[]        = TEXT("/Game/MedievalDungeon/Meshes/Props/SM_Stone_Coffin.SM_Stone_Coffin");
+	static constexpr TCHAR MeshMedievalPot[]        = TEXT("/Game/MedievalDungeon/Meshes/Props/SM_Pot_A_Complete.SM_Pot_A_Complete");
+	static constexpr TCHAR MeshGothicBuilding09[]   = TEXT("/Game/Gothic_Environment/Meshes/Gothic_buildings/SM_Gothic_building_09.SM_Gothic_building_09");
+
+	// Verified KiteDemo & MWLandscapeAutoMaterial Nature Meshes
+	static constexpr TCHAR MeshKiteCliff01[]        = TEXT("/Game/KiteDemo/Environments/Cliffs/Cliff01/SM_Cliff01.SM_Cliff01");
+	static constexpr TCHAR MeshKiteMountainRock[]   = TEXT("/Game/KiteDemo/Environments/Rocks/Mountain_RockFace_002/SM_MountainRock_Closed.SM_MountainRock_Closed");
+	static constexpr TCHAR MeshKiteRiverRock[]      = TEXT("/Game/KiteDemo/Environments/Rocks/River_Rock_01/SM_River_Rock_01.SM_River_Rock_01");
+	static constexpr TCHAR MeshKiteFern01[]         = TEXT("/Game/KiteDemo/Environments/Foliage/Ferns/SM_Fern_01.SM_Fern_01");
+	static constexpr TCHAR MeshKiteFieldGrass01[]   = TEXT("/Game/KiteDemo/Environments/Foliage/Grass/FieldGrass/SM_FieldGrass_01.SM_FieldGrass_01");
+	static constexpr TCHAR MeshMWAMStoneA[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Cover/SM_MWAM_StoneA.SM_MWAM_StoneA");
+	static constexpr TCHAR MeshMWAMStoneB[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Cover/SM_MWAM_StoneB.SM_MWAM_StoneB");
+	static constexpr TCHAR MeshMWAMStoneC[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Cover/SM_MWAM_StoneC.SM_MWAM_StoneC");
+	static constexpr TCHAR MeshMWAMStoneD[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Cover/SM_MWAM_StoneD.SM_MWAM_StoneD");
+
+	// Verified Cascade Fire VFX
+	static constexpr TCHAR ParticleTorchFire[]      = TEXT("/Game/MedievalDungeon/Particles/P_Torch_Fire.P_Torch_Fire");
+	static constexpr TCHAR ParticlePitFire[]        = TEXT("/Game/MedievalDungeon/Particles/P_Pit_Fire.P_Pit_Fire");
+	static constexpr TCHAR ParticleAncientFire[]    = TEXT("/Game/AncientTreasures/VFX/P_Fire_01a.P_Fire_01a");
 
 	// Verified Gothic_props_1 PBR Meshes
 	static constexpr TCHAR MeshGothicSection1[]     = TEXT("/Game/Gothic_props_1/Static_meshes/SM_Section1.SM_Section1");
@@ -65,27 +131,27 @@ namespace AetheriaWorldConst
 	static constexpr TCHAR MeshStatue01[]           = TEXT("/Game/TA_Sample_Statue/Models/SM_TA_Sample_Statue_01.SM_TA_Sample_Statue_01");
 	static constexpr TCHAR MeshStatuePedestal[]     = TEXT("/Game/TA_Sample_Statue/Models/SM_TA_Sample_Pedestal_01.SM_TA_Sample_Pedestal_01");
 
-	// Verified /Game/Meshes/ PBR Meshes (replaced broken FortWall/FortPlaster/RockMoss/DeadTreeTrunk & floating chandeliers)
-	static constexpr TCHAR MeshCathedralLow[]       = TEXT("/Game/Meshes/SM_CathedralWall_LowCutaway.SM_CathedralWall_LowCutaway");
-	static constexpr TCHAR MeshCathedralArched[]    = TEXT("/Game/Meshes/SM_CathedralWall_Arched.SM_CathedralWall_Arched");
-	static constexpr TCHAR MeshFortWall[]           = TEXT("/Game/Gothic_props_1/Static_meshes/SM_Section1.SM_Section1");
-	static constexpr TCHAR MeshFortPlaster[]        = TEXT("/Game/Gothic_props_1/Static_meshes/SM_Section2.SM_Section2");
-	static constexpr TCHAR MeshSanctuaryShrine[]    = TEXT("/Game/Meshes/SM_SanctuaryShrine.SM_SanctuaryShrine");
+	// Verified /Game/Meshes/ & MedievalDungeon PBR replacements (zero missing assets!)
+	static constexpr TCHAR MeshCathedralLow[]       = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Dungeon_Wall_Half.SM_Dungeon_Wall_Half");
+	static constexpr TCHAR MeshCathedralArched[]    = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Decorative_Arches.SM_Decorative_Arches");
+	static constexpr TCHAR MeshFortWall[]           = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Dungeon_Wall_Decorative_A.SM_Dungeon_Wall_Decorative_A");
+	static constexpr TCHAR MeshFortPlaster[]        = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Crypt/SM_Crypt_Wall_Decorative_A.SM_Crypt_Wall_Decorative_A");
+	static constexpr TCHAR MeshSanctuaryShrine[]    = TEXT("/Game/MedievalDungeon/Meshes/Props/SM_Alter.SM_Alter");
 	static constexpr TCHAR MeshRunicAltar[]         = TEXT("/Game/Meshes/SM_RunicAltar.SM_RunicAltar");
-	static constexpr TCHAR MeshBrazierFlame[]       = TEXT("/Game/Meshes/SM_BrazierFlame.SM_BrazierFlame");
-	static constexpr TCHAR MeshStoneFirePit[]       = TEXT("/Game/Meshes/SM_StoneFirePit.SM_StoneFirePit");
+	static constexpr TCHAR MeshStoneFirePit[]       = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Fire_Pit.SM_Fire_Pit");
 	static constexpr TCHAR MeshDeadTree[]           = TEXT("/Game/Meshes/SM_DeadTree.SM_DeadTree");
 	static constexpr TCHAR MeshCitadelFortress[]    = TEXT("/Game/Meshes/SM_CitadelFortress.SM_CitadelFortress");
-	static constexpr TCHAR MeshGothicArchSpan[]     = TEXT("/Game/Meshes/SM_GothicArch_Span.SM_GothicArch_Span");
+	static constexpr TCHAR MeshGothicArchSpan[]     = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Decorative_Arches.SM_Decorative_Arches");
 	static constexpr TCHAR MeshGothicPillar[]       = TEXT("/Game/Meshes/SM_GothicPillar.SM_GothicPillar");
 	static constexpr TCHAR MeshRuinedArch[]         = TEXT("/Game/Meshes/SM_RuinedArch.SM_RuinedArch");
-	// Replaced oversized SM_DungeonFloor_Dais/Slab4x4 (whose raw bounds spanned ~80m!) with grounded PBR pedestal & flagstone
 	static constexpr TCHAR MeshDungeonDais[]        = TEXT("/Game/TA_Sample_Statue/Models/SM_TA_Sample_Pedestal_01.SM_TA_Sample_Pedestal_01");
-	static constexpr TCHAR MeshDungeonSlab[]        = TEXT("/Engine/BasicShapes/Cube.Cube");
-	static constexpr TCHAR MeshGothicBarrel[]       = TEXT("/Game/Meshes/SM_GothicBarrel.SM_GothicBarrel");
+	static constexpr TCHAR MeshDungeonSlab[]        = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Floor.SM_Floor");
+	static constexpr TCHAR MeshGothicBarrel[]       = TEXT("/Game/MedievalDungeon/Meshes/Props/SM_Pot_A_Complete.SM_Pot_A_Complete");
 	static constexpr TCHAR MeshTreasureChest[]      = TEXT("/Game/Meshes/SM_TreasureChest.SM_TreasureChest");
-	static constexpr TCHAR MeshCryptSarcophagus[]   = TEXT("/Game/Meshes/SM_CryptSarcophagus.SM_CryptSarcophagus");
+	static constexpr TCHAR MeshCryptSarcophagus[]   = TEXT("/Game/MedievalDungeon/Meshes/Props/SM_Stone_Coffin.SM_Stone_Coffin");
 	static constexpr TCHAR MeshCliffBoulder[]       = TEXT("/Game/Meshes/SM_CliffBoulder.SM_CliffBoulder");
+	static constexpr TCHAR MeshCoreCrystal[]        = TEXT("/Game/Meshes/SM_CoreCrystal.SM_CoreCrystal");
+	static constexpr TCHAR MeshEarthSpikeSingle[]   = TEXT("/Game/Meshes/SM_Earth_Spike_Single.SM_Earth_Spike_Single");
 }
 
 namespace AetheriaWorldHelpers
@@ -121,12 +187,70 @@ namespace AetheriaWorldHelpers
 		return TerrainZ - SinkCm - Box.Min.Z * ScaleZ;
 	}
 
+	static FVector ComputeGroundedCenterLoc(
+		const UStaticMesh* Mesh,
+		float TargetX,
+		float TargetY,
+		float TerrainZ,
+		const FRotator& Rot,
+		const FVector& Scale,
+		float SinkCm = 6.f)
+	{
+		const FBox Box = GetSafeBoundingBox(Mesh);
+		const FVector RawCenter = Box.GetCenter();
+		const FVector LocalAnchor(RawCenter.X * Scale.X, RawCenter.Y * Scale.Y, Box.Min.Z * Scale.Z);
+		const FVector RotatedAnchor = Rot.RotateVector(LocalAnchor);
+		return FVector(TargetX - RotatedAnchor.X, TargetY - RotatedAnchor.Y, TerrainZ - SinkCm - RotatedAnchor.Z);
+	}
+
 	static float ComputeStackedZ(const UStaticMesh* BaseMesh, float BaseWorldZ, float BaseScaleZ, const UStaticMesh* TopMesh, float TopScaleZ, float SinkCm = 2.f)
 	{
 		const FBox BaseBox = GetSafeBoundingBox(BaseMesh);
 		const FBox TopBox = GetSafeBoundingBox(TopMesh);
 		const float BaseTopZ = BaseWorldZ + BaseBox.Max.Z * BaseScaleZ;
 		return BaseTopZ - SinkCm - TopBox.Min.Z * TopScaleZ;
+	}
+
+	static bool IsGreyboxMaterialPtr(const UMaterialInterface* Mat)
+	{
+		if (!Mat)
+		{
+			return true;
+		}
+		const FString Name = Mat->GetName();
+		if (Name.Contains(TEXT("WorldGrid"), ESearchCase::IgnoreCase) ||
+			Name.Contains(TEXT("BasicShapeMaterial"), ESearchCase::IgnoreCase) ||
+			Name.Contains(TEXT("DefaultMaterial"), ESearchCase::IgnoreCase) ||
+			Name.Contains(TEXT("DefaultDiffuse"), ESearchCase::IgnoreCase) ||
+			Name.Contains(TEXT("ProcGrid"), ESearchCase::IgnoreCase))
+		{
+			return true;
+		}
+		const FString Path = Mat->GetPathName();
+		return Path.StartsWith(TEXT("/Engine/EngineMaterials/WorldGrid")) ||
+			Path.StartsWith(TEXT("/Engine/BasicShapes/"));
+	}
+
+	static UMaterialInterface* LoadFirstExistingMaterial(const TArray<const TCHAR*>& Candidates)
+	{
+		for (const TCHAR* Candidate : Candidates)
+		{
+			if (!Candidate || *Candidate == 0)
+			{
+				continue;
+			}
+			const FString Key(Candidate);
+			const bool bIsEngine = Key.StartsWith(TEXT("/Engine/"));
+			const FString Pkg = bIsEngine ? FString() : FPackageName::ObjectPathToPackageName(Key);
+			if (bIsEngine || (!Pkg.IsEmpty() && FPackageName::DoesPackageExist(Pkg)))
+			{
+				if (UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr, Candidate))
+				{
+					return Mat;
+				}
+			}
+		}
+		return nullptr;
 	}
 }
 
@@ -195,12 +319,21 @@ void ADestructiblePropActor::ConfigureProp(
 	bool bUsedPrimitiveFallback = false;
 	if (!LoadedMesh)
 	{
-		const TCHAR* FallbackPath =
-			(InKind == EDestructibleKind::Crystal || InKind == EDestructibleKind::Wood)
-				? AetheriaWorldConst::MeshCylinder
-				: AetheriaWorldConst::MeshCube;
-		LoadedMesh = LoadObject<UStaticMesh>(nullptr, FallbackPath);
-		bUsedPrimitiveFallback = true;
+		// Prefer real sculpted gothic pillar instead of untextured BasicShapes primitives
+		const FString PillarPkg = FPackageName::ObjectPathToPackageName(FString(AetheriaWorldConst::MeshDungeonPillar));
+		if (!PillarPkg.IsEmpty() && FPackageName::DoesPackageExist(PillarPkg))
+		{
+			LoadedMesh = LoadObject<UStaticMesh>(nullptr, AetheriaWorldConst::MeshDungeonPillar);
+		}
+		if (!LoadedMesh)
+		{
+			const TCHAR* FallbackPath =
+				(InKind == EDestructibleKind::Crystal || InKind == EDestructibleKind::Wood)
+					? AetheriaWorldConst::MeshCylinder
+					: AetheriaWorldConst::MeshCube;
+			LoadedMesh = LoadObject<UStaticMesh>(nullptr, FallbackPath);
+			bUsedPrimitiveFallback = true;
+		}
 	}
 
 	if (IntactMesh)
@@ -216,7 +349,43 @@ void ADestructiblePropActor::ConfigureProp(
 		IntactMesh->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 		IntactMesh->SetCollisionResponseToChannel(CHRONICLE_TRACE_PROJECTILE, ECR_Block);
 
-		if (bUsedPrimitiveFallback || bHasCustomAccent || InKind == EDestructibleKind::Crystal)
+		// Ensure destructible monoliths ALWAYS carry real PBR gothic stone/obsidian masonry (zero greybox!)
+		UMaterialInterface* StoneMat = nullptr;
+		if (InKind == EDestructibleKind::Obsidian)
+		{
+			StoneMat = AetheriaWorldHelpers::LoadFirstExistingMaterial({
+				AetheriaWorldConst::MatCryptWallA,
+				AetheriaWorldConst::MatStoneWall,
+				AetheriaWorldConst::MatAetheriaGothicStone
+			});
+		}
+		else
+		{
+			StoneMat = AetheriaWorldHelpers::LoadFirstExistingMaterial({
+				AetheriaWorldConst::MatPillarInst,
+				AetheriaWorldConst::MatAetheriaGothicStone,
+				AetheriaWorldConst::MatStoneWall
+			});
+		}
+
+		const FString MeshName = LoadedMesh ? LoadedMesh->GetName() : FString();
+		const bool bForceStoneMat = bUsedPrimitiveFallback
+			|| InKind == EDestructibleKind::Obsidian
+			|| MeshName.Contains(TEXT("GothicPillar"), ESearchCase::IgnoreCase);
+
+		if (StoneMat)
+		{
+			const int32 NumMats = FMath::Max(1, IntactMesh->GetNumMaterials());
+			for (int32 Idx = 0; Idx < NumMats; ++Idx)
+			{
+				if (bForceStoneMat || AetheriaWorldHelpers::IsGreyboxMaterialPtr(IntactMesh->GetMaterial(Idx)))
+				{
+					IntactMesh->SetMaterial(Idx, StoneMat);
+				}
+			}
+		}
+
+		if (bHasCustomAccent || InKind == EDestructibleKind::Crystal)
 		{
 			ApplyAccentGlow(AccentColor, bAccentEmissive);
 		}
@@ -229,28 +398,162 @@ void ADestructiblePropActor::ApplyAccentGlow(const FLinearColor& GlowColor, bool
 	bAccentEmissive = bUseEmissive;
 	bHasCustomAccent = true;
 
-	const TCHAR* MatPath = bUseEmissive ? AetheriaWorldConst::MatEmissive : AetheriaWorldConst::MatBasicShape;
-	if (UMaterialInterface* BaseMat = LoadObject<UMaterialInterface>(nullptr, MatPath))
+	if (!IntactMesh)
 	{
-		PropMID = UMaterialInstanceDynamic::Create(BaseMat, this);
-		if (PropMID)
+		return;
+	}
+
+	// NEVER overwrite the entire gothic pillar with solid neon EmissiveMeshMaterial!
+	// Keep dark weathered gothic stone masonry on the body so destructible quest monoliths
+	// look like ancient carved stone pillars instead of blinding yellow studio blocks.
+	UMaterialInterface* PillarStoneMat = AetheriaWorldHelpers::LoadFirstExistingMaterial(
+		(MaterialKind == EDestructibleKind::Obsidian)
+			? TArray<const TCHAR*>{ AetheriaWorldConst::MatCryptWallA, AetheriaWorldConst::MatPillarInst, AetheriaWorldConst::MatStoneWall }
+			: TArray<const TCHAR*>{ AetheriaWorldConst::MatPillarInst, AetheriaWorldConst::MatAetheriaGothicStone, AetheriaWorldConst::MatStoneWall });
+
+	if (PillarStoneMat)
+	{
+		const int32 NumMats = FMath::Max(1, IntactMesh->GetNumMaterials());
+		for (int32 Idx = 0; Idx < NumMats; ++Idx)
 		{
-			PropMID->SetVectorParameterValue(TEXT("Color"), GlowColor);
-			PropMID->SetVectorParameterValue(TEXT("BaseColor"), GlowColor);
-			PropMID->SetVectorParameterValue(TEXT("EmissiveColor"), GlowColor);
-			if (IntactMesh)
+			UMaterialInterface* CurMat = IntactMesh->GetMaterial(Idx);
+			const bool bIsOldEmissive = CurMat && CurMat->GetName().Contains(TEXT("Emissive"), ESearchCase::IgnoreCase);
+			if (bIsOldEmissive || AetheriaWorldHelpers::IsGreyboxMaterialPtr(CurMat) ||
+				(IntactMesh->GetStaticMesh() && IntactMesh->GetStaticMesh()->GetName().Contains(TEXT("GothicPillar"), ESearchCase::IgnoreCase)))
 			{
-				if (bUseEmissive)
-				{
-					IntactMesh->bDisallowNanite = true;
-				}
-				const int32 NumMats = FMath::Max(1, IntactMesh->GetNumMaterials());
-				for (int32 Idx = 0; Idx < NumMats; ++Idx)
-				{
-					IntactMesh->SetMaterial(Idx, PropMID);
-				}
+				IntactMesh->SetMaterial(Idx, PillarStoneMat);
 			}
 		}
+	}
+
+	if (!bUseEmissive)
+	{
+		return;
+	}
+
+	// Seat a subtle, grounded amber-gold rune crystal directly on top of the pillar's bounds (never floating off to the side or blinding white)
+	const FBox LocalBox = AetheriaWorldHelpers::GetSafeBoundingBox(IntactMesh->GetStaticMesh());
+	const FVector LocalCenter = LocalBox.GetCenter();
+
+	UStaticMesh* CrystalMesh = nullptr;
+	const FString CrystalPkg = FPackageName::ObjectPathToPackageName(FString(AetheriaWorldConst::MeshCoreCrystal));
+	if (!CrystalPkg.IsEmpty() && FPackageName::DoesPackageExist(CrystalPkg))
+	{
+		CrystalMesh = LoadObject<UStaticMesh>(nullptr, AetheriaWorldConst::MeshCoreCrystal);
+	}
+	if (!CrystalMesh)
+	{
+		CrystalMesh = LoadObject<UStaticMesh>(nullptr, AetheriaWorldConst::MeshSphere);
+	}
+
+	if (!RuneAccentMesh && CrystalMesh)
+	{
+		const FName AccentName = MakeUniqueObjectName(this, UStaticMeshComponent::StaticClass(), TEXT("RuneAccentCrown"));
+		RuneAccentMesh = NewObject<UStaticMeshComponent>(this, AccentName);
+		if (RuneAccentMesh)
+		{
+			RuneAccentMesh->SetStaticMesh(CrystalMesh);
+			RuneAccentMesh->SetMobility(EComponentMobility::Movable);
+			RuneAccentMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			RuneAccentMesh->SetCastShadow(false);
+			RuneAccentMesh->bDisallowNanite = true;
+			RuneAccentMesh->AttachToComponent(IntactMesh, FAttachmentTransformRules::KeepRelativeTransform);
+			RuneAccentMesh->RegisterComponent();
+		}
+	}
+
+	FVector LocalCrownPos(LocalCenter.X, LocalCenter.Y, LocalBox.Max.Z);
+
+	if (RuneAccentMesh && CrystalMesh)
+	{
+		const FVector ParentScale = IntactMesh->GetRelativeScale3D().ComponentMax(FVector(0.15f));
+		const FBox CrystalBox = AetheriaWorldHelpers::GetSafeBoundingBox(CrystalMesh);
+		const FVector CrystalCenter = CrystalBox.GetCenter();
+		const FVector RelScale(
+			0.22f / ParentScale.X,
+			0.22f / ParentScale.Y,
+			0.22f / ParentScale.Z);
+
+		// Seat crystal base squarely into the pillar capital center (no floating gap or horizontal offset)
+		LocalCrownPos = FVector(
+			LocalCenter.X - CrystalCenter.X * RelScale.X,
+			LocalCenter.Y - CrystalCenter.Y * RelScale.Y,
+			LocalBox.Max.Z - CrystalBox.Min.Z * RelScale.Z - (4.f / ParentScale.Z));
+
+		RuneAccentMesh->SetRelativeLocation(LocalCrownPos);
+		RuneAccentMesh->SetRelativeRotation(FRotator(0.f, 45.f, 0.f));
+		RuneAccentMesh->SetRelativeScale3D(RelScale);
+		RuneAccentMesh->SetVisibility(true, false);
+
+		const bool bWarmRune = (GlowColor.R >= GlowColor.B * 0.95f);
+		const FLinearColor SubtleRuneColor = bWarmRune
+			? FLinearColor(1.0f, 0.45f, 0.08f, 1.0f)
+			: FLinearColor(
+				FMath::Clamp(GlowColor.R, 0.08f, 0.95f),
+				FMath::Clamp(GlowColor.G, 0.12f, 0.85f),
+				FMath::Clamp(GlowColor.B, 0.25f, 1.0f),
+				1.0f);
+
+		UMaterialInterface* BaseCrystalMat = AetheriaWorldHelpers::LoadFirstExistingMaterial({
+			AetheriaWorldConst::MatAetheriaMasterPBR,
+			AetheriaWorldConst::MatEmissive
+		});
+
+		UMaterialInterface* RuneMat = nullptr;
+		if (BaseCrystalMat)
+		{
+			PropMID = UMaterialInstanceDynamic::Create(BaseCrystalMat, this);
+			if (PropMID)
+			{
+				PropMID->SetVectorParameterValue(TEXT("BaseColor"), SubtleRuneColor);
+				PropMID->SetVectorParameterValue(TEXT("Color"), SubtleRuneColor);
+				PropMID->SetVectorParameterValue(TEXT("AccentColor"), SubtleRuneColor);
+				PropMID->SetVectorParameterValue(TEXT("EmissiveColor"), SubtleRuneColor);
+				PropMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 1.6f);
+				PropMID->SetScalarParameterValue(TEXT("EmissiveStrength"), 1.6f);
+				PropMID->SetScalarParameterValue(TEXT("Roughness"), 0.22f);
+				RuneMat = PropMID;
+			}
+		}
+
+		if (RuneMat)
+		{
+			const int32 NumMats = FMath::Max(1, RuneAccentMesh->GetNumMaterials());
+			for (int32 Idx = 0; Idx < NumMats; ++Idx)
+			{
+				RuneAccentMesh->SetMaterial(Idx, RuneMat);
+			}
+		}
+	}
+
+	if (!RuneAccentLight)
+	{
+		const FName LightName = MakeUniqueObjectName(this, UPointLightComponent::StaticClass(), TEXT("RuneAccentLight"));
+		RuneAccentLight = NewObject<UPointLightComponent>(this, LightName);
+		if (RuneAccentLight)
+		{
+			RuneAccentLight->SetMobility(EComponentMobility::Movable);
+			RuneAccentLight->SetIntensityUnits(ELightUnits::Lumens);
+			RuneAccentLight->SetCastShadows(false);
+			RuneAccentLight->AttachToComponent(IntactMesh, FAttachmentTransformRules::KeepRelativeTransform);
+			RuneAccentLight->RegisterComponent();
+		}
+	}
+
+	if (RuneAccentLight)
+	{
+		const FLinearColor ClampedLightColor(
+			FMath::Clamp(GlowColor.R, 0.15f, 1.0f),
+			FMath::Clamp(GlowColor.G, 0.15f, 0.65f),
+			FMath::Clamp(GlowColor.B, 0.08f, 1.0f),
+			1.0f);
+		RuneAccentLight->SetRelativeLocation(FVector(LocalCenter.X, LocalCenter.Y, LocalBox.Max.Z + 14.f));
+		RuneAccentLight->SetIntensity(280.f);
+		RuneAccentLight->SetAttenuationRadius(420.f);
+		RuneAccentLight->SetSourceRadius(16.f);
+		RuneAccentLight->SetSpecularScale(0.14f);
+		RuneAccentLight->SetLightColor(ClampedLightColor);
+		RuneAccentLight->SetVisibility(true);
 	}
 }
 
@@ -356,26 +659,64 @@ void ADestructiblePropActor::TriggerShatter(const FVector& ImpulseOrigin, const 
 		IntactMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		IntactMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
 	}
+	if (RuneAccentMesh)
+	{
+		RuneAccentMesh->SetVisibility(false, false);
+		RuneAccentMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (RuneAccentLight)
+	{
+		RuneAccentLight->SetIntensity(0.f);
+		RuneAccentLight->SetVisibility(false);
+	}
 
-	// Select debris chunk mesh & matching material (faceted cones for crystal shards, fractured blocks otherwise)
+	// Select debris chunk mesh & real PBR stone/crystal material
 	const TCHAR* DebrisMeshPath = (MaterialKind == EDestructibleKind::Crystal)
 		? AetheriaWorldConst::MeshCone
 		: AetheriaWorldConst::MeshCube;
 	UStaticMesh* ChunkMesh = LoadObject<UStaticMesh>(nullptr, DebrisMeshPath);
 
-	const TCHAR* DebrisMatPath = (bAccentEmissive || MaterialKind == EDestructibleKind::Crystal)
-		? AetheriaWorldConst::MatEmissive
-		: AetheriaWorldConst::MatBasicShape;
-
-	if (UMaterialInterface* BaseDebrisMat = LoadObject<UMaterialInterface>(nullptr, DebrisMatPath))
+	UMaterialInterface* ChunkPBRMat = nullptr;
+	if (MaterialKind == EDestructibleKind::Crystal)
 	{
-		DebrisMID = UMaterialInstanceDynamic::Create(BaseDebrisMat, this);
-		if (DebrisMID)
+		ChunkPBRMat = AetheriaWorldHelpers::LoadFirstExistingMaterial({
+			AetheriaWorldConst::MatAetheriaPrismWall,
+			AetheriaWorldConst::MatPillarInst
+		});
+	}
+	else if (MaterialKind == EDestructibleKind::Obsidian)
+	{
+		ChunkPBRMat = AetheriaWorldHelpers::LoadFirstExistingMaterial({
+			AetheriaWorldConst::MatCryptWallA,
+			AetheriaWorldConst::MatStoneWall
+		});
+	}
+	else
+	{
+		ChunkPBRMat = AetheriaWorldHelpers::LoadFirstExistingMaterial({
+			AetheriaWorldConst::MatPillarInst,
+			AetheriaWorldConst::MatAetheriaGothicStone,
+			AetheriaWorldConst::MatStoneWall
+		});
+	}
+
+	if (!ChunkPBRMat)
+	{
+		const TCHAR* DebrisMatPath = (bAccentEmissive || MaterialKind == EDestructibleKind::Crystal)
+			? AetheriaWorldConst::MatEmissive
+			: AetheriaWorldConst::MatBasicShape;
+
+		if (UMaterialInterface* BaseDebrisMat = LoadObject<UMaterialInterface>(nullptr, DebrisMatPath))
 		{
-			const FLinearColor ChunkTint = bHasCustomAccent ? AccentColor : GetDefaultAccentColor(MaterialKind);
-			DebrisMID->SetVectorParameterValue(TEXT("Color"), ChunkTint);
-			DebrisMID->SetVectorParameterValue(TEXT("BaseColor"), ChunkTint);
-			DebrisMID->SetVectorParameterValue(TEXT("EmissiveColor"), ChunkTint);
+			DebrisMID = UMaterialInstanceDynamic::Create(BaseDebrisMat, this);
+			if (DebrisMID)
+			{
+				const FLinearColor ChunkTint = bHasCustomAccent ? AccentColor : GetDefaultAccentColor(MaterialKind);
+				DebrisMID->SetVectorParameterValue(TEXT("Color"), ChunkTint);
+				DebrisMID->SetVectorParameterValue(TEXT("BaseColor"), ChunkTint);
+				DebrisMID->SetVectorParameterValue(TEXT("EmissiveColor"), ChunkTint);
+				ChunkPBRMat = DebrisMID;
+			}
 		}
 	}
 
@@ -397,13 +738,13 @@ void ADestructiblePropActor::TriggerShatter(const FVector& ImpulseOrigin, const 
 		{
 			Chunk->SetStaticMesh(ChunkMesh);
 		}
-		if (DebrisMID)
+		if (ChunkPBRMat)
 		{
-			if (bAccentEmissive || MaterialKind == EDestructibleKind::Crystal)
+			if (bAccentEmissive || MaterialKind == EDestructibleKind::Crystal || ChunkPBRMat->GetBlendMode() != BLEND_Opaque)
 			{
 				Chunk->bDisallowNanite = true;
 			}
-			Chunk->SetMaterial(0, DebrisMID);
+			Chunk->SetMaterial(0, ChunkPBRMat);
 		}
 
 		const float AngleRad = (static_cast<float>(Idx) / static_cast<float>(NumChunks)) * UE_TWO_PI
@@ -915,7 +1256,9 @@ void AAetheriaWorldBuilder::SetupAtmosphereAndLighting()
 			SunComp->SetUseTemperature(true);
 			SunComp->SetCastShadows(true);
 			SunComp->SetCastVolumetricShadow(true);
-			SunComp->SetVolumetricScatteringIntensity(1.35f);
+			SunComp->bEnableLightShaftOcclusion = true;
+			SunComp->bEnableLightShaftBloom = true;
+			SunComp->SetVolumetricScatteringIntensity(2.2f);
 			SunComp->SetIntensity(11.5f);
 			SunComp->MarkRenderStateDirty();
 		}
@@ -1000,6 +1343,8 @@ void AAetheriaWorldBuilder::SetupAtmosphereAndLighting()
 			SkyComp->bAffectsWorld = true;
 			SkyComp->SourceType = ESkyLightSourceType::SLS_CapturedScene;
 			SkyComp->SetRealTimeCapture(true);
+			SkyComp->bLowerHemisphereIsBlack = false;
+			SkyComp->SetLowerHemisphereColor(FLinearColor(0.16f, 0.14f, 0.12f, 1.0f));
 			SkyComp->SetIntensity(1.55f);
 			SkyComp->MarkRenderStateDirty();
 		}
@@ -1038,14 +1383,14 @@ void AAetheriaWorldBuilder::SetupAtmosphereAndLighting()
 		{
 			FogComp->SetVisibility(true);
 			FogComp->SetHiddenInGame(false);
-			FogComp->SetFogDensity(0.0038f);
-			FogComp->SetFogHeightFalloff(0.22f);
-			FogComp->SetFogMaxOpacity(0.55f);
-			FogComp->SetStartDistance(1200.f);
-			FogComp->SetVolumetricFog(bRTXActiveCached);
-			FogComp->SetVolumetricFogScatteringDistribution(0.45f);
-			FogComp->SetVolumetricFogExtinctionScale(0.65f);
-			FogComp->SetVolumetricFogDistance(7500.f);
+			FogComp->SetFogDensity(0.0052f);
+			FogComp->SetFogHeightFalloff(0.20f);
+			FogComp->SetFogMaxOpacity(0.78f);
+			FogComp->SetStartDistance(350.0f);
+			FogComp->SetVolumetricFog(true);
+			FogComp->SetVolumetricFogScatteringDistribution(0.68f);
+			FogComp->SetVolumetricFogExtinctionScale(0.75f);
+			FogComp->SetVolumetricFogDistance(8500.f);
 			FogComp->MarkRenderStateDirty();
 		}
 	}
@@ -1121,11 +1466,11 @@ void AAetheriaWorldBuilder::SetupAtmosphereAndLighting()
 		PP.bOverride_AutoExposureMethod = true;
 		PP.AutoExposureMethod = EAutoExposureMethod::AEM_Histogram;
 		PP.bOverride_AutoExposureMinBrightness = true;
-		PP.AutoExposureMinBrightness = -0.25f;
+		PP.AutoExposureMinBrightness = 0.35f;
 		PP.bOverride_AutoExposureMaxBrightness = true;
-		PP.AutoExposureMaxBrightness = 1.65f;
+		PP.AutoExposureMaxBrightness = 2.0f;
 		PP.bOverride_AutoExposureBias = true;
-		PP.AutoExposureBias = 0.25f;
+		PP.AutoExposureBias = -0.15f;
 
 		// Unified Crimson Desert AgX/Filmic highland grading (kills patchwork across mixed Fab packs)
 		FAetheriaStyleHarmonizer::ApplyCrimsonDesertPostProcess(PP);
@@ -1153,35 +1498,35 @@ void AAetheriaWorldBuilder::UpdateAtmosphereForTimeOfDay(float NormalizedTime)
 	static const FAtmosphereKeyframe Keys[4] = {
 		// 0.02 — Starry Full Moon (silver-blue 7200K moonlight)
 		{
-			0.02f, -34.f, 132.f, 7200.f, 2.2f, 0.65f, 0.0055f,
+			0.02f, -34.f, 132.f, 7200.f, 2.4f, 0.72f, 0.0062f,
 			FLinearColor(0.68f, 0.82f, 1.00f),
-			FLinearColor(0.08f, 0.14f, 0.27f),
-			FLinearColor(0.28f, 0.44f, 0.72f),
-			FColor(140, 165, 210)
+			FLinearColor(0.11f, 0.17f, 0.30f),
+			FLinearColor(0.30f, 0.46f, 0.74f),
+			FColor(145, 170, 215)
 		},
 		// 0.26 — Misty Dawn (soft rose-amber highland sunrise)
 		{
-			0.26f, -13.f, 54.f, 3600.f, 6.8f, 0.98f, 0.0048f,
+			0.26f, -13.f, 54.f, 3600.f, 6.8f, 1.02f, 0.0056f,
 			FLinearColor(1.00f, 0.81f, 0.69f),
-			FLinearColor(0.46f, 0.38f, 0.44f),
-			FLinearColor(0.95f, 0.62f, 0.44f),
+			FLinearColor(0.48f, 0.40f, 0.44f),
+			FLinearColor(0.96f, 0.64f, 0.44f),
 			FColor(218, 198, 196)
 		},
 		// 0.48 — Highland Noon (crisp alpine daylight)
 		{
-			0.48f, -58.f, -14.f, 5900.f, 11.2f, 1.24f, 0.0032f,
+			0.48f, -58.f, -14.f, 5900.f, 11.2f, 1.24f, 0.0042f,
 			FLinearColor(1.00f, 0.98f, 0.94f),
-			FLinearColor(0.36f, 0.54f, 0.76f),
-			FLinearColor(0.75f, 0.86f, 0.98f),
+			FLinearColor(0.38f, 0.54f, 0.74f),
+			FLinearColor(0.78f, 0.86f, 0.98f),
 			FColor(225, 232, 240)
 		},
-		// 0.72 — Golden Sunset (default Crimson Desert 4200K golden-hour spectacle with rich sky fill)
+		// 0.72 — Golden Sunset (Crimson Desert 4200K golden-hour spectacle with warm dusk golden-slate aerial perspective)
 		{
-			0.72f, -16.f, -42.f, 4200.f, 11.5f, 1.55f, 0.0035f,
+			0.72f, -16.f, -42.f, 4200.f, 11.5f, 1.55f, 0.0052f,
 			FLinearColor(1.00f, 0.85f, 0.66f),
-			FLinearColor(0.56f, 0.44f, 0.38f),
-			FLinearColor(1.00f, 0.62f, 0.30f),
-			FColor(220, 202, 184)
+			FLinearColor(0.54f, 0.43f, 0.36f),
+			FLinearColor(1.00f, 0.66f, 0.34f),
+			FColor(222, 200, 178)
 		}
 	};
 
@@ -1270,8 +1615,148 @@ void AAetheriaWorldBuilder::UpdateAtmosphereForTimeOfDay(float NormalizedTime)
 }
 
 // ============================================================================
-// Asset Loading & Placement Helpers
+// Landscape & OpenWorld Greybox Material Patching + Asset Helpers
 // ============================================================================
+
+bool AAetheriaWorldBuilder::IsGreyboxOrMissingMaterial(const UMaterialInterface* Mat)
+{
+	return AetheriaWorldHelpers::IsGreyboxMaterialPtr(Mat);
+}
+
+UMaterialInterface* AAetheriaWorldBuilder::LoadPBRMaterial(const TArray<const TCHAR*>& Candidates)
+{
+	for (const TCHAR* Candidate : Candidates)
+	{
+		if (!Candidate || *Candidate == 0)
+		{
+			continue;
+		}
+		const FString Key(Candidate);
+		if (const TObjectPtr<UMaterialInterface>* Found = MaterialCache.Find(Key))
+		{
+			if (*Found)
+			{
+				return Found->Get();
+			}
+		}
+
+		const bool bIsEngineAsset = Key.StartsWith(TEXT("/Engine/"));
+		const FString PkgName = bIsEngineAsset ? FString() : FPackageName::ObjectPathToPackageName(Key);
+		if (bIsEngineAsset || (!PkgName.IsEmpty() && FPackageName::DoesPackageExist(PkgName)))
+		{
+			if (UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr, Candidate))
+			{
+				MaterialCache.Add(Key, Mat);
+				return Mat;
+			}
+		}
+	}
+	return nullptr;
+}
+
+UParticleSystem* AAetheriaWorldBuilder::LoadParticleSafe(const TCHAR* AssetPath)
+{
+	if (!AssetPath || *AssetPath == 0)
+	{
+		return nullptr;
+	}
+
+	const FString Key(AssetPath);
+	if (const TObjectPtr<UParticleSystem>* Found = ParticleCache.Find(Key))
+	{
+		if (*Found)
+		{
+			return Found->Get();
+		}
+	}
+
+	const FString PkgName = FPackageName::ObjectPathToPackageName(Key);
+	if (!PkgName.IsEmpty() && FPackageName::DoesPackageExist(PkgName))
+	{
+		if (UParticleSystem* PS = LoadObject<UParticleSystem>(nullptr, AssetPath))
+		{
+			ParticleCache.Add(Key, PS);
+			return PS;
+		}
+	}
+	return nullptr;
+}
+
+void AAetheriaWorldBuilder::PatchOpenWorldLandscapeMaterials()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	UMaterialInterface* FloorPatchMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatStoneWall
+	});
+	if (!FloorPatchMat)
+	{
+		return;
+	}
+
+	int32 PatchedWorldSlots = 0;
+
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		AActor* Actor = *It;
+		if (!IsValid(Actor) || Actor == this || Actor->IsA<APawn>() || Actor->IsA<ADestructiblePropActor>())
+		{
+			continue;
+		}
+
+		// NEVER mutate ALandscapeProxy or ULandscapeComponent at runtime (in -game mode GIsEditor==0,
+		// mutating Landscape materials triggers SetParentEditorOnly() assertion on World Partition cell stream).
+		// Landscape auto-materials are baked directly onto the map asset in Editor mode.
+		const FString ClassName = Actor->GetClass()->GetName();
+		if (ClassName.Contains(TEXT("Landscape"), ESearchCase::IgnoreCase))
+		{
+			continue;
+		}
+
+		const bool bIsLevelFloor = Actor->GetName().Contains(TEXT("Floor"), ESearchCase::IgnoreCase);
+		TInlineComponentArray<UStaticMeshComponent*> StaticMeshComps;
+		Actor->GetComponents<UStaticMeshComponent>(StaticMeshComps);
+		for (UStaticMeshComponent* MeshComp : StaticMeshComps)
+		{
+			if (!IsValid(MeshComp) || !MeshComp->IsVisible() || MeshComp->bHiddenInGame)
+			{
+				continue;
+			}
+
+			bool bModified = false;
+			const int32 NumSlots = FMath::Max(1, MeshComp->GetNumMaterials());
+			for (int32 SlotIdx = 0; SlotIdx < NumSlots; ++SlotIdx)
+			{
+				UMaterialInterface* CurMat = MeshComp->GetMaterial(SlotIdx);
+				const bool bIsEngineFloorMat = bIsLevelFloor && CurMat
+					&& CurMat->GetPathName().StartsWith(TEXT("/Engine/"));
+				if ((IsGreyboxOrMissingMaterial(CurMat) || bIsEngineFloorMat) && CurMat != FloorPatchMat)
+				{
+					MeshComp->SetMaterial(SlotIdx, FloorPatchMat);
+					bModified = true;
+					++PatchedWorldSlots;
+				}
+			}
+			if (bModified)
+			{
+				MeshComp->MarkRenderStateDirty();
+			}
+		}
+	}
+
+	if (PatchedWorldSlots > 0)
+	{
+		UE_LOG(LogChronicles, Display,
+			TEXT("[WorldBuilder] Patched OpenWorld greybox static mesh slots: %d."),
+			PatchedWorldSlots);
+	}
+}
 
 UStaticMesh* AAetheriaWorldBuilder::LoadMeshSafe(const TCHAR* AssetPath, const TCHAR* FallbackPath)
 {
@@ -1298,12 +1783,43 @@ UStaticMesh* AAetheriaWorldBuilder::LoadMeshSafe(const TCHAR* AssetPath, const T
 	}
 	else
 	{
-		UE_LOG(LogChronicles, Warning, TEXT("[WorldBuilder] Package missing on disk for '%s' — using fallback."), *Key);
+		UE_LOG(LogChronicles, Warning, TEXT("[WorldBuilder] Package missing on disk for '%s' — using AAA gothic fallback."), *Key);
+	}
+
+	// Prefer sculpted MedievalDungeon architecture instead of Cube.Cube when a /Game/ mesh is missing
+	if (!Mesh && !bIsEngineAsset)
+	{
+		const bool bFallbackIsCube = (!FallbackPath || FCString::Stricmp(FallbackPath, AetheriaWorldConst::MeshCube) == 0);
+		if (bFallbackIsCube)
+		{
+			const TCHAR* ArchitecturalFallbacks[2] = {
+				AetheriaWorldConst::MeshDungeonWallA,
+				AetheriaWorldConst::MeshDungeonPillar
+			};
+			for (const TCHAR* ArchFallback : ArchitecturalFallbacks)
+			{
+				const FString ArchPkg = FPackageName::ObjectPathToPackageName(FString(ArchFallback));
+				if (!ArchPkg.IsEmpty() && FPackageName::DoesPackageExist(ArchPkg))
+				{
+					Mesh = LoadObject<UStaticMesh>(nullptr, ArchFallback);
+					if (Mesh)
+					{
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	if (!Mesh && FallbackPath)
 	{
-		Mesh = LoadObject<UStaticMesh>(nullptr, FallbackPath);
+		const FString FbKey(FallbackPath);
+		const bool bFbEngine = FbKey.StartsWith(TEXT("/Engine/"));
+		const FString FbPkg = bFbEngine ? FString() : FPackageName::ObjectPathToPackageName(FbKey);
+		if (bFbEngine || (!FbPkg.IsEmpty() && FPackageName::DoesPackageExist(FbPkg)))
+		{
+			Mesh = LoadObject<UStaticMesh>(nullptr, FallbackPath);
+		}
 	}
 	if (Mesh)
 	{
@@ -1370,8 +1886,12 @@ UStaticMeshComponent* AAetheriaWorldBuilder::AddWorldMesh(
 	{
 		const EBlendMode BlendMode = OverrideMat->GetBlendMode();
 		const UMaterial* BaseMat = OverrideMat->GetBaseMaterial();
-		const bool bIsEmissive = BaseMat && BaseMat->GetName().Contains(TEXT("Emissive"), ESearchCase::IgnoreCase);
-		if (bIsEmissive || (BlendMode != BLEND_Opaque && BlendMode != BLEND_Masked))
+		const FString MatName = OverrideMat->GetName();
+		const bool bIsSpecialShader =
+			(BaseMat && BaseMat->GetName().Contains(TEXT("Emissive"), ESearchCase::IgnoreCase)) ||
+			MatName.Contains(TEXT("Fireball"), ESearchCase::IgnoreCase) ||
+			MatName.Contains(TEXT("PrismWall"), ESearchCase::IgnoreCase);
+		if (bIsSpecialShader || (BlendMode != BLEND_Opaque && BlendMode != BLEND_Masked))
 		{
 			Comp->bDisallowNanite = true;
 		}
@@ -1379,6 +1899,33 @@ UStaticMeshComponent* AAetheriaWorldBuilder::AddWorldMesh(
 		for (int32 Idx = 0; Idx < NumMats; ++Idx)
 		{
 			Comp->SetMaterial(Idx, OverrideMat);
+		}
+	}
+	else
+	{
+		// Zero-greybox safety net: replace any null / WorldGrid / BasicShape / DefaultMaterial slot or Cube fallback with real PBR stone
+		const bool bFellBackToCube = Mesh->GetPathName().Contains(TEXT("BasicShapes/Cube"), ESearchCase::IgnoreCase);
+		UMaterialInterface* FallbackStoneMat = nullptr;
+		const int32 NumMats = FMath::Max(1, Comp->GetNumMaterials());
+		for (int32 Idx = 0; Idx < NumMats; ++Idx)
+		{
+			UMaterialInterface* SlotMat = Comp->GetMaterial(Idx);
+			if (bFellBackToCube || IsGreyboxOrMissingMaterial(SlotMat))
+			{
+				if (!FallbackStoneMat)
+				{
+					FallbackStoneMat = LoadPBRMaterial({
+						AetheriaWorldConst::MatStoneWall,
+						AetheriaWorldConst::MatAetheriaGothicStone,
+						AetheriaWorldConst::MatCryptWallA,
+						AetheriaWorldConst::MatStoneAltar
+					});
+				}
+				if (FallbackStoneMat)
+				{
+					Comp->SetMaterial(Idx, FallbackStoneMat);
+				}
+			}
 		}
 	}
 
@@ -1405,6 +1952,120 @@ UStaticMeshComponent* AAetheriaWorldBuilder::AddWorldMesh(
 	return Comp;
 }
 
+UParticleSystemComponent* AAetheriaWorldBuilder::SpawnFireParticle(
+	const FString& CompName,
+	const TCHAR* ParticlePath,
+	const FVector& WorldLoc,
+	const FVector& WorldScale,
+	const FRotator& WorldRot)
+{
+	UParticleSystem* Template = LoadParticleSafe(ParticlePath);
+	if (!Template)
+	{
+		Template = LoadParticleSafe(AetheriaWorldConst::ParticleTorchFire);
+	}
+	if (!Template)
+	{
+		Template = LoadParticleSafe(AetheriaWorldConst::ParticlePitFire);
+	}
+	if (!Template)
+	{
+		Template = LoadParticleSafe(AetheriaWorldConst::ParticleAncientFire);
+	}
+	if (!Template)
+	{
+		return nullptr;
+	}
+
+	const FName UniqueName = MakeUniqueObjectName(this, UParticleSystemComponent::StaticClass(), FName(*CompName));
+	UParticleSystemComponent* PSC = NewObject<UParticleSystemComponent>(this, UniqueName);
+	if (!PSC)
+	{
+		return nullptr;
+	}
+
+	PSC->SetTemplate(Template);
+	PSC->bAutoActivate = true;
+	PSC->bAutoDestroy = false;
+	PSC->SetMobility(EComponentMobility::Movable);
+	PSC->AttachToComponent(WorldRoot, FAttachmentTransformRules::KeepWorldTransform);
+	PSC->SetWorldLocationAndRotation(WorldLoc, WorldRot);
+	PSC->SetWorldScale3D(WorldScale);
+	PSC->RegisterComponent();
+	PSC->ActivateSystem(true);
+
+	SpawnedParticles.Add(PSC);
+	return PSC;
+}
+
+void AAetheriaWorldBuilder::BuildTiledStoneFloor(
+	const FString& Prefix,
+	float CenterX,
+	float CenterY,
+	float HalfExtentX,
+	float HalfExtentY,
+	float TileStep,
+	float LiftCm,
+	const TCHAR* FloorMeshPath,
+	UMaterialInterface* PrimaryMat,
+	UMaterialInterface* AccentMat,
+	float AccentHalfWidthX,
+	bool bFollowTerrain,
+	float FixedBaseZ)
+{
+	UStaticMesh* FloorMesh = LoadMeshSafe(FloorMeshPath, AetheriaWorldConst::MeshDungeonFloor);
+	if (!FloorMesh)
+	{
+		return;
+	}
+
+	const FBox FloorBox = AetheriaWorldHelpers::GetSafeBoundingBox(FloorMesh);
+	const FVector FloorSize = FloorBox.GetSize();
+	const FVector RawCenter = FloorBox.GetCenter();
+
+	// 3% overlap eliminates hairline cracks; pivot-compensated placement handles corner-pivoted MedievalDungeon tiles
+	const float ScaleX = (TileStep * 1.03f) / FMath::Max(10.f, FloorSize.X);
+	const float ScaleY = (TileStep * 1.03f) / FMath::Max(10.f, FloorSize.Y);
+	const float ScaleZ = FMath::Clamp(34.f / FMath::Max(6.f, FloorSize.Z), 0.35f, 2.2f);
+	const FVector TileScale(ScaleX, ScaleY, ScaleZ);
+
+	const int32 HalfCountX = FMath::Max(0, FMath::CeilToInt(HalfExtentX / TileStep));
+	const int32 HalfCountY = FMath::Max(0, FMath::CeilToInt(HalfExtentY / TileStep));
+	const float CenterTerrainZ = bFollowTerrain ? SampleGroundZ(CenterX, CenterY, FallbackGroundZ) : FixedBaseZ;
+
+	for (int32 GX = -HalfCountX; GX <= HalfCountX; ++GX)
+	{
+		for (int32 GY = -HalfCountY; GY <= HalfCountY; ++GY)
+		{
+			const float TX = CenterX + static_cast<float>(GX) * TileStep;
+			const float TY = CenterY + static_cast<float>(GY) * TileStep;
+			const float BaseZ = bFollowTerrain
+				? FMath::Max(SampleGroundZ(TX, TY, CenterTerrainZ), CenterTerrainZ - 14.f)
+				: FixedBaseZ;
+
+			// Deterministic 90-degree tile rotation breaks up repeating stone grid patterns
+			const int32 QuarterTurn = ((GX * 7 + GY * 13) & 3);
+			const FRotator TileRot(0.f, static_cast<float>(QuarterTurn) * 90.f, 0.f);
+			const FVector LocalTopCenter(RawCenter.X * ScaleX, RawCenter.Y * ScaleY, FloorBox.Max.Z * ScaleZ);
+			const FVector RotatedAnchor = TileRot.RotateVector(LocalTopCenter);
+			const FVector TileLoc(TX - RotatedAnchor.X, TY - RotatedAnchor.Y, (BaseZ + LiftCm) - RotatedAnchor.Z);
+
+			const bool bUseAccent = (AccentMat != nullptr && AccentHalfWidthX > 0.f && FMath::Abs(TX - CenterX) <= AccentHalfWidthX);
+			UMaterialInterface* TileMat = bUseAccent ? AccentMat : PrimaryMat;
+
+			AddWorldMesh(
+				FString::Printf(TEXT("%s_%d_%d"), *Prefix, GX + HalfCountX, GY + HalfCountY),
+				FloorMeshPath,
+				TileLoc,
+				TileRot,
+				TileScale,
+				TileMat,
+				AetheriaWorldConst::MeshDungeonFloor,
+				true);
+		}
+	}
+}
+
 UPointLightComponent* AAetheriaWorldBuilder::AddAmbientFireLight(
 	const FString& CompName,
 	const FVector& WorldLoc,
@@ -1414,7 +2075,8 @@ UPointLightComponent* AAetheriaWorldBuilder::AddAmbientFireLight(
 	const FLinearColor& LightColor,
 	float FlickerAmplitude,
 	float PhaseOffset,
-	bool bNightBoost)
+	bool bNightBoost,
+	float SpecularScale)
 {
 	const FName UniqueName = MakeUniqueObjectName(this, UPointLightComponent::StaticClass(), FName(*CompName));
 	UPointLightComponent* Light = NewObject<UPointLightComponent>(this, UniqueName);
@@ -1430,7 +2092,8 @@ UPointLightComponent* AAetheriaWorldBuilder::AddAmbientFireLight(
 	Light->SetTemperature(TempKelvin);
 	Light->SetLightColor(LightColor);
 	Light->SetAttenuationRadius(AttenuationRadius);
-	Light->SetSourceRadius(18.f);
+	Light->SetSourceRadius(24.f);
+	Light->SetSpecularScale(SpecularScale);
 	Light->SetCastShadows(false);
 
 	Light->AttachToComponent(WorldRoot, FAttachmentTransformRules::KeepWorldTransform);
@@ -1501,51 +2164,54 @@ void AAetheriaWorldBuilder::AddBrazierAssembly(
 	float ScaleFactor,
 	float PhaseOffset)
 {
-	// Never use floating chandelier SM_IronBrazier — always ground with SM_StoneFirePit
+	// Always ground with real MedievalDungeon SM_Fire_Pit + real Cascade P_Torch_Fire (zero bright cones!)
 	const TCHAR* SafeBrazierPath =
-		(!BrazierMeshPath || FCString::Stristr(BrazierMeshPath, TEXT("SM_IronBrazier")) != nullptr)
-			? AetheriaWorldConst::MeshStoneFirePit
+		(!BrazierMeshPath || FCString::Stristr(BrazierMeshPath, TEXT("SM_IronBrazier")) != nullptr || FCString::Stristr(BrazierMeshPath, TEXT("SM_StoneFirePit")) != nullptr)
+			? AetheriaWorldConst::MeshFirePit
 			: BrazierMeshPath;
 
-	UStaticMesh* PitMesh = LoadMeshSafe(SafeBrazierPath, AetheriaWorldConst::MeshCylinder);
-	const float PitScale = ScaleFactor * AetheriaWorldHelpers::ComputeUniformScaleForHeight(PitMesh, 52.f, 0.25f, 40.f);
-	const float PitZ = AetheriaWorldHelpers::ComputeGroundedZ(PitMesh, GroundLoc.Z, PitScale, 4.f);
+	UStaticMesh* PitMesh = LoadMeshSafe(SafeBrazierPath, AetheriaWorldConst::MeshFirePit);
+	const float PitScale = ScaleFactor * AetheriaWorldHelpers::ComputeUniformScaleForHeight(PitMesh, 56.f, 0.25f, 3.5f);
+	const FVector PitLoc = AetheriaWorldHelpers::ComputeGroundedCenterLoc(
+		PitMesh, GroundLoc.X, GroundLoc.Y, GroundLoc.Z, FRotator::ZeroRotator, FVector(PitScale), 4.f);
+
+	UMaterialInterface* PitMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatFirePitInst,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
 
 	AddWorldMesh(
 		Prefix + TEXT("_Base"),
 		SafeBrazierPath,
-		FVector(GroundLoc.X, GroundLoc.Y, PitZ),
+		PitLoc,
 		FRotator::ZeroRotator,
 		FVector(PitScale),
-		nullptr,
-		AetheriaWorldConst::MeshCylinder,
+		PitMat,
+		AetheriaWorldConst::MeshFirePit,
 		true);
 
-	UStaticMesh* FlameMesh = LoadMeshSafe(AetheriaWorldConst::MeshBrazierFlame, AetheriaWorldConst::MeshCone);
-	const float FlameScale = ScaleFactor * AetheriaWorldHelpers::ComputeUniformScaleForHeight(FlameMesh, 68.f, 0.2f, 40.f);
-	const float FlameZ = AetheriaWorldHelpers::ComputeStackedZ(PitMesh, PitZ, PitScale, FlameMesh, FlameScale, 14.f);
+	const FBox PitBox = AetheriaWorldHelpers::GetSafeBoundingBox(PitMesh);
+	const float FireTopZ = PitLoc.Z + PitBox.Max.Z * PitScale - 6.f;
+	const float FireScale = FMath::Clamp(0.85f * ScaleFactor, 0.55f, 1.35f);
 
-	UMaterialInstanceDynamic* FlameMID = CreateColorMID(FLinearColor(2.4f, 0.88f, 0.12f, 1.0f), true);
-	AddWorldMesh(
-		Prefix + TEXT("_Flame"),
-		AetheriaWorldConst::MeshBrazierFlame,
-		FVector(GroundLoc.X, GroundLoc.Y, FlameZ),
-		FRotator::ZeroRotator,
-		FVector(FlameScale),
-		FlameMID,
-		AetheriaWorldConst::MeshCone,
-		false);
+	SpawnFireParticle(
+		Prefix + TEXT("_FireVFX"),
+		AetheriaWorldConst::ParticleTorchFire,
+		FVector(GroundLoc.X, GroundLoc.Y, FireTopZ),
+		FVector(FireScale));
 
 	AddAmbientFireLight(
 		Prefix + TEXT("_Light"),
-		GroundLoc + FVector(0.f, 0.f, 115.f * ScaleFactor),
-		Lumens,
-		2300.f,
+		FVector(GroundLoc.X, GroundLoc.Y, FireTopZ + 58.f * ScaleFactor),
+		FMath::Clamp(Lumens, 350.f, 950.f),
+		2350.f,
 		AttenuationRadius,
 		FLinearColor(1.0f, 0.62f, 0.24f, 1.0f),
-		0.16f,
+		0.14f,
 		PhaseOffset,
-		true);
+		true,
+		0.14f);
 }
 
 // ============================================================================
@@ -1560,6 +2226,25 @@ void AAetheriaWorldBuilder::BuildAllBiomes()
 	}
 	bWorldBuilt = true;
 
+	// 1. Immediately eliminate WorldGridMaterial on OpenWorld Landscape & default level slabs
+	PatchOpenWorldLandscapeMaterials();
+
+	// 2. Deep distant highland bedrock skirt under the 4km world so horizon/valley edges NEVER show a black void
+	UMaterialInterface* BedrockMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatNamaqualandCliff,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatBrickFloorClean
+	});
+	AddWorldMesh(
+		TEXT("World_HighlandBedrockSkirt"),
+		AetheriaWorldConst::MeshPlane,
+		FVector(0.f, -2000.f, FallbackGroundZ - 1650.f),
+		FRotator::ZeroRotator,
+		FVector(4200.f, 4200.f, 1.f),
+		BedrockMat,
+		AetheriaWorldConst::MeshPlane,
+		false);
+
 	BuildOakhavenVillage();
 	BuildMirrorLakeAndBridge();
 	BuildDragonAerie();
@@ -1570,8 +2255,9 @@ void AAetheriaWorldBuilder::BuildAllBiomes()
 	BuildSkyRuneRings();
 
 	UE_LOG(LogChronicles, Display,
-		TEXT("[WorldBuilder] Built 5-biome Crimson Desert world: %d static meshes, %d animated lights, %d destructibles, %d boulders, %d trees."),
+		TEXT("[WorldBuilder] Built 5-biome Crimson Desert world: %d static meshes, %d fire VFX, %d animated lights, %d destructibles, %d boulders, %d trees."),
 		SpawnedMeshes.Num(),
+		SpawnedParticles.Num(),
 		AnimatedLights.Num(),
 		SpawnedDestructibles.Num(),
 		MossyBouldersISM ? MossyBouldersISM->GetInstanceCount() : 0,
@@ -1580,118 +2266,237 @@ void AAetheriaWorldBuilder::BuildAllBiomes()
 
 void AAetheriaWorldBuilder::BuildOakhavenVillage()
 {
-	// Centered around (0, 4200); keep central plaza sightline X in [-350..+350], Y in [2800..4000] 100% open!
-	UStaticMesh* Section1Mesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicSection1, AetheriaWorldConst::MeshCube);
-	UStaticMesh* Block1Mesh   = LoadMeshSafe(AetheriaWorldConst::MeshGothicBlock1, AetheriaWorldConst::MeshCube);
-	UStaticMesh* ArcMesh      = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshGothicArchSpan);
-	UStaticMesh* StepsMesh    = LoadMeshSafe(AetheriaWorldConst::MeshGothicSteps, AetheriaWorldConst::MeshCube);
+	// Centered around (0, 4200); keep central plaza sightline X in [-420..+420], Y in [2600..5000] 100% open to Grand Abbey!
+	UMaterialInterface* StoneAltarMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+	UMaterialInterface* BrickFloorMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* StoneWallMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatCryptWallA,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+	UMaterialInterface* PillarStoneMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatPillarInst,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+	UMaterialInterface* FirePitMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatFirePitInst,
+		AetheriaWorldConst::MatStoneWall
+	});
 
-	const float SectionUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Section1Mesh, 380.f, 0.2f, 80.f);
-	const float BlockUnit   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Block1Mesh, 320.f, 0.2f, 80.f);
-	const float ArcUnit     = AetheriaWorldHelpers::ComputeUniformScaleForHeight(ArcMesh, 360.f, 0.2f, 80.f);
-	const float StepsUnit   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StepsMesh, 95.f, 0.2f, 80.f);
+	// 1. Monumental Gothic Flagstone Courtyard Floor across X in [-2700..+2700], Y in [2300..5900]
+	BuildTiledStoneFloor(
+		TEXT("Oakhaven_CourtyardFloor"),
+		0.f,
+		4100.f,
+		2400.f,
+		1500.f,
+		600.f,
+		4.f,
+		AetheriaWorldConst::MeshDungeonFloor,
+		StoneAltarMat,
+		BrickFloorMat,
+		750.f,
+		true,
+		FallbackGroundZ);
 
-	struct FCottageSpec
+	// 2. Authentic Full-3D Gothic Village Manor Halls & Colonnades (ZERO single-sided wall screens showing flat backs!)
+	UStaticMesh* GothicBuildingMesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicBuilding09, AetheriaWorldConst::MeshGothicArc);
+	UStaticMesh* SolidArcMesh       = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* PillarMesh         = LoadMeshSafe(AetheriaWorldConst::MeshDungeonPillar, AetheriaWorldConst::MeshGothicPillar);
+	UStaticMesh* DoorWayMesh        = LoadMeshSafe(AetheriaWorldConst::MeshDoorWay, AetheriaWorldConst::MeshGothicArc);
+	UStaticMesh* StepsMesh          = LoadMeshSafe(AetheriaWorldConst::MeshGothicSteps, AetheriaWorldConst::MeshEdgeStones);
+	UStaticMesh* PotMesh            = LoadMeshSafe(AetheriaWorldConst::MeshMedievalPot, AetheriaWorldConst::MeshDungeonPillar);
+
+	const float AbbeyScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GothicBuildingMesh, 1180.f, 0.2f, 2.4f);
+	const float ManorScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GothicBuildingMesh, 880.f, 0.2f, 2.2f);
+	const float SolidArcUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(SolidArcMesh, 440.f, 0.2f, 3.2f);
+	const float PillarScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PillarMesh, 430.f, 0.2f, 3.2f);
+	const float DoorScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(DoorWayMesh, 410.f, 0.2f, 3.0f);
+	const float StepsScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StepsMesh, 90.f, 0.2f, 3.0f);
+	const float PotScale     = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PotMesh, 82.f, 0.2f, 3.0f);
+
+	// Grand Gothic Sanctuary Abbey backdrop behind the plaza at (0, 6250)
+	{
+		const float AbbeyGZ = SampleGroundZ(0.f, 6250.f, FallbackGroundZ);
+		const FRotator AbbeyRot(0.f, 180.f, 0.f);
+		AddWorldMesh(
+			TEXT("Oakhaven_GrandAbbeyBackdrop"),
+			AetheriaWorldConst::MeshGothicBuilding09,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(GothicBuildingMesh, 0.f, 6250.f, AbbeyGZ, AbbeyRot, FVector(AbbeyScale), 18.f),
+			AbbeyRot,
+			FVector(AbbeyScale));
+
+		// Full 3D Gothic colonnade pillars & solid arches flanking the Abbey & Statues (no single-sided screens!)
+		const float ColonnadeX[4] = { -1020.f, -640.f, 640.f, 1020.f };
+		for (int32 Idx = 0; Idx < 4; ++Idx)
+		{
+			const float CX = ColonnadeX[Idx];
+			const float CY = 5240.f;
+			const float CGZ = SampleGroundZ(CX, CY, FallbackGroundZ) + 4.f;
+			const FRotator ColRot(0.f, (CX < 0.f) ? -15.f : 15.f, 0.f);
+
+			AddWorldMesh(
+				FString::Printf(TEXT("Oakhaven_SanctuaryPillar_%d"), Idx),
+				AetheriaWorldConst::MeshDungeonPillar,
+				AetheriaWorldHelpers::ComputeGroundedCenterLoc(PillarMesh, CX, CY, CGZ, ColRot, FVector(PillarScale), 6.f),
+				ColRot,
+				FVector(PillarScale),
+				PillarStoneMat);
+
+			if (Idx == 0 || Idx == 3)
+			{
+				const float AX = CX + (CX < 0.f ? 190.f : -190.f);
+				AddWorldMesh(
+					FString::Printf(TEXT("Oakhaven_SanctuaryArch_%d"), Idx),
+					AetheriaWorldConst::MeshGothicArc,
+					AetheriaWorldHelpers::ComputeGroundedCenterLoc(SolidArcMesh, AX, CY + 60.f, CGZ, ColRot, FVector(SolidArcUnit), 6.f),
+					ColRot,
+					FVector(SolidArcUnit));
+			}
+		}
+	}
+
+	// Flanking Gothic Manor Halls on West & East sides of the courtyard
+	const FVector2D ManorCoords[2] = { FVector2D(-2350.f, 4900.f), FVector2D(2350.f, 4900.f) };
+	const float ManorYaws[2]       = { -75.f, 75.f };
+	for (int32 Idx = 0; Idx < 2; ++Idx)
+	{
+		const float MX = ManorCoords[Idx].X;
+		const float MY = ManorCoords[Idx].Y;
+		const float MGZ = SampleGroundZ(MX, MY, FallbackGroundZ);
+		const FRotator MRot(0.f, ManorYaws[Idx], 0.f);
+		AddWorldMesh(
+			FString::Printf(TEXT("Oakhaven_GothicManor_%d"), Idx),
+			AetheriaWorldConst::MeshGothicBuilding09,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(GothicBuildingMesh, MX, MY, MGZ, MRot, FVector(ManorScale), 16.f),
+			MRot,
+			FVector(ManorScale));
+	}
+
+	// 4 Sculpted Full-3D Gothic Courtyard Pavilions (West/East mid-plaza + South flanks framing Studio camera backdrop!)
+	struct FPavilionSpec
 	{
 		FVector2D Pos;
 		float Yaw;
 		float Scale;
 	};
 
-	const FCottageSpec Cottages[] = {
-		{ FVector2D(-1750.f, 4680.f),  25.f, 1.05f },
-		{ FVector2D( 1750.f, 4680.f), -25.f, 1.05f },
-		{ FVector2D(-1950.f, 3820.f),  68.f, 1.00f },
-		{ FVector2D( 1950.f, 3820.f), -68.f, 1.00f },
-		{ FVector2D(-1250.f, 5450.f),  10.f, 1.10f },
-		{ FVector2D( 1250.f, 5450.f), -10.f, 1.10f }
+	const FPavilionSpec Pavilions[] = {
+		{ FVector2D(-1750.f, 3720.f),   90.f, 1.00f },
+		{ FVector2D( 1750.f, 3720.f),  -90.f, 1.00f },
+		{ FVector2D(-1380.f, 2760.f),   25.f, 0.96f },
+		{ FVector2D( 1380.f, 2760.f),  -25.f, 0.96f }
 	};
 
-	for (int32 Idx = 0; Idx < UE_ARRAY_COUNT(Cottages); ++Idx)
+	for (int32 Idx = 0; Idx < UE_ARRAY_COUNT(Pavilions); ++Idx)
 	{
-		const FVector2D P = Cottages[Idx].Pos;
-		const FRotator Rot(0.f, Cottages[Idx].Yaw, 0.f);
-		const float S = Cottages[Idx].Scale;
+		const FVector2D P = Pavilions[Idx].Pos;
+		const FRotator Rot(0.f, Pavilions[Idx].Yaw, 0.f);
+		const float S = Pavilions[Idx].Scale;
 		const FVector Forward = Rot.Vector();
 		const FVector Right = Rot.RotateVector(FVector::RightVector);
 
-		const float SecScale = SectionUnit * S;
-		const float SecGroundZ = SampleGroundZ(P.X, P.Y, FallbackGroundZ);
-		AddWorldMesh(
-			FString::Printf(TEXT("Oakhaven_CottageSection_%d"), Idx),
-			AetheriaWorldConst::MeshGothicSection1,
-			FVector(P.X, P.Y, AetheriaWorldHelpers::ComputeGroundedZ(Section1Mesh, SecGroundZ, SecScale, 12.f)),
-			Rot,
-			FVector(SecScale));
+		const float BaseGZ = SampleGroundZ(P.X, P.Y, FallbackGroundZ) + 4.f;
+		const float AScale = SolidArcUnit * S;
+		const float PScale = PillarScale * S;
+		const float DScale = DoorScale * S;
 
-		const FVector BlockPos2D = FVector(P.X, P.Y, 0.f) - Forward * (140.f * S) + Right * (190.f * S);
-		const float BlkScale = BlockUnit * S;
-		const float BlkGroundZ = SampleGroundZ(BlockPos2D.X, BlockPos2D.Y, SecGroundZ);
 		AddWorldMesh(
-			FString::Printf(TEXT("Oakhaven_CottageBlock_%d"), Idx),
-			AetheriaWorldConst::MeshGothicBlock1,
-			FVector(BlockPos2D.X, BlockPos2D.Y, AetheriaWorldHelpers::ComputeGroundedZ(Block1Mesh, BlkGroundZ, BlkScale, 12.f)),
-			Rot,
-			FVector(BlkScale));
-
-		const FVector ArcPos2D = FVector(P.X, P.Y, 0.f) + Forward * (250.f * S);
-		const float ArcScale = ArcUnit * S;
-		const float ArcGroundZ = SampleGroundZ(ArcPos2D.X, ArcPos2D.Y, SecGroundZ);
-		AddWorldMesh(
-			FString::Printf(TEXT("Oakhaven_CottageArc_%d"), Idx),
+			FString::Printf(TEXT("Oakhaven_PavilionArchMain_%d"), Idx),
 			AetheriaWorldConst::MeshGothicArc,
-			FVector(ArcPos2D.X, ArcPos2D.Y, AetheriaWorldHelpers::ComputeGroundedZ(ArcMesh, ArcGroundZ, ArcScale, 10.f)),
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(SolidArcMesh, P.X, P.Y, BaseGZ, Rot, FVector(AScale), 8.f),
 			Rot,
-			FVector(ArcScale));
+			FVector(AScale));
 
-		const FVector StepsPos2D = FVector(P.X, P.Y, 0.f) + Forward * (360.f * S);
-		const float StpScale = StepsUnit * S;
-		const float StpGroundZ = SampleGroundZ(StepsPos2D.X, StepsPos2D.Y, SecGroundZ);
+		const FVector DoorPos = FVector(P.X, P.Y, 0.f) - Right * (240.f * S);
+		const float DoorGZ = SampleGroundZ(DoorPos.X, DoorPos.Y, BaseGZ) + 4.f;
 		AddWorldMesh(
-			FString::Printf(TEXT("Oakhaven_CottageSteps_%d"), Idx),
+			FString::Printf(TEXT("Oakhaven_PavilionDoor_%d"), Idx),
+			AetheriaWorldConst::MeshDoorWay,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(DoorWayMesh, DoorPos.X, DoorPos.Y, DoorGZ, Rot, FVector(DScale), 8.f),
+			Rot,
+			FVector(DScale),
+			StoneWallMat);
+
+		const FVector PillarPosL = FVector(P.X, P.Y, 0.f) + Forward * (190.f * S) - Right * (150.f * S);
+		const float PillarGZL = SampleGroundZ(PillarPosL.X, PillarPosL.Y, BaseGZ) + 4.f;
+		AddWorldMesh(
+			FString::Printf(TEXT("Oakhaven_PavilionPillarL_%d"), Idx),
+			AetheriaWorldConst::MeshDungeonPillar,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(PillarMesh, PillarPosL.X, PillarPosL.Y, PillarGZL, Rot, FVector(PScale), 6.f),
+			Rot,
+			FVector(PScale),
+			PillarStoneMat);
+
+		const FVector PillarPosR = FVector(P.X, P.Y, 0.f) + Forward * (190.f * S) + Right * (150.f * S);
+		const float PillarGZR = SampleGroundZ(PillarPosR.X, PillarPosR.Y, BaseGZ) + 4.f;
+		AddWorldMesh(
+			FString::Printf(TEXT("Oakhaven_PavilionPillarR_%d"), Idx),
+			AetheriaWorldConst::MeshDungeonPillar,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(PillarMesh, PillarPosR.X, PillarPosR.Y, PillarGZR, Rot, FVector(PScale), 6.f),
+			Rot,
+			FVector(PScale),
+			PillarStoneMat);
+
+		const FVector StepsPos = FVector(P.X, P.Y, 0.f) + Forward * (240.f * S);
+		const float StepsGZ = SampleGroundZ(StepsPos.X, StepsPos.Y, BaseGZ) + 4.f;
+		AddWorldMesh(
+			FString::Printf(TEXT("Oakhaven_PavilionSteps_%d"), Idx),
 			AetheriaWorldConst::MeshGothicSteps,
-			FVector(StepsPos2D.X, StepsPos2D.Y, AetheriaWorldHelpers::ComputeGroundedZ(StepsMesh, StpGroundZ, StpScale, 8.f)),
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(StepsMesh, StepsPos.X, StepsPos.Y, StepsGZ, Rot, FVector(StepsScale * S), 6.f),
 			Rot,
-			FVector(StpScale));
+			FVector(StepsScale * S),
+			StoneAltarMat);
 
-		const FVector BarrelPos2D = FVector(P.X, P.Y, 0.f) + Forward * (210.f * S) - Right * (165.f * S);
+		const FVector PotPos = FVector(P.X, P.Y, 0.f) + Forward * (175.f * S) + Right * (225.f * S);
+		const float PotGZ = SampleGroundZ(PotPos.X, PotPos.Y, BaseGZ) + 4.f;
 		AddWorldMesh(
-			FString::Printf(TEXT("Oakhaven_Barrel_%d"), Idx),
-			AetheriaWorldConst::MeshGothicBarrel,
-			FVector(BarrelPos2D.X, BarrelPos2D.Y, SampleGroundZ(BarrelPos2D.X, BarrelPos2D.Y, SecGroundZ)),
+			FString::Printf(TEXT("Oakhaven_Vessel_%d"), Idx),
+			AetheriaWorldConst::MeshMedievalPot,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(PotMesh, PotPos.X, PotPos.Y, PotGZ, FRotator(0.f, Idx * 47.f, 0.f), FVector(PotScale), 2.f),
 			FRotator(0.f, Idx * 47.f, 0.f),
-			FVector(1.0f));
+			FVector(PotScale));
 	}
 
-	// Village Sanctuary Shrine & Central Runic Altar (north of central plaza Y=2800..4000)
-	const float ShrineZ = SampleGroundZ(0.f, 4780.f, FallbackGroundZ) - 10.f;
-	AddWorldMesh(
-		TEXT("Oakhaven_SanctuaryShrine"),
-		AetheriaWorldConst::MeshSanctuaryShrine,
-		FVector(0.f, 4780.f, ShrineZ),
-		FRotator(0.f, 180.f, 0.f),
-		FVector(1.55f));
+	// 3. Clean Waist-High Carved Sanctuary Altar at (0, 5150) & Grounded Chest — ZERO giant center obelisk blocking the Grand Abbey!
+	{
+		UStaticMesh* ShrineMesh = LoadMeshSafe(AetheriaWorldConst::MeshMedievalAltar, AetheriaWorldConst::MeshDungeonPillar);
+		const float ShrineScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(ShrineMesh, 118.f, 0.2f, 1.8f);
+		const float ShrineGZ = SampleGroundZ(0.f, 5150.f, FallbackGroundZ) + 4.f;
+		const FRotator ShrineRot(0.f, 180.f, 0.f);
+		AddWorldMesh(
+			TEXT("Oakhaven_SanctuaryShrine"),
+			AetheriaWorldConst::MeshMedievalAltar,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(ShrineMesh, 0.f, 5150.f, ShrineGZ, ShrineRot, FVector(ShrineScale, ShrineScale, ShrineScale * 0.9f), 4.f),
+			ShrineRot,
+			FVector(ShrineScale, ShrineScale, ShrineScale * 0.9f),
+			StoneAltarMat);
 
-	const float AltarZ = SampleGroundZ(0.f, 4320.f, FallbackGroundZ) - 8.f;
-	AddWorldMesh(
-		TEXT("Oakhaven_RunicAltar"),
-		AetheriaWorldConst::MeshRunicAltar,
-		FVector(0.f, 4320.f, AltarZ),
-		FRotator::ZeroRotator,
-		FVector(1.35f));
+		UStaticMesh* ChestMesh = LoadMeshSafe(AetheriaWorldConst::MeshTreasureChest, AetheriaWorldConst::MeshMedievalPot);
+		const float ChestGZ = SampleGroundZ(290.f, 4620.f, FallbackGroundZ) + 4.f;
+		const FRotator ChestRot(0.f, -35.f, 0.f);
+		AddWorldMesh(
+			TEXT("Oakhaven_TreasureChest"),
+			AetheriaWorldConst::MeshTreasureChest,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(ChestMesh, 290.f, 4620.f, ChestGZ, ChestRot, FVector(1.2f), 2.f),
+			ChestRot,
+			FVector(1.2f));
+	}
 
-	AddWorldMesh(
-		TEXT("Oakhaven_TreasureChest"),
-		AetheriaWorldConst::MeshTreasureChest,
-		FVector(260.f, 4620.f, SampleGroundZ(260.f, 4620.f, FallbackGroundZ)),
-		FRotator(0.f, -35.f, 0.f),
-		FVector(1.2f));
-
-	// 2 Photoreal TA_Sample_Statue_01 monuments on SM_TA_Sample_Pedestal_01 overlooking the central plaza
-	UStaticMesh* PedestalMesh = LoadMeshSafe(AetheriaWorldConst::MeshStatuePedestal, AetheriaWorldConst::MeshCylinder);
+	// 4. 2 Photoreal TA_Sample_Statue_01 monuments on SM_TA_Sample_Pedestal_01 overlooking the central plaza
+	UStaticMesh* PedestalMesh = LoadMeshSafe(AetheriaWorldConst::MeshStatuePedestal, AetheriaWorldConst::MeshDungeonPillar);
 	UStaticMesh* StatueMesh   = LoadMeshSafe(AetheriaWorldConst::MeshStatue01, AetheriaWorldConst::MeshGothicPillar);
-	const float PedestalScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PedestalMesh, 135.f, 0.1f, 120.f);
-	const float StatueScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StatueMesh, 240.f, 0.1f, 120.f);
+	const float PedestalScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PedestalMesh, 135.f, 0.1f, 3.5f);
+	const float StatueScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StatueMesh, 240.f, 0.1f, 3.5f);
 
 	const FVector2D PlazaStatueCoords[2] = { FVector2D(-360.f, 4180.f), FVector2D(360.f, 4180.f) };
 	const float PlazaStatueYaws[2] = { -65.f, -115.f };
@@ -1699,7 +2504,7 @@ void AAetheriaWorldBuilder::BuildOakhavenVillage()
 	{
 		const float SX = PlazaStatueCoords[Idx].X;
 		const float SY = PlazaStatueCoords[Idx].Y;
-		const float GroundZ = SampleGroundZ(SX, SY, FallbackGroundZ);
+		const float GroundZ = SampleGroundZ(SX, SY, FallbackGroundZ) + 4.f;
 		const float PedestalZ = AetheriaWorldHelpers::ComputeGroundedZ(PedestalMesh, GroundZ, PedestalScale, 6.f);
 		const float StatueZ = AetheriaWorldHelpers::ComputeStackedZ(PedestalMesh, PedestalZ, PedestalScale, StatueMesh, StatueScale, 3.f);
 
@@ -1718,14 +2523,11 @@ void AAetheriaWorldBuilder::BuildOakhavenVillage()
 			FVector(StatueScale));
 	}
 
-	// 6 Grounded Street Lanterns (SM_Pillar2 + SM_StoneFirePit flame bowl + 650 lm warm 2400K)
-	UStaticMesh* Pillar2Mesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicPillar2, AetheriaWorldConst::MeshGothicPillar);
-	UStaticMesh* BowlMesh    = LoadMeshSafe(AetheriaWorldConst::MeshStoneFirePit, AetheriaWorldConst::MeshCylinder);
-	UStaticMesh* FlameMesh   = LoadMeshSafe(AetheriaWorldConst::MeshBrazierFlame, AetheriaWorldConst::MeshCone);
-	const float Pillar2Scale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Pillar2Mesh, 205.f, 0.1f, 100.f);
-	const float BowlScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(BowlMesh, 28.f, 0.1f, 50.f);
-	const float FlameScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(FlameMesh, 44.f, 0.1f, 50.f);
-	UMaterialInstanceDynamic* LanternFlameMID = CreateColorMID(FLinearColor(2.2f, 0.82f, 0.14f, 1.0f), true);
+	// 5. 6 Grounded Street Braziers / Lanterns (SM_Pillar2 + SM_Fire_Pit bowl + REAL Cascade P_Torch_Fire + 550 lm SpecularScale=0.14)
+	UStaticMesh* Pillar2Mesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicPillar2, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* BowlMesh    = LoadMeshSafe(AetheriaWorldConst::MeshFirePit, AetheriaWorldConst::MeshDungeonPillar);
+	const float Pillar2Scale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Pillar2Mesh, 195.f, 0.1f, 3.5f);
+	const float BowlScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(BowlMesh, 32.f, 0.1f, 2.5f);
 
 	const FVector2D LanternCoords[] = {
 		FVector2D(-520.f, 4420.f),
@@ -1740,57 +2542,59 @@ void AAetheriaWorldBuilder::BuildOakhavenVillage()
 	{
 		const float LX = LanternCoords[Idx].X;
 		const float LY = LanternCoords[Idx].Y;
-		const float LZ = SampleGroundZ(LX, LY, FallbackGroundZ);
-		const float PostZ  = AetheriaWorldHelpers::ComputeGroundedZ(Pillar2Mesh, LZ, Pillar2Scale, 6.f);
-		const float BowlZ  = AetheriaWorldHelpers::ComputeStackedZ(Pillar2Mesh, PostZ, Pillar2Scale, BowlMesh, BowlScale, 4.f);
-		const float FlameZ = AetheriaWorldHelpers::ComputeStackedZ(BowlMesh, BowlZ, BowlScale, FlameMesh, FlameScale, 8.f);
+		const float LZ = SampleGroundZ(LX, LY, FallbackGroundZ) + 4.f;
+		const FRotator PostRot(0.f, Idx * 60.f, 0.f);
+		const FVector PostLoc = AetheriaWorldHelpers::ComputeGroundedCenterLoc(Pillar2Mesh, LX, LY, LZ, PostRot, FVector(Pillar2Scale), 6.f);
+		const float BowlZ = AetheriaWorldHelpers::ComputeStackedZ(Pillar2Mesh, PostLoc.Z, Pillar2Scale, BowlMesh, BowlScale, 4.f);
+		const FBox BowlBox = AetheriaWorldHelpers::GetSafeBoundingBox(BowlMesh);
+		const FVector BowlCenter = BowlBox.GetCenter();
+		const FVector BowlLoc(LX - BowlCenter.X * BowlScale, LY - BowlCenter.Y * BowlScale, BowlZ);
+		const float FireTopZ = BowlZ + BowlBox.Max.Z * BowlScale - 4.f;
 
 		AddWorldMesh(
 			FString::Printf(TEXT("Oakhaven_LanternPost_%d"), Idx),
 			AetheriaWorldConst::MeshGothicPillar2,
-			FVector(LX, LY, PostZ),
-			FRotator(0.f, Idx * 60.f, 0.f),
+			PostLoc,
+			PostRot,
 			FVector(Pillar2Scale));
 
 		AddWorldMesh(
 			FString::Printf(TEXT("Oakhaven_LanternBowl_%d"), Idx),
-			AetheriaWorldConst::MeshStoneFirePit,
-			FVector(LX, LY, BowlZ),
+			AetheriaWorldConst::MeshFirePit,
+			BowlLoc,
 			FRotator::ZeroRotator,
-			FVector(BowlScale));
+			FVector(BowlScale),
+			FirePitMat);
 
-		AddWorldMesh(
-			FString::Printf(TEXT("Oakhaven_LanternFlame_%d"), Idx),
-			AetheriaWorldConst::MeshBrazierFlame,
-			FVector(LX, LY, FlameZ),
-			FRotator::ZeroRotator,
-			FVector(FlameScale),
-			LanternFlameMID,
-			AetheriaWorldConst::MeshCone,
-			false);
+		SpawnFireParticle(
+			FString::Printf(TEXT("Oakhaven_LanternFireVFX_%d"), Idx),
+			AetheriaWorldConst::ParticleTorchFire,
+			FVector(LX, LY, FireTopZ),
+			FVector(0.85f));
 
 		AddAmbientFireLight(
 			FString::Printf(TEXT("Oakhaven_LanternLight_%d"), Idx),
-			FVector(LX, LY, LZ + 235.f),
-			650.f,
+			FVector(LX, LY, FireTopZ + 45.f),
+			550.f,
 			2400.f,
-			1100.f,
-			FLinearColor(1.0f, 0.72f, 0.36f, 1.0f),
+			980.f,
+			FLinearColor(1.0f, 0.70f, 0.34f, 1.0f),
 			0.09f,
 			Idx * 1.15f,
-			true);
+			true,
+			0.14f);
 	}
 
-	// 2 Destructible Barrier Crystals flanking south village approach (LinkedQuestId = "Q_AwakenExort")
-	// Placed outside X in [-350..+350] with SM_GothicPillar so the central plaza sightline stays 100% open
-	UStaticMesh* ExortPillarMesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicPillar, AetheriaWorldConst::MeshCylinder);
-	const FLinearColor ExortAmberGlow(1.35f, 0.36f, 0.04f, 1.0f);
+	// 6. 2 Destructible Runic Stone Pillars flanking south village approach (LinkedQuestId = "Q_AwakenExort")
+	// Dark gothic stone M_Pillar_Inst + compact glowing ember rune crystal crown (NEVER a giant solid neon yellow block!)
+	UStaticMesh* ExortPillarMesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicPillar, AetheriaWorldConst::MeshDungeonPillar);
+	const FLinearColor ExortAmberGlow(1.15f, 0.42f, 0.08f, 1.0f);
 	const FVector2D CrystalCoords[2] = { FVector2D(-560.f, 3250.f), FVector2D(560.f, 3250.f) };
 	for (int32 Idx = 0; Idx < 2; ++Idx)
 	{
 		const float CX = CrystalCoords[Idx].X;
 		const float CY = CrystalCoords[Idx].Y;
-		const float CZ = SampleGroundZ(CX, CY, FallbackGroundZ);
+		const float CZ = SampleGroundZ(CX, CY, FallbackGroundZ) + 4.f;
 		const float GroundedCrystalZ = AetheriaWorldHelpers::ComputeGroundedZ(ExortPillarMesh, CZ, 1.2f, 6.f);
 		SpawnDestructibleProp(
 			FVector(CX, CY, GroundedCrystalZ),
@@ -1814,12 +2618,12 @@ void AAetheriaWorldBuilder::BuildMirrorLakeAndBridge()
 	const float BankAvgZ   = 0.5f * (NorthBankZ + SouthBankZ);
 	const float WaterZ     = FMath::Min(CenterZ + 12.f, BankAvgZ - 18.f);
 
-	// Glossy reflective water plane across Mirror Lake
-	MirrorWaterMID = CreateColorMID(FLinearColor(0.025f, 0.13f, 0.21f, 1.0f), false);
+	// Luminous dusk-teal reflective water surface (never crushes to pitch black beneath Ignis!)
+	MirrorWaterMID = CreateColorMID(FLinearColor(0.06f, 0.22f, 0.30f, 1.0f), false);
 	if (MirrorWaterMID)
 	{
-		MirrorWaterMID->SetScalarParameterValue(TEXT("Roughness"), 0.05f);
-		MirrorWaterMID->SetScalarParameterValue(TEXT("Metallic"), 0.18f);
+		MirrorWaterMID->SetScalarParameterValue(TEXT("Roughness"), 0.14f);
+		MirrorWaterMID->SetScalarParameterValue(TEXT("Metallic"), 0.06f);
 	}
 
 	AddWorldMesh(
@@ -1832,13 +2636,37 @@ void AAetheriaWorldBuilder::BuildMirrorLakeAndBridge()
 		AetheriaWorldConst::MeshPlane,
 		false);
 
-	// Arched Stone Bridge spanning Y: 1600 -> -3200 (4800 cm total length, 9 smooth arch spans)
+	// Arched Flagstone Bridge spanning Y: 1600 -> -3200 (4800 cm total length, 9 smooth arch spans)
 	const int32 NumSpans = 9;
 	const float StartY = 1600.f;
 	const float EndY   = -3200.f;
 	const float ArchApexLift = 210.f;
 
-	UMaterialInstanceDynamic* BridgeStoneMID = CreateColorMID(FLinearColor(0.42f, 0.39f, 0.35f, 1.0f), false);
+	UMaterialInterface* BridgeDeckMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* BridgeArchMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatDecorativeArches,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+	UMaterialInterface* ParapetMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatEdgeStonesInst,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+
+	UStaticMesh* DeckMesh    = LoadMeshSafe(AetheriaWorldConst::MeshDungeonFloor, AetheriaWorldConst::MeshCryptFloor);
+	UStaticMesh* ArchMesh    = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* ParapetMesh = LoadMeshSafe(AetheriaWorldConst::MeshDungeonWallHalf, AetheriaWorldConst::MeshEdgeStones);
+
+	const FBox DeckBox = AetheriaWorldHelpers::GetSafeBoundingBox(DeckMesh);
+	const FVector DeckRawSize = DeckBox.GetSize();
+	const FVector DeckRawCenter = DeckBox.GetCenter();
+	const float ArchScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(ArchMesh, 260.f, 0.2f, 2.8f);
+	const float ParapetScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(ParapetMesh, 110.f, 0.2f, 2.5f);
 
 	auto EvalBridgePoint = [&](float Alpha) -> FVector
 	{
@@ -1859,41 +2687,52 @@ void AAetheriaWorldBuilder::BuildMirrorLakeAndBridge()
 		const float SegLen = FVector::Dist(P0, P1);
 		const FRotator DeckRot = FRotationMatrix::MakeFromY((P1 - P0).GetSafeNormal()).Rotator();
 
-		// Solid walkable stone bridge deck slab aligned exactly along the parabolic arch tangent
+		// Solid walkable medieval flagstone deck aligned along parabolic arch tangent (replaces Cube.Cube + BasicShapeMaterial!)
+		const FVector DeckScale(
+			620.f / FMath::Max(10.f, DeckRawSize.X),
+			(SegLen + 45.f) / FMath::Max(10.f, DeckRawSize.Y),
+			FMath::Clamp(48.f / FMath::Max(6.f, DeckRawSize.Z), 0.4f, 2.4f));
+		const FVector LocalDeckTop(DeckRawCenter.X * DeckScale.X, DeckRawCenter.Y * DeckScale.Y, DeckBox.Max.Z * DeckScale.Z);
+		const FVector DeckWorldLoc = Mid - DeckRot.RotateVector(LocalDeckTop);
+
 		AddWorldMesh(
 			FString::Printf(TEXT("MirrorBridge_Deck_%d"), Idx),
-			AetheriaWorldConst::MeshCube,
-			Mid - FVector(0.f, 0.f, 28.f),
+			AetheriaWorldConst::MeshDungeonFloor,
+			DeckWorldLoc,
 			DeckRot,
-			FVector(6.2f, (SegLen / 100.f) + 0.35f, 0.56f),
-			BridgeStoneMID,
-			AetheriaWorldConst::MeshCube,
+			DeckScale,
+			BridgeDeckMat,
+			AetheriaWorldConst::MeshDungeonFloor,
 			true);
 
-		// Supporting gothic arches underneath the bridge deck
+		// Supporting full-3D gothic stone arches underneath the bridge deck
 		if (Idx > 0 && Idx < NumSpans - 1)
 		{
+			const FRotator ArchRot(0.f, 90.f, 0.f);
 			AddWorldMesh(
 				FString::Printf(TEXT("MirrorBridge_Arch_%d"), Idx),
-				AetheriaWorldConst::MeshGothicArchSpan,
-				FVector(0.f, Mid.Y, WaterZ - 20.f),
-				FRotator(0.f, 90.f, 0.f),
-				FVector(1.35f, 1.55f, 1.25f));
+				AetheriaWorldConst::MeshGothicArc,
+				AetheriaWorldHelpers::ComputeGroundedCenterLoc(ArchMesh, 0.f, Mid.Y, WaterZ - 35.f, ArchRot, FVector(ArchScale * 1.15f), 8.f),
+				ArchRot,
+				FVector(ArchScale * 1.15f),
+				BridgeArchMat);
 		}
 
-		// Left & right carved stone parapet walls
+		// Left & right carved low stone parapet walls
 		for (int32 Side = -1; Side <= 1; Side += 2)
 		{
+			const FRotator ParaRot(0.f, Side > 0 ? 90.f : -90.f, 0.f);
 			AddWorldMesh(
 				FString::Printf(TEXT("MirrorBridge_Parapet_%d_%d"), Idx, Side > 0 ? 1 : 0),
-				AetheriaWorldConst::MeshCathedralLow,
-				FVector(Side * 310.f, Mid.Y, Mid.Z - 6.f),
-				FRotator(0.f, 90.f, 0.f),
-				FVector(0.95f, 0.65f, 0.68f));
+				AetheriaWorldConst::MeshDungeonWallHalf,
+				AetheriaWorldHelpers::ComputeGroundedCenterLoc(ParapetMesh, Side * 305.f, Mid.Y, Mid.Z, ParaRot, FVector(ParapetScale), 8.f),
+				ParaRot,
+				FVector(ParapetScale),
+				ParapetMat);
 		}
 	}
 
-	// 6 Flaming Bridge Braziers (SM_StoneFirePit + 1,100 lm warm fire light)
+	// 6 Flaming Bridge Braziers (SM_Fire_Pit + P_Torch_Fire + 850 lm warm firelight, SpecularScale=0.14)
 	const float BrazierYs[3] = { 1420.f, -800.f, -3020.f };
 	for (int32 Row = 0; Row < 3; ++Row)
 	{
@@ -1907,11 +2746,11 @@ void AAetheriaWorldBuilder::BuildMirrorLakeAndBridge()
 			const int32 BIdx = Row * 2 + (Side > 0 ? 1 : 0);
 			AddBrazierAssembly(
 				FString::Printf(TEXT("MirrorBridge_Brazier_%d"), BIdx),
-				FVector(Side * 285.f, BrazierYs[Row], DeckZ + 4.f),
-				1100.f,
-				1450.f,
-				AetheriaWorldConst::MeshStoneFirePit,
-				1.15f,
+				FVector(Side * 275.f, BrazierYs[Row], DeckZ + 2.f),
+				850.f,
+				1350.f,
+				AetheriaWorldConst::MeshFirePit,
+				1.05f,
 				BIdx * 0.9f);
 		}
 	}
@@ -1919,105 +2758,272 @@ void AAetheriaWorldBuilder::BuildMirrorLakeAndBridge()
 
 void AAetheriaWorldBuilder::BuildDragonAerie()
 {
-	// Elevated runic stone dais at (-3400, 2200)
+	// Elevated runic stone dais at (-3400, 2200) + dramatic textured highland cliffs & 3D stone ruins below Ignis's flight corridor
 	const float CenterX = -3400.f;
 	const float CenterY =  2200.f;
 	const float BaseZ   = SampleGroundZ(CenterX, CenterY, FallbackGroundZ);
 
-	// Raised stone foundation plinth + Runic Dais + Altar
-	UMaterialInstanceDynamic* DaisStoneMID = CreateColorMID(FLinearColor(0.36f, 0.35f, 0.38f, 1.0f), false);
-	AddWorldMesh(
-		TEXT("DragonAerie_Plinth"),
-		AetheriaWorldConst::MeshCylinder,
-		FVector(CenterX, CenterY, BaseZ + 35.f),
-		FRotator::ZeroRotator,
-		FVector(12.5f, 12.5f, 1.4f),
-		DaisStoneMID,
-		AetheriaWorldConst::MeshCylinder,
-		true);
+	UMaterialInterface* StoneAltarMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+	UMaterialInterface* StoneWallMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+	UMaterialInterface* PillarMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatPillarInst,
+		AetheriaWorldConst::MatStoneWall
+	});
+	// SM6-safe Namaqualand cliff rock material (replaces KiteDemo M_Photoscan_Master which fails PCD3D_SM6!)
+	UMaterialInterface* CliffRockMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatNamaqualandCliff,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatDirtMounds
+	});
 
-	UStaticMesh* AeriePedMesh = LoadMeshSafe(AetheriaWorldConst::MeshDungeonDais, AetheriaWorldConst::MeshCylinder);
-	const float AeriePedScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(AeriePedMesh, 95.f, 0.1f, 3.0f);
+	// Grounded Gothic flagstone sanctuary platform
+	BuildTiledStoneFloor(
+		TEXT("DragonAerie_DaisFloor"),
+		CenterX,
+		CenterY,
+		620.f,
+		620.f,
+		420.f,
+		44.f,
+		AetheriaWorldConst::MeshDungeonFloor,
+		StoneAltarMat,
+		nullptr,
+		0.f,
+		false,
+		BaseZ);
+
+	UStaticMesh* AeriePedMesh   = LoadMeshSafe(AetheriaWorldConst::MeshStatuePedestal, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* AerieAltarMesh = LoadMeshSafe(AetheriaWorldConst::MeshMedievalAltar, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* SolidArcMesh   = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshRuinedArch);
+	UStaticMesh* PillarMesh     = LoadMeshSafe(AetheriaWorldConst::MeshDungeonPillar, AetheriaWorldConst::MeshGothicPillar);
+
+	const float AeriePedScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(AeriePedMesh, 78.f, 0.1f, 3.0f);
+	const float AerieAltarScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(AerieAltarMesh, 125.f, 0.2f, 2.2f);
+	const FVector PedLoc = AetheriaWorldHelpers::ComputeGroundedCenterLoc(
+		AeriePedMesh, CenterX, CenterY, BaseZ + 44.f, FRotator::ZeroRotator, FVector(AeriePedScale), 4.f);
 	AddWorldMesh(
 		TEXT("DragonAerie_Dais"),
-		AetheriaWorldConst::MeshDungeonDais,
-		FVector(CenterX, CenterY, AetheriaWorldHelpers::ComputeGroundedZ(AeriePedMesh, BaseZ + 65.f, AeriePedScale, 4.f)),
+		AetheriaWorldConst::MeshStatuePedestal,
+		PedLoc,
 		FRotator::ZeroRotator,
 		FVector(AeriePedScale));
 
+	const float AltarTopZ = PedLoc.Z + AetheriaWorldHelpers::GetSafeBoundingBox(AeriePedMesh).Max.Z * AeriePedScale;
+	const FRotator AltarRot(0.f, -35.f, 0.f);
 	AddWorldMesh(
 		TEXT("DragonAerie_Altar"),
-		AetheriaWorldConst::MeshRunicAltar,
-		FVector(CenterX, CenterY, BaseZ + 115.f),
-		FRotator(0.f, -35.f, 0.f),
-		FVector(1.45f));
+		AetheriaWorldConst::MeshMedievalAltar,
+		AetheriaWorldHelpers::ComputeGroundedCenterLoc(AerieAltarMesh, CenterX, CenterY, AltarTopZ, AltarRot, FVector(AerieAltarScale), 4.f),
+		AltarRot,
+		FVector(AerieAltarScale),
+		StoneAltarMat);
 
-	// Ring of 6 weathered gothic pillars & ruined arches overlooking Mirror Lake
+	// Ring of 6 grounded full-3D gothic arches & pillars overlooking Mirror Lake
+	const float AerieArchScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(SolidArcMesh, 420.f, 0.2f, 3.0f);
+	const float AeriePillarScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PillarMesh, 400.f, 0.2f, 3.0f);
 	for (int32 Idx = 0; Idx < 6; ++Idx)
 	{
 		const float Angle = (static_cast<float>(Idx) / 6.f) * UE_TWO_PI;
 		const float PX = CenterX + FMath::Cos(Angle) * 620.f;
 		const float PY = CenterY + FMath::Sin(Angle) * 620.f;
-		const float PZ = SampleGroundZ(PX, PY, BaseZ) - 18.f;
-		const float YawDeg = FMath::RadiansToDegrees(Angle) + 90.f;
+		const float PZ = SampleGroundZ(PX, PY, BaseZ);
+		const FRotator RingRot(0.f, FMath::RadiansToDegrees(Angle) + 90.f, 0.f);
+		const bool bUseArch = (Idx % 2 == 0);
+		UStaticMesh* PieceMesh = bUseArch ? SolidArcMesh : PillarMesh;
+		const float PieceScale = bUseArch ? AerieArchScale : AeriePillarScale;
 
 		AddWorldMesh(
 			FString::Printf(TEXT("DragonAerie_Arch_%d"), Idx),
-			(Idx % 2 == 0) ? AetheriaWorldConst::MeshRuinedArch : AetheriaWorldConst::MeshGothicPillar,
-			FVector(PX, PY, PZ),
-			FRotator(0.f, YawDeg, 0.f),
-			FVector(1.4f));
+			bUseArch ? AetheriaWorldConst::MeshGothicArc : AetheriaWorldConst::MeshDungeonPillar,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(PieceMesh, PX, PY, PZ, RingRot, FVector(PieceScale), 12.f),
+			RingRot,
+			FVector(PieceScale),
+			bUseArch ? nullptr : PillarMat);
 	}
 
-	// 2 Beacon Braziers at the Aerie stairs (SM_StoneFirePit + 1,100 lm)
-	AddBrazierAssembly(TEXT("DragonAerie_BrazierL"), FVector(CenterX - 360.f, CenterY + 460.f, BaseZ + 102.f), 1100.f, 1450.f, AetheriaWorldConst::MeshStoneFirePit, 1.1f, 0.4f);
-	AddBrazierAssembly(TEXT("DragonAerie_BrazierR"), FVector(CenterX + 360.f, CenterY + 460.f, BaseZ + 102.f), 1100.f, 1450.f, AetheriaWorldConst::MeshStoneFirePit, 1.1f, 2.2f);
+	// 2 Beacon Braziers at the Aerie terrace (SM_Fire_Pit + P_Torch_Fire + 850 lm)
+	AddBrazierAssembly(TEXT("DragonAerie_BrazierL"), FVector(CenterX - 360.f, CenterY + 460.f, BaseZ + 44.f), 850.f, 1350.f, AetheriaWorldConst::MeshFirePit, 1.05f, 0.4f);
+	AddBrazierAssembly(TEXT("DragonAerie_BrazierR"), FVector(CenterX + 360.f, CenterY + 460.f, BaseZ + 44.f), 850.f, 1350.f, AetheriaWorldConst::MeshFirePit, 1.05f, 2.2f);
 
-	// 2 Destructible Bind-Crystals (LinkedQuestId = "Q_TameDragon")
-	const FLinearColor AzureBindGlow(0.18f, 1.55f, 3.0f, 1.0f);
+	// 2 Destructible Runic Bind-Monoliths (LinkedQuestId = "Q_TameDragon") — grounded SM_Pillar
+	const FLinearColor AzureBindGlow(0.22f, 0.95f, 1.35f, 1.0f);
 	const FVector2D BindCoords[2] = {
 		FVector2D(CenterX - 340.f, CenterY - 190.f),
 		FVector2D(CenterX + 340.f, CenterY - 190.f)
 	};
-
+	const float BindScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PillarMesh, 260.f, 0.25f, 2.5f);
 	for (int32 Idx = 0; Idx < 2; ++Idx)
 	{
+		const float BX = BindCoords[Idx].X;
+		const float BY = BindCoords[Idx].Y;
+		const float BZ = AetheriaWorldHelpers::ComputeGroundedZ(PillarMesh, BaseZ + 44.f, BindScale, 6.f);
 		SpawnDestructibleProp(
-			FVector(BindCoords[Idx].X, BindCoords[Idx].Y, BaseZ + 190.f),
-			FRotator(0.f, Idx * 60.f, Idx == 0 ? 10.f : -10.f),
+			FVector(BX, BY, BZ),
+			FRotator(0.f, Idx * 60.f, 0.f),
 			EDestructibleKind::Crystal,
 			110.f,
-			FString(),
-			FVector(0.9f, 0.9f, 2.5f),
+			AetheriaWorldConst::MeshDungeonPillar,
+			FVector(BindScale),
 			FName(TEXT("Q_TameDragon")),
 			&AzureBindGlow,
 			true);
+	}
+
+	// Dress the Valley Floor & Mirror Lake Highlands beneath Dragon Ignis's flight path (-1800..1200, -2400..3000)
+	// Explicitly override KiteDemo cliffs/rocks with SM6-safe MI_Cliff_Side so ZERO rocks fall back to DefaultMaterial!
+	UStaticMesh* CliffMesh    = LoadMeshSafe(AetheriaWorldConst::MeshKiteCliff01, AetheriaWorldConst::MeshKiteMountainRock);
+	UStaticMesh* MtnRockMesh  = LoadMeshSafe(AetheriaWorldConst::MeshKiteMountainRock, AetheriaWorldConst::MeshCliffBoulder);
+	UStaticMesh* RiverRockMesh= LoadMeshSafe(AetheriaWorldConst::MeshKiteRiverRock, AetheriaWorldConst::MeshMWAMStoneA);
+
+	struct FCliffSpec
+	{
+		FVector2D Pos;
+		float Yaw;
+		float TargetHeight;
+	};
+
+	const FCliffSpec ValleyCliffs[] = {
+		{ FVector2D(-2150.f,   400.f),   35.f, 760.f },
+		{ FVector2D(-2350.f, -1550.f),   72.f, 880.f },
+		{ FVector2D( 2100.f,   250.f), -125.f, 780.f },
+		{ FVector2D( 2250.f, -1800.f), -160.f, 920.f },
+		{ FVector2D(-1750.f,  2350.f),   18.f, 620.f },
+		{ FVector2D( 1850.f,  1950.f), -145.f, 640.f }
+	};
+
+	for (int32 Idx = 0; Idx < UE_ARRAY_COUNT(ValleyCliffs); ++Idx)
+	{
+		const FCliffSpec& Spec = ValleyCliffs[Idx];
+		const float GZ = SampleGroundZ(Spec.Pos.X, Spec.Pos.Y, FallbackGroundZ);
+		const float CScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(CliffMesh, Spec.TargetHeight, 0.12f, 3.2f);
+		const FRotator CRot(0.f, Spec.Yaw, 0.f);
+		AddWorldMesh(
+			FString::Printf(TEXT("Valley_KiteCliff_%d"), Idx),
+			AetheriaWorldConst::MeshKiteCliff01,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(CliffMesh, Spec.Pos.X, Spec.Pos.Y, GZ, CRot, FVector(CScale), 35.f),
+			CRot,
+			FVector(CScale),
+			CliffRockMat);
+	}
+
+	// Rocky lake islets & highland outcrops beneath Ignis's flight corridor (clearing Mirror Bridge |X|<480)
+	const FCliffSpec ValleyRocks[] = {
+		{ FVector2D(-1120.f,  1650.f),  24.f, 260.f },
+		{ FVector2D(-1380.f,   620.f), 110.f, 310.f },
+		{ FVector2D( -960.f,  -420.f),  65.f, 240.f },
+		{ FVector2D(-1280.f, -1480.f), 195.f, 340.f },
+		{ FVector2D( -840.f, -2450.f), 280.f, 270.f },
+		{ FVector2D(  920.f,  1480.f), -42.f, 250.f },
+		{ FVector2D( 1180.f,   280.f), -95.f, 290.f },
+		{ FVector2D(  880.f,  -880.f), 145.f, 230.f },
+		{ FVector2D( 1260.f, -1960.f), 215.f, 320.f },
+		{ FVector2D( -680.f,  2480.f),  48.f, 210.f },
+		{ FVector2D(  760.f,  2380.f), -70.f, 220.f },
+		{ FVector2D( -540.f, -3420.f),  15.f, 280.f },
+		{ FVector2D(  620.f, -3520.f), -35.f, 280.f },
+		{ FVector2D(-1650.f,  -750.f),  88.f, 360.f }
+	};
+
+	for (int32 Idx = 0; Idx < UE_ARRAY_COUNT(ValleyRocks); ++Idx)
+	{
+		const FCliffSpec& Spec = ValleyRocks[Idx];
+		const float GZ = SampleGroundZ(Spec.Pos.X, Spec.Pos.Y, FallbackGroundZ);
+		const bool bUseRiverRock = (Idx % 3 == 2);
+		UStaticMesh* RMesh = bUseRiverRock ? RiverRockMesh : MtnRockMesh;
+		const TCHAR* RPath = bUseRiverRock ? AetheriaWorldConst::MeshKiteRiverRock : AetheriaWorldConst::MeshKiteMountainRock;
+		const float RScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(RMesh, Spec.TargetHeight, 0.15f, 3.2f);
+		const FRotator RRot(0.f, Spec.Yaw, 0.f);
+		AddWorldMesh(
+			FString::Printf(TEXT("Valley_HighlandRock_%d"), Idx),
+			RPath,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(RMesh, Spec.Pos.X, Spec.Pos.Y, GZ, RRot, FVector(RScale), 24.f),
+			RRot,
+			FVector(RScale),
+			CliffRockMat);
+	}
+
+	// Ancient full-3D lakeside stone ruin arches visible directly below Dragon Ignis in flight
+	const FVector2D LakeRuinCoords[4] = {
+		FVector2D( -960.f,  -420.f),
+		FVector2D(  880.f,  -880.f),
+		FVector2D(-1280.f, -1480.f),
+		FVector2D( 1180.f,   280.f)
+	};
+	const float RuinArchScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(SolidArcMesh, 380.f, 0.2f, 2.8f);
+	for (int32 Idx = 0; Idx < 4; ++Idx)
+	{
+		const float RX = LakeRuinCoords[Idx].X;
+		const float RY = LakeRuinCoords[Idx].Y;
+		const float RGZ = SampleGroundZ(RX, RY, FallbackGroundZ);
+		const FRotator RRot(0.f, Idx * 55.f + 20.f, 0.f);
+		AddWorldMesh(
+			FString::Printf(TEXT("Valley_LakesideRuin_%d"), Idx),
+			AetheriaWorldConst::MeshGothicArc,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(SolidArcMesh, RX, RY, RGZ, RRot, FVector(RuinArchScale), 12.f),
+			RRot,
+			FVector(RuinArchScale),
+			StoneWallMat);
 	}
 }
 
 void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 {
 	// X: -11000..-4200 (West) and 4200..11000 (East), Y: -7600..6600
-	UStaticMesh* RockMesh   = LoadMeshSafe(AetheriaWorldConst::MeshCliffBoulder, AetheriaWorldConst::MeshSphere);
-	UStaticMesh* TrunkMesh  = LoadMeshSafe(AetheriaWorldConst::MeshDeadTree, AetheriaWorldConst::MeshCylinder);
-	UStaticMesh* CanopyMesh = LoadMeshSafe(AetheriaWorldConst::MeshSphere, AetheriaWorldConst::MeshSphere);
+	// Replace spiky SM_DeadTree wire-cages & broken KiteDemo photoscan shaders with SM6-safe MI_Cliff_Side rocks + weathered SM_Pillar ruins!
+	UStaticMesh* RockMesh   = LoadMeshSafe(AetheriaWorldConst::MeshKiteMountainRock, AetheriaWorldConst::MeshMWAMStoneA);
+	UStaticMesh* RuinMesh   = LoadMeshSafe(AetheriaWorldConst::MeshDungeonPillar, AetheriaWorldConst::MeshGothicPillar);
+	UStaticMesh* FernMesh   = LoadMeshSafe(AetheriaWorldConst::MeshKiteFern01, AetheriaWorldConst::MeshKiteFieldGrass01);
+
+	UMaterialInterface* CliffRockMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatNamaqualandCliff,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatDirtMounds
+	});
+	UMaterialInterface* RuinStoneMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatPillarInst,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
 
 	if (MossyBouldersISM && RockMesh)
 	{
 		MossyBouldersISM->SetStaticMesh(RockMesh);
-	}
-	if (TreeTrunksISM && TrunkMesh)
-	{
-		TreeTrunksISM->SetStaticMesh(TrunkMesh);
-	}
-	if (TreeCanopiesISM && CanopyMesh)
-	{
-		TreeCanopiesISM->SetStaticMesh(CanopyMesh);
-		if (UMaterialInstanceDynamic* BlueLeafMID = CreateColorMID(FLinearColor(0.07f, 0.30f, 0.48f, 1.0f), false))
+		if (CliffRockMat)
 		{
-			TreeCanopiesISM->SetMaterial(0, BlueLeafMID);
+			const int32 NumRockMats = FMath::Max(1, MossyBouldersISM->GetNumMaterials());
+			for (int32 Idx = 0; Idx < NumRockMats; ++Idx)
+			{
+				MossyBouldersISM->SetMaterial(Idx, CliffRockMat);
+			}
 		}
 	}
+	if (TreeTrunksISM && RuinMesh)
+	{
+		TreeTrunksISM->SetStaticMesh(RuinMesh);
+		if (RuinStoneMat)
+		{
+			const int32 NumRuinMats = FMath::Max(1, TreeTrunksISM->GetNumMaterials());
+			for (int32 Idx = 0; Idx < NumRuinMats; ++Idx)
+			{
+				TreeTrunksISM->SetMaterial(Idx, RuinStoneMat);
+			}
+		}
+	}
+	if (TreeCanopiesISM && FernMesh)
+	{
+		TreeCanopiesISM->SetStaticMesh(FernMesh);
+	}
+
+	const float RockUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(RockMesh, 210.f, 0.12f, 2.6f);
+	const float RuinUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(RuinMesh, 380.f, 0.25f, 2.8f);
+	const float FernUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(FernMesh, 95.f, 0.25f, 3.2f);
 
 	FRandomStream Rng(133742);
 
@@ -2031,11 +3037,11 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 		return false;
 	};
 
-	// ~160 instanced mossy boulders (rock_moss_set_01)
+	// ~180 instanced highland rock outcrops (SM_MountainRock_Closed + MI_Cliff_Side)
 	TArray<FTransform> BoulderTransforms;
-	BoulderTransforms.Reserve(160);
+	BoulderTransforms.Reserve(180);
 	int32 Attempts = 0;
-	while (BoulderTransforms.Num() < 160 && Attempts < 1200)
+	while (BoulderTransforms.Num() < 180 && Attempts < 1400)
 	{
 		++Attempts;
 		const bool bWest = (BoulderTransforms.Num() % 2 == 0);
@@ -2046,71 +3052,76 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 			continue;
 		}
 
-		const float GZ = SampleGroundZ(X, Y, FallbackGroundZ) - 18.f;
-		const FRotator Rot(Rng.FRandRange(-8.f, 8.f), Rng.FRandRange(0.f, 360.f), Rng.FRandRange(-8.f, 8.f));
-		const float S = Rng.FRandRange(1.1f, 3.1f);
-		BoulderTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(S, S * Rng.FRandRange(0.85f, 1.25f), S * Rng.FRandRange(0.75f, 1.2f)));
+		const float S = RockUnit * Rng.FRandRange(0.75f, 1.95f);
+		const float SZ = S * Rng.FRandRange(0.75f, 1.20f);
+		const float GZ = AetheriaWorldHelpers::ComputeGroundedZ(RockMesh, SampleGroundZ(X, Y, FallbackGroundZ), SZ, 20.f);
+		const FRotator Rot(Rng.FRandRange(-6.f, 6.f), Rng.FRandRange(0.f, 360.f), Rng.FRandRange(-6.f, 6.f));
+		BoulderTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(S, S * Rng.FRandRange(0.85f, 1.25f), SZ));
 	}
 	if (MossyBouldersISM && BoulderTransforms.Num() > 0)
 	{
 		MossyBouldersISM->AddInstances(BoulderTransforms, false, true, false);
 	}
 
-	// ~140 stylized highland/blue-leaf trees (dead_tree_trunk_02 + layered canopy clusters)
-	TArray<FTransform> TrunkTransforms;
-	TArray<FTransform> CanopyTransforms;
-	TrunkTransforms.Reserve(140);
-	CanopyTransforms.Reserve(360);
+	// ~90 weathered highland ruin pillars + ~320 grounded fern undergrowth clusters (zero wire-cage SM_DeadTree spheres!)
+	TArray<FTransform> RuinTransforms;
+	TArray<FTransform> FernTransforms;
+	RuinTransforms.Reserve(90);
+	FernTransforms.Reserve(320);
 
 	Attempts = 0;
-	while (TrunkTransforms.Num() < 140 && Attempts < 1200)
+	while (RuinTransforms.Num() < 90 && Attempts < 1200)
 	{
 		++Attempts;
-		const bool bWest = (TrunkTransforms.Num() % 2 == 0);
-		const float X = bWest ? Rng.FRandRange(-10800.f, -4300.f) : Rng.FRandRange(4300.f, 10800.f);
+		const bool bWest = (RuinTransforms.Num() % 2 == 0);
+		const float X = bWest ? Rng.FRandRange(-10800.f, -4400.f) : Rng.FRandRange(4400.f, 10800.f);
 		const float Y = Rng.FRandRange(-7200.f, 6200.f);
 		if (IsExcludedLandmarkClearing(X, Y))
 		{
 			continue;
 		}
 
-		const float GZ = SampleGroundZ(X, Y, FallbackGroundZ) - 22.f;
-		const float TreeScale = Rng.FRandRange(1.45f, 2.75f);
+		const float TerrainZ = SampleGroundZ(X, Y, FallbackGroundZ);
+		const float RuinScale = RuinUnit * Rng.FRandRange(0.72f, 1.28f);
+		const float RuinScaleZ = RuinScale * Rng.FRandRange(0.78f, 1.18f);
+		const float RuinZ = AetheriaWorldHelpers::ComputeGroundedZ(RuinMesh, TerrainZ, RuinScaleZ, 18.f);
 		const float Yaw = Rng.FRandRange(0.f, 360.f);
-		const FRotator TrunkRot(Rng.FRandRange(-4.f, 4.f), Yaw, Rng.FRandRange(-4.f, 4.f));
+		const FRotator RuinRot(Rng.FRandRange(-7.f, 7.f), Yaw, Rng.FRandRange(-7.f, 7.f));
 
-		TrunkTransforms.Emplace(TrunkRot, FVector(X, Y, GZ), FVector(TreeScale, TreeScale, TreeScale * Rng.FRandRange(0.95f, 1.30f)));
+		RuinTransforms.Emplace(RuinRot, FVector(X, Y, RuinZ), FVector(RuinScale, RuinScale, RuinScaleZ));
 
-		// 2-3 layered asymmetrical sapphire foliage crowns per tree
-		const float CrownBaseZ = GZ + 280.f * TreeScale;
-		const int32 CrownLayers = Rng.RandRange(2, 3);
-		for (int32 Layer = 0; Layer < CrownLayers; ++Layer)
+		// 2-3 lush KiteDemo fern clumps grounded around the base of each weathered ruin pillar
+		const int32 FernCount = Rng.RandRange(2, 3);
+		for (int32 FIdx = 0; FIdx < FernCount; ++FIdx)
 		{
-			const float LayerAngle = Yaw + Layer * 125.f;
-			const float OffsetR = (Layer == 0) ? 0.f : Rng.FRandRange(65.f, 130.f) * (TreeScale * 0.55f);
-			const FVector CanopyPos(
-				X + FMath::Cos(FMath::DegreesToRadians(LayerAngle)) * OffsetR,
-				Y + FMath::Sin(FMath::DegreesToRadians(LayerAngle)) * OffsetR,
-				CrownBaseZ + Layer * (75.f * TreeScale * 0.55f));
-			const float CrownRad = TreeScale * Rng.FRandRange(1.55f, 2.25f) * (1.0f - Layer * 0.14f);
-			CanopyTransforms.Emplace(
-				FRotator(0.f, LayerAngle, 0.f),
-				CanopyPos,
-				FVector(CrownRad, CrownRad * Rng.FRandRange(0.85f, 1.15f), CrownRad * 0.62f));
+			const float FAngle = Yaw + FIdx * 125.f + Rng.FRandRange(-20.f, 20.f);
+			const float FDist = Rng.FRandRange(95.f, 240.f);
+			const float FX = X + FMath::Cos(FMath::DegreesToRadians(FAngle)) * FDist;
+			const float FY = Y + FMath::Sin(FMath::DegreesToRadians(FAngle)) * FDist;
+			const float FTerrainZ = SampleGroundZ(FX, FY, TerrainZ);
+			const float FScale = FernUnit * Rng.FRandRange(0.85f, 1.55f);
+			const float FZ = AetheriaWorldHelpers::ComputeGroundedZ(FernMesh, FTerrainZ, FScale, 4.f);
+			FernTransforms.Emplace(
+				FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f),
+				FVector(FX, FY, FZ),
+				FVector(FScale, FScale * Rng.FRandRange(0.85f, 1.15f), FScale));
 		}
 	}
 
-	if (TreeTrunksISM && TrunkTransforms.Num() > 0)
+	if (TreeTrunksISM && RuinTransforms.Num() > 0)
 	{
-		TreeTrunksISM->AddInstances(TrunkTransforms, false, true, false);
+		TreeTrunksISM->AddInstances(RuinTransforms, false, true, false);
 	}
-	if (TreeCanopiesISM && CanopyTransforms.Num() > 0)
+	if (TreeCanopiesISM && FernTransforms.Num() > 0)
 	{
-		TreeCanopiesISM->AddInstances(CanopyTransforms, false, true, false);
+		TreeCanopiesISM->AddInstances(FernTransforms, false, true, false);
 	}
 
-	// 3 Storm Conductor Monoliths (LinkedQuestId = "Q_StormSpires")
-	const FLinearColor WexStormGlow(0.75f, 0.38f, 3.0f, 1.0f);
+	// 3 Storm Conductor Monoliths (LinkedQuestId = "Q_StormSpires") grounded cleanly onto stone pedestals
+	UStaticMesh* MonoPedMesh    = LoadMeshSafe(AetheriaWorldConst::MeshStatuePedestal, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* MonoPillarMesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicPillar, AetheriaWorldConst::MeshDungeonPillar);
+	const float MonoPedScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(MonoPedMesh, 85.f, 0.1f, 3.0f);
+	const FLinearColor WexStormGlow(0.68f, 0.38f, 1.35f, 1.0f);
 	const FVector2D MonolithCoords[3] = {
 		FVector2D(-6200.f,  1200.f),
 		FVector2D( 6400.f,  3200.f),
@@ -2122,24 +3133,23 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 		const float MX = MonolithCoords[Idx].X;
 		const float MY = MonolithCoords[Idx].Y;
 		const float MZ = SampleGroundZ(MX, MY, FallbackGroundZ);
+		const float PedZ = AetheriaWorldHelpers::ComputeGroundedZ(MonoPedMesh, MZ, MonoPedScale, 6.f);
 
-		// Grounded stone pedestal beneath each monolith
-		UStaticMesh* MonoPedMesh = LoadMeshSafe(AetheriaWorldConst::MeshDungeonDais, AetheriaWorldConst::MeshCylinder);
-		const float MonoPedScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(MonoPedMesh, 85.f, 0.1f, 3.0f);
 		AddWorldMesh(
 			FString::Printf(TEXT("StormMonolith_Pedestal_%d"), Idx),
-			AetheriaWorldConst::MeshDungeonDais,
-			FVector(MX, MY, AetheriaWorldHelpers::ComputeGroundedZ(MonoPedMesh, MZ, MonoPedScale, 6.f)),
+			AetheriaWorldConst::MeshStatuePedestal,
+			FVector(MX, MY, PedZ),
 			FRotator(0.f, Idx * 40.f, 0.f),
 			FVector(MonoPedScale));
 
+		const float PillarZ = AetheriaWorldHelpers::ComputeStackedZ(MonoPedMesh, PedZ, MonoPedScale, MonoPillarMesh, 1.65f, 4.f);
 		SpawnDestructibleProp(
-			FVector(MX, MY, MZ + 35.f),
+			FVector(MX, MY, PillarZ),
 			FRotator(0.f, Idx * 55.f, 0.f),
 			EDestructibleKind::Crystal,
 			130.f,
 			AetheriaWorldConst::MeshGothicPillar,
-			FVector(1.35f, 1.35f, 1.65f),
+			FVector(1.25f, 1.25f, 1.65f),
 			FName(TEXT("Q_StormSpires")),
 			&WexStormGlow,
 			true);
@@ -2147,13 +3157,14 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 		AddAmbientFireLight(
 			FString::Printf(TEXT("StormMonolith_Glow_%d"), Idx),
 			FVector(MX, MY, MZ + 310.f),
-			1200.f,
+			680.f,
 			8000.f,
-			1300.f,
+			1200.f,
 			FLinearColor(0.62f, 0.42f, 1.0f, 1.0f),
-			0.22f,
+			0.18f,
 			Idx * 1.7f,
-			true);
+			true,
+			0.14f);
 	}
 }
 
@@ -2164,36 +3175,79 @@ void AAetheriaWorldBuilder::BuildHighkeepCitadel()
 	const float CY = -9800.f;
 	const float ArenaZ = SampleGroundZ(CX, CY, FallbackGroundZ);
 
-	UStaticMesh* GateMesh     = LoadMeshSafe(AetheriaWorldConst::MeshGothicGate, AetheriaWorldConst::MeshGothicArchSpan);
-	UStaticMesh* PedestalMesh = LoadMeshSafe(AetheriaWorldConst::MeshStatuePedestal, AetheriaWorldConst::MeshCylinder);
-	UStaticMesh* StatueMesh   = LoadMeshSafe(AetheriaWorldConst::MeshStatue01, AetheriaWorldConst::MeshGothicPillar);
-	UStaticMesh* ArcMesh      = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshGothicArchSpan);
-	UStaticMesh* Section1Mesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicSection1, AetheriaWorldConst::MeshCathedralArched);
-	UStaticMesh* BallistaMesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicBallista, AetheriaWorldConst::MeshCube);
-	UStaticMesh* StepsMesh    = LoadMeshSafe(AetheriaWorldConst::MeshGothicSteps, AetheriaWorldConst::MeshCube);
-	UStaticMesh* Column3Mesh  = LoadMeshSafe(AetheriaWorldConst::MeshGothicColumn3, AetheriaWorldConst::MeshGothicPillar);
+	// Use SM6-verified M_BrickFloor_Clean_Inst & M_Stone_Altar_Inst (removed M_AetheriaSanctumFloor which failed PCD3D_SM6!)
+	UMaterialInterface* BrickFloorMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* StoneAltarMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* StoneWallMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone,
+		AetheriaWorldConst::MatCryptWallA
+	});
+	UMaterialInterface* PillarMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatPillarInst,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
 
-	const float GateScale     = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GateMesh, 680.f, 0.2f, 120.f);
-	const float PedestalScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PedestalMesh, 165.f, 0.1f, 120.f);
-	const float StatueScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StatueMesh, 320.f, 0.1f, 120.f);
-	const float ArcScale      = AetheriaWorldHelpers::ComputeUniformScaleForHeight(ArcMesh, 650.f, 0.2f, 120.f);
-	const float Section1Scale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Section1Mesh, 650.f, 0.2f, 120.f);
-	const float BallistaScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(BallistaMesh, 185.f, 0.1f, 100.f);
-	const float StepsScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StepsMesh, 125.f, 0.1f, 100.f);
-	const float Column3Scale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Column3Mesh, 540.f, 0.2f, 120.f);
+	UStaticMesh* GateMesh       = LoadMeshSafe(AetheriaWorldConst::MeshGothicGate, AetheriaWorldConst::MeshGothicArc);
+	UStaticMesh* PedestalMesh   = LoadMeshSafe(AetheriaWorldConst::MeshStatuePedestal, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* StatueMesh     = LoadMeshSafe(AetheriaWorldConst::MeshStatue01, AetheriaWorldConst::MeshGothicPillar);
+	UStaticMesh* SolidArcMesh   = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* PillarMesh     = LoadMeshSafe(AetheriaWorldConst::MeshDungeonPillar, AetheriaWorldConst::MeshGothicPillar);
+	UStaticMesh* BallistaMesh   = LoadMeshSafe(AetheriaWorldConst::MeshGothicBallista, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* StepsMesh      = LoadMeshSafe(AetheriaWorldConst::MeshGothicSteps, AetheriaWorldConst::MeshEdgeStones);
+	UStaticMesh* Column3Mesh    = LoadMeshSafe(AetheriaWorldConst::MeshGothicColumn3, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* CitadelMesh    = LoadMeshSafe(AetheriaWorldConst::MeshCitadelFortress, AetheriaWorldConst::MeshGothicBuilding09);
 
-	// Towering Citadel Fortress Keep moved far back to (0, -12400) so it NEVER engulfs Malakor or the courtyard
-	const float KeepY = -12400.f;
+	const float GateScale      = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GateMesh, 680.f, 0.2f, 3.5f);
+	const float PedestalScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PedestalMesh, 165.f, 0.1f, 3.5f);
+	const float StatueScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StatueMesh, 320.f, 0.1f, 3.5f);
+	const float SolidArcScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(SolidArcMesh, 560.f, 0.2f, 3.5f);
+	const float PillarScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(PillarMesh, 540.f, 0.2f, 3.5f);
+	const float BallistaScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(BallistaMesh, 185.f, 0.1f, 3.5f);
+	const float StepsScale     = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StepsMesh, 125.f, 0.1f, 3.5f);
+	const float Column3Scale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Column3Mesh, 540.f, 0.2f, 3.5f);
+
+	// 1. Dark Gothic Cobblestone Boss Arena floor (M_BrickFloor_Clean_Inst + M_Stone_Altar_Inst — zero smooth grey patch!)
+	BuildTiledStoneFloor(
+		TEXT("Highkeep_Floor"),
+		CX,
+		CY,
+		1950.f,
+		1950.f,
+		650.f,
+		4.f,
+		AetheriaWorldConst::MeshDungeonFloor,
+		BrickFloorMat,
+		StoneAltarMat,
+		700.f,
+		true,
+		ArenaZ);
+
+	// 2. Grounded Gothic Fortress Keep behind Malakor (modest Z-scale <= 1.25f so it reads as a fortress keep, NOT a skyscraper!)
+	const float KeepY = -12650.f;
+	const float KeepGZ = SampleGroundZ(CX, KeepY, ArenaZ);
+	const float KeepScaleXY = AetheriaWorldHelpers::ComputeUniformScaleForHeight(CitadelMesh, 960.f, 0.25f, 1.35f);
+	const FVector KeepScale(KeepScaleXY * 1.15f, KeepScaleXY * 1.15f, FMath::Min(KeepScaleXY, 1.25f));
 	AddWorldMesh(
 		TEXT("Highkeep_CitadelFortress"),
 		AetheriaWorldConst::MeshCitadelFortress,
-		FVector(CX, KeepY, SampleGroundZ(CX, KeepY, ArenaZ) - 25.f),
-		FRotator(0.f, 0.f, 0.f),
-		FVector(2.25f));
+		AetheriaWorldHelpers::ComputeGroundedCenterLoc(CitadelMesh, CX, KeepY, KeepGZ, FRotator::ZeroRotator, KeepScale, 20.f),
+		FRotator::ZeroRotator,
+		KeepScale,
+		StoneWallMat);
 
-	// Grand Northern Gothic Gate at Y = -8250 facing Mirror Lake
+	// 3. Grand Northern Gothic Gate at Y = -8250 facing Mirror Lake
 	const float GateY = -8250.f;
-	const float GateGroundZ = SampleGroundZ(CX, GateY, ArenaZ);
+	const float GateGroundZ = SampleGroundZ(CX, GateY, ArenaZ) + 4.f;
 	AddWorldMesh(
 		TEXT("Highkeep_GothicGate"),
 		AetheriaWorldConst::MeshGothicGate,
@@ -2202,21 +3256,23 @@ void AAetheriaWorldBuilder::BuildHighkeepCitadel()
 		FVector(GateScale));
 
 	// Approach Steps at North Gate & South Citadel Terrace
-	const float NorthStepsZ = SampleGroundZ(CX, -8020.f, GateGroundZ);
+	const float NorthStepsZ = SampleGroundZ(CX, -8020.f, GateGroundZ) + 4.f;
 	AddWorldMesh(
 		TEXT("Highkeep_NorthSteps"),
 		AetheriaWorldConst::MeshGothicSteps,
 		FVector(CX, -8020.f, AetheriaWorldHelpers::ComputeGroundedZ(StepsMesh, NorthStepsZ, StepsScale, 8.f)),
 		FRotator(0.f, 0.f, 0.f),
-		FVector(StepsScale * 1.4f, StepsScale * 1.2f, StepsScale));
+		FVector(StepsScale * 1.4f, StepsScale * 1.2f, StepsScale),
+		StoneAltarMat);
 
-	const float SouthStepsZ = SampleGroundZ(CX, CY - 1450.f, ArenaZ);
+	const float SouthStepsZ = SampleGroundZ(CX, CY - 1450.f, ArenaZ) + 4.f;
 	AddWorldMesh(
 		TEXT("Highkeep_SouthSteps"),
 		AetheriaWorldConst::MeshGothicSteps,
 		FVector(CX, CY - 1450.f, AetheriaWorldHelpers::ComputeGroundedZ(StepsMesh, SouthStepsZ, StepsScale, 8.f)),
 		FRotator(0.f, 180.f, 0.f),
-		FVector(StepsScale * 1.6f, StepsScale * 1.2f, StepsScale));
+		FVector(StepsScale * 1.6f, StepsScale * 1.2f, StepsScale),
+		StoneAltarMat);
 
 	// Sentinel TA_Sample_Statue_01 monuments on pedestals flanking the north gate
 	const float StatueCoordsX[2] = { CX - 540.f, CX + 540.f };
@@ -2225,7 +3281,7 @@ void AAetheriaWorldBuilder::BuildHighkeepCitadel()
 	{
 		const float SX = StatueCoordsX[Idx];
 		const float SY = -8320.f;
-		const float GroundZ = SampleGroundZ(SX, SY, ArenaZ);
+		const float GroundZ = SampleGroundZ(SX, SY, ArenaZ) + 4.f;
 		const float PedZ = AetheriaWorldHelpers::ComputeGroundedZ(PedestalMesh, GroundZ, PedestalScale, 8.f);
 		const float StatZ = AetheriaWorldHelpers::ComputeStackedZ(PedestalMesh, PedZ, PedestalScale, StatueMesh, StatueScale, 3.f);
 
@@ -2251,7 +3307,7 @@ void AAetheriaWorldBuilder::BuildHighkeepCitadel()
 	{
 		const float BX = BallistaX[Idx];
 		const float BY = CY - 950.f;
-		const float BGZ = SampleGroundZ(BX, BY, ArenaZ);
+		const float BGZ = SampleGroundZ(BX, BY, ArenaZ) + 4.f;
 		AddWorldMesh(
 			FString::Printf(TEXT("Highkeep_Ballista_%d"), Idx),
 			AetheriaWorldConst::MeshGothicBallista,
@@ -2260,74 +3316,79 @@ void AAetheriaWorldBuilder::BuildHighkeepCitadel()
 			FVector(BallistaScale));
 	}
 
-	// Flagstone Boss Arena Courtyard floor slabs (3x3 flat dark-slate tiles, zero height overshoot)
-	UMaterialInstanceDynamic* ArenaFlagstoneMID = CreateColorMID(FLinearColor(0.14f, 0.13f, 0.13f, 1.0f), false);
-	for (int32 GX = -1; GX <= 1; ++GX)
-	{
-		for (int32 GY = -1; GY <= 1; ++GY)
-		{
-			AddWorldMesh(
-				FString::Printf(TEXT("Highkeep_Floor_%d_%d"), GX + 1, GY + 1),
-				AetheriaWorldConst::MeshDungeonSlab,
-				FVector(CX + GX * 900.f, CY + GY * 900.f, ArenaZ - 4.f),
-				FRotator::ZeroRotator,
-				FVector(8.8f, 8.8f, 0.12f),
-				ArenaFlagstoneMID);
-		}
-	}
-
-	// Perimeter Gothic SM_Arc & SM_Section1 walls enclosing the open-air courtyard
-	const int32 PerimeterSegments = 10;
-	const float PerimeterRadius = 1750.f;
+	// 4. Sculpted Full-3D Gothic Perimeter (SM_Arc & SM_Pillar — zero single-sided wall backfaces!)
+	const int32 PerimeterSegments = 12;
+	const float PerimeterRadius = 1780.f;
 	for (int32 Idx = 0; Idx < PerimeterSegments; ++Idx)
 	{
-		// Leave north entrance open for SM_Gate (Angle = +90 deg)
+		// Leave north entrance open for SM_Gate (+90 deg) and south backdrop open for Citadel Keep (-90 / 270 deg)
 		const float AngleDeg = Idx * (360.f / static_cast<float>(PerimeterSegments));
-		if (FMath::IsNearlyEqual(AngleDeg, 90.f, 20.f))
+		if (FMath::IsNearlyEqual(AngleDeg, 90.f, 22.f) || FMath::IsNearlyEqual(AngleDeg, 270.f, 22.f))
 		{
 			continue;
 		}
 		const float Rad = FMath::DegreesToRadians(AngleDeg);
 		const float WX = CX + FMath::Cos(Rad) * PerimeterRadius;
 		const float WY = CY + FMath::Sin(Rad) * PerimeterRadius;
-		const float WZ = SampleGroundZ(WX, WY, ArenaZ);
+		const float WZ = SampleGroundZ(WX, WY, ArenaZ) + 4.f;
+		const FRotator WallRot(0.f, AngleDeg + 90.f, 0.f);
+
 		const bool bUseArc = (Idx % 2 == 0);
-		const float SegScale = bUseArc ? ArcScale : Section1Scale;
-		UStaticMesh* SegMesh = bUseArc ? ArcMesh : Section1Mesh;
+		UStaticMesh* SegMesh = bUseArc ? SolidArcMesh : PillarMesh;
+		const TCHAR* SegPath = bUseArc ? AetheriaWorldConst::MeshGothicArc : AetheriaWorldConst::MeshDungeonPillar;
+		const float SegScale = bUseArc ? SolidArcScale : PillarScale;
+		UMaterialInterface* SegMat = bUseArc ? nullptr : PillarMat;
 
 		AddWorldMesh(
 			FString::Printf(TEXT("Highkeep_PerimeterWall_%d"), Idx),
-			bUseArc ? AetheriaWorldConst::MeshGothicArc : AetheriaWorldConst::MeshGothicSection1,
-			FVector(WX, WY, AetheriaWorldHelpers::ComputeGroundedZ(SegMesh, WZ, SegScale, 14.f)),
-			FRotator(0.f, AngleDeg + 90.f, 0.f),
-			FVector(SegScale));
+			SegPath,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(SegMesh, WX, WY, WZ, WallRot, FVector(SegScale), 10.f),
+			WallRot,
+			FVector(SegScale),
+			SegMat);
 	}
 
-	// 6 Flaming Citadel War Braziers (SM_StoneFirePit + 1,200 lm warm firelight)
+	// 5. 6 Perimeter Citadel War Braziers + 2 Heroic Flanking Boss Braziers framing Malakor (P_Torch_Fire + SpecularScale=0.14)
 	for (int32 Idx = 0; Idx < 6; ++Idx)
 	{
 		const float Angle = (static_cast<float>(Idx) / 6.f) * UE_TWO_PI + 0.52f;
 		const float BX = CX + FMath::Cos(Angle) * 1380.f;
 		const float BY = CY + FMath::Sin(Angle) * 1380.f;
-		const float BZ = SampleGroundZ(BX, BY, ArenaZ);
+		const float BZ = SampleGroundZ(BX, BY, ArenaZ) + 4.f;
 
 		AddBrazierAssembly(
 			FString::Printf(TEXT("Highkeep_Brazier_%d"), Idx),
 			FVector(BX, BY, BZ),
-			1200.f,
-			1550.f,
-			AetheriaWorldConst::MeshStoneFirePit,
-			1.35f,
+			860.f,
+			1450.f,
+			AetheriaWorldConst::MeshFirePit,
+			1.20f,
 			Idx * 1.05f);
 	}
 
-	// 6 Chaos-Destructible Boss Arena Columns (SM_Column3) shattered during Malakor's attacks
+	const float MalakorFlankX[2] = { CX - 380.f, CX + 380.f };
+	for (int32 Idx = 0; Idx < 2; ++Idx)
+	{
+		const float BX = MalakorFlankX[Idx];
+		const float BY = -10180.f;
+		const float BZ = SampleGroundZ(BX, BY, ArenaZ) + 4.f;
+		AddBrazierAssembly(
+			FString::Printf(TEXT("Highkeep_MalakorFlankBrazier_%d"), Idx),
+			FVector(BX, BY, BZ),
+			780.f,
+			1250.f,
+			AetheriaWorldConst::MeshFirePit,
+			1.05f,
+			Idx * 1.6f + 0.3f);
+	}
+
+	// 6. 6 Chaos-Destructible Boss Arena Columns (SM_Column3) shattered during Malakor's attacks
 	for (int32 Idx = 0; Idx < 6; ++Idx)
 	{
 		const float Angle = (static_cast<float>(Idx) / 6.f) * UE_TWO_PI;
 		const float PX = CX + FMath::Cos(Angle) * 1020.f;
 		const float PY = CY + FMath::Sin(Angle) * 1020.f;
-		const float PZ = SampleGroundZ(PX, PY, ArenaZ);
+		const float PZ = SampleGroundZ(PX, PY, ArenaZ) + 4.f;
 
 		SpawnDestructibleProp(
 			FVector(PX, PY, AetheriaWorldHelpers::ComputeGroundedZ(Column3Mesh, PZ, Column3Scale, 8.f)),
@@ -2347,45 +3408,124 @@ void AAetheriaWorldBuilder::BuildAshCalderaAndEmberCrypt()
 	const float CY = -2400.f;
 	const float BaseZ = SampleGroundZ(CX, CY, FallbackGroundZ);
 
-	UStaticMesh* Section1Mesh = LoadMeshSafe(AetheriaWorldConst::MeshGothicSection1, AetheriaWorldConst::MeshCathedralArched);
-	UStaticMesh* ArcMesh      = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshGothicArchSpan);
-	UStaticMesh* Column3Mesh  = LoadMeshSafe(AetheriaWorldConst::MeshGothicColumn3, AetheriaWorldConst::MeshGothicPillar);
-	UStaticMesh* Pillar2Mesh  = LoadMeshSafe(AetheriaWorldConst::MeshGothicPillar2, AetheriaWorldConst::MeshGothicPillar);
-	UStaticMesh* BowlMesh     = LoadMeshSafe(AetheriaWorldConst::MeshStoneFirePit, AetheriaWorldConst::MeshCylinder);
-	UStaticMesh* FlameMesh    = LoadMeshSafe(AetheriaWorldConst::MeshBrazierFlame, AetheriaWorldConst::MeshCone);
+	UMaterialInterface* BaseLavaShader = LoadPBRMaterial({
+		AetheriaWorldConst::MatAetheriaFireball,
+		AetheriaWorldConst::MatAetheriaMasterPBR
+	});
+	UMaterialInterface* BrickFloorMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* StoneAltarMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatBrickFloorClean,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* StoneCoffinMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatStoneCoffin,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* CryptWallMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatCryptWallA,
+		AetheriaWorldConst::MatStoneWall,
+		AetheriaWorldConst::MatAetheriaGothicStone
+	});
+	UMaterialInterface* PillarMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatPillarInst,
+		AetheriaWorldConst::MatCryptWallA,
+		AetheriaWorldConst::MatStoneWall
+	});
+	UMaterialInterface* FirePitMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatFirePitInst,
+		AetheriaWorldConst::MatStoneWall
+	});
 
-	const float WallSecScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Section1Mesh, 620.f, 0.2f, 120.f);
-	const float WallArcScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(ArcMesh, 620.f, 0.2f, 120.f);
-	const float Column3Scale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Column3Mesh, 640.f, 0.2f, 120.f);
-	const float SconceP2Scale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Pillar2Mesh, 220.f, 0.1f, 100.f);
-	const float BowlScale     = AetheriaWorldHelpers::ComputeUniformScaleForHeight(BowlMesh, 28.f, 0.1f, 50.f);
-	const float FlameScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(FlameMesh, 46.f, 0.1f, 50.f);
+	UStaticMesh* CryptWallMesh   = LoadMeshSafe(AetheriaWorldConst::MeshCryptWallA, AetheriaWorldConst::MeshDungeonWallA);
+	UStaticMesh* SolidArcMesh    = LoadMeshSafe(AetheriaWorldConst::MeshGothicArc, AetheriaWorldConst::MeshCryptPillar);
+	UStaticMesh* CryptPillarMesh = LoadMeshSafe(AetheriaWorldConst::MeshCryptPillar, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* Pillar2Mesh     = LoadMeshSafe(AetheriaWorldConst::MeshGothicPillar2, AetheriaWorldConst::MeshCryptPillar);
+	UStaticMesh* BowlMesh        = LoadMeshSafe(AetheriaWorldConst::MeshFirePit, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* VaultArchMesh   = LoadMeshSafe(AetheriaWorldConst::MeshCryptCeilingArch, AetheriaWorldConst::MeshGothicArc);
+	UStaticMesh* AltarMesh       = LoadMeshSafe(AetheriaWorldConst::MeshMedievalAltar, AetheriaWorldConst::MeshDungeonPillar);
+	UStaticMesh* CoffinMesh      = LoadMeshSafe(AetheriaWorldConst::MeshStoneCoffin, AetheriaWorldConst::MeshMedievalAltar);
 
-	// Controlled glowing molten-lava-cracked floor slab under raised PBR basalt walkways
-	LavaFloorMID = CreateColorMID(FLinearColor(1.4f, 0.28f, 0.03f, 1.0f), true);
+	const float WallSecScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(CryptWallMesh, 560.f, 0.2f, 3.5f);
+	const float WallArcScale  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(SolidArcMesh, 560.f, 0.2f, 3.5f);
+	const float PillarScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(CryptPillarMesh, 580.f, 0.2f, 3.5f);
+	const float SconceP2Scale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(Pillar2Mesh, 210.f, 0.1f, 3.2f);
+	const float BowlScale     = AetheriaWorldHelpers::ComputeUniformScaleForHeight(BowlMesh, 32.f, 0.1f, 2.5f);
+	const float VaultScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(VaultArchMesh, 420.f, 0.2f, 3.5f);
+	const float AltarScale    = AetheriaWorldHelpers::ComputeUniformScaleForHeight(AltarMesh, 128.f, 0.2f, 2.0f);
+	const float CoffinScale   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(CoffinMesh, 115.f, 0.2f, 2.5f);
+
+	// 1. Calibrated Volcanic Molten Lava MID on M_AetheriaFireball (fixes EmissiveBoost=18 bright purple-white blowout!)
+	LavaFloorMID = nullptr;
+	UMaterialInterface* ActiveLavaMat = nullptr;
+	if (BaseLavaShader)
+	{
+		if (UMaterialInstanceDynamic* EmberLavaMID = UMaterialInstanceDynamic::Create(BaseLavaShader, this))
+		{
+			EmberLavaMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.24f, 0.025f, 0.004f, 1.0f));
+			EmberLavaMID->SetVectorParameterValue(TEXT("AccentColor"), FLinearColor(1.0f, 0.22f, 0.015f, 1.0f));
+			EmberLavaMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(1.0f, 0.24f, 0.02f, 1.0f));
+			EmberLavaMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.4f);
+			EmberLavaMID->SetScalarParameterValue(TEXT("EmissiveStrength"), 2.4f);
+			EmberLavaMID->SetScalarParameterValue(TEXT("Roughness"), 0.25f);
+			DynamicMaterials.Add(EmberLavaMID);
+			ActiveLavaMat = EmberLavaMID;
+		}
+	}
+	if (!ActiveLavaMat)
+	{
+		LavaFloorMID = CreateColorMID(FLinearColor(1.25f, 0.24f, 0.03f, 1.0f), true);
+		ActiveLavaMat = LavaFloorMID;
+	}
 	AddWorldMesh(
 		TEXT("EmberCrypt_MoltenLavaFloor"),
 		AetheriaWorldConst::MeshPlane,
-		FVector(CX, CY, BaseZ + 6.f),
+		FVector(CX, CY, BaseZ + 4.f),
 		FRotator::ZeroRotator,
-		FVector(18.5f, 22.5f, 1.f),
-		LavaFloorMID,
+		FVector(19.0f, 23.0f, 1.f),
+		ActiveLavaMat,
 		AetheriaWorldConst::MeshPlane,
 		false);
 
-	// Raised volcanic basalt walkway slabs (keep real PBR stone material — NOT BasicShapeMaterial)
-	for (int32 Row = -1; Row <= 1; ++Row)
-	{
-		AddWorldMesh(
-			FString::Printf(TEXT("EmberCrypt_BasaltSlab_%d"), Row + 1),
-			AetheriaWorldConst::MeshDungeonSlab,
-			FVector(CX, CY + Row * 640.f, BaseZ + 6.f),
-			FRotator::ZeroRotator,
-			FVector(6.2f, 5.8f, 0.16f),
-			CreateColorMID(FLinearColor(0.09f, 0.08f, 0.09f, 1.0f), false));
-	}
+	// 2. Elevated Ancient Stone Flagstone Causeways at BaseZ + 26.0f (M_BrickFloor_Clean_Inst & M_Stone_Altar_Inst — zero blue tile!)
+	const float WalkwayTopZ = BaseZ + 26.f;
+	BuildTiledStoneFloor(
+		TEXT("EmberCrypt_Causeway"),
+		CX,
+		CY + 140.f,
+		0.f,
+		840.f,
+		560.f,
+		26.f,
+		AetheriaWorldConst::MeshCryptFloor,
+		BrickFloorMat,
+		StoneAltarMat,
+		280.f,
+		false,
+		BaseZ);
 
-	// Gothic basalt crypt perimeter walls from SM_Section1 / SM_Arc / SM_Column3 (real PBR Gothic materials)
+	// Wider elevated apse sanctuary platform beneath Sunstone Altar & flanking Stone Coffins (warm ancient stone, zero blue!)
+	BuildTiledStoneFloor(
+		TEXT("EmberCrypt_ApseDais"),
+		CX,
+		CY - 680.f,
+		420.f,
+		0.f,
+		460.f,
+		26.f,
+		AetheriaWorldConst::MeshCryptFloor,
+		StoneAltarMat,
+		BrickFloorMat,
+		220.f,
+		false,
+		BaseZ);
+
+	// 3. Inward-Facing Gothic Crypt Perimeter Walls & Pilasters (sculpted faces pointed INWARD toward hall — zero flat backfaces!)
 	const float HalfW = 860.f;
 	const float HalfL = 1040.f;
 
@@ -2394,81 +3534,95 @@ void AAetheriaWorldBuilder::BuildAshCalderaAndEmberCrypt()
 		for (int32 Seg = -1; Seg <= 1; ++Seg)
 		{
 			const bool bUseArc = (Seg == 0);
-			UStaticMesh* SegMesh = bUseArc ? ArcMesh : Section1Mesh;
+			UStaticMesh* SegMesh = bUseArc ? SolidArcMesh : CryptWallMesh;
 			const float SegScale = bUseArc ? WallArcScale : WallSecScale;
 			const float WX = CX + Side * HalfW;
 			const float WY = CY + Seg * 680.f;
+			// SM_Crypt_Wall_Decorative_A local front normal is -Y: Yaw=-90 faces -X (inward from +X wall), Yaw=+90 faces +X (inward from -X wall)
+			const FRotator WallRot(0.f, Side > 0 ? -90.f : 90.f, 0.f);
 
 			AddWorldMesh(
 				FString::Printf(TEXT("EmberCrypt_SideWall_%d_%d"), Side > 0 ? 1 : 0, Seg + 1),
-				bUseArc ? AetheriaWorldConst::MeshGothicArc : AetheriaWorldConst::MeshGothicSection1,
-				FVector(WX, WY, AetheriaWorldHelpers::ComputeGroundedZ(SegMesh, BaseZ, SegScale, 16.f)),
-				FRotator(0.f, Side > 0 ? 180.f : 0.f, 0.f),
-				FVector(SegScale));
+				bUseArc ? AetheriaWorldConst::MeshGothicArc : AetheriaWorldConst::MeshCryptWallA,
+				AetheriaWorldHelpers::ComputeGroundedCenterLoc(SegMesh, WX, WY, BaseZ, WallRot, FVector(SegScale), 14.f),
+				WallRot,
+				FVector(SegScale),
+				bUseArc ? nullptr : CryptWallMat);
 		}
 
-		// Corner & mid-bay SM_Column3 pilasters
+		// Corner & mid-bay SM_Crypt_Pillar pilasters
 		for (int32 ColIdx = -1; ColIdx <= 1; ++ColIdx)
 		{
 			const float ColX = CX + Side * (HalfW - 45.f);
 			const float ColY = CY + ColIdx * 920.f;
+			const FRotator ColRot(0.f, ColIdx * 45.f, 0.f);
 			AddWorldMesh(
 				FString::Printf(TEXT("EmberCrypt_Pilaster_%d_%d"), Side > 0 ? 1 : 0, ColIdx + 1),
-				AetheriaWorldConst::MeshGothicColumn3,
-				FVector(ColX, ColY, AetheriaWorldHelpers::ComputeGroundedZ(Column3Mesh, BaseZ, Column3Scale, 12.f)),
-				FRotator(0.f, ColIdx * 45.f, 0.f),
-				FVector(Column3Scale));
+				AetheriaWorldConst::MeshCryptPillar,
+				AetheriaWorldHelpers::ComputeGroundedCenterLoc(CryptPillarMesh, ColX, ColY, BaseZ, ColRot, FVector(PillarScale), 12.f),
+				ColRot,
+				FVector(PillarScale),
+				PillarMat);
 		}
 	}
 
-	// South rear apse wall (SM_Arc bays + SM_Section1 corners)
+	// South rear apse wall (Yaw=180 rotates -Y front to +Y facing the player camera + solid 3D center SM_Arc!)
 	for (int32 Seg = -1; Seg <= 1; ++Seg)
 	{
 		const bool bCenterArc = (Seg == 0);
-		UStaticMesh* SegMesh = bCenterArc ? ArcMesh : Section1Mesh;
+		UStaticMesh* SegMesh = bCenterArc ? SolidArcMesh : CryptWallMesh;
 		const float SegScale = bCenterArc ? WallArcScale : WallSecScale;
+		const FRotator ApseRot(0.f, 180.f, 0.f);
 		AddWorldMesh(
 			FString::Printf(TEXT("EmberCrypt_SouthWall_%d"), Seg + 1),
-			bCenterArc ? AetheriaWorldConst::MeshGothicArc : AetheriaWorldConst::MeshGothicSection1,
-			FVector(CX + Seg * 560.f, CY - HalfL, AetheriaWorldHelpers::ComputeGroundedZ(SegMesh, BaseZ, SegScale, 16.f)),
-			FRotator(0.f, 90.f, 0.f),
-			FVector(SegScale));
+			bCenterArc ? AetheriaWorldConst::MeshGothicArc : AetheriaWorldConst::MeshCryptWallA,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(SegMesh, CX + Seg * 560.f, CY - HalfL, BaseZ, ApseRot, FVector(SegScale), 14.f),
+			ApseRot,
+			FVector(SegScale),
+			bCenterArc ? nullptr : CryptWallMat);
 	}
 
-	// North entrance flanking bastions + entrance arch (leaving central doorway for Q_EmberCrypt)
-	AddWorldMesh(
-		TEXT("EmberCrypt_NorthBastionL"),
-		AetheriaWorldConst::MeshGothicSection1,
-		FVector(CX - 590.f, CY + HalfL, AetheriaWorldHelpers::ComputeGroundedZ(Section1Mesh, BaseZ, WallSecScale, 16.f)),
-		FRotator(0.f, -90.f, 0.f),
-		FVector(WallSecScale));
-	AddWorldMesh(
-		TEXT("EmberCrypt_NorthBastionR"),
-		AetheriaWorldConst::MeshGothicSection1,
-		FVector(CX + 590.f, CY + HalfL, AetheriaWorldHelpers::ComputeGroundedZ(Section1Mesh, BaseZ, WallSecScale, 16.f)),
-		FRotator(0.f, -90.f, 0.f),
-		FVector(WallSecScale));
-	AddWorldMesh(
-		TEXT("EmberCrypt_EntranceArch"),
-		AetheriaWorldConst::MeshGothicArc,
-		FVector(CX, CY + HalfL, AetheriaWorldHelpers::ComputeGroundedZ(ArcMesh, BaseZ, WallArcScale, 14.f)),
-		FRotator(0.f, -90.f, 0.f),
-		FVector(WallArcScale));
+	// North entrance flanking bastions + solid 3D entrance arch (Yaw=0 faces -Y inward into the hall)
+	{
+		const FRotator NorthRot(0.f, 0.f, 0.f);
+		AddWorldMesh(
+			TEXT("EmberCrypt_NorthBastionL"),
+			AetheriaWorldConst::MeshCryptWallA,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(CryptWallMesh, CX - 590.f, CY + HalfL, BaseZ, NorthRot, FVector(WallSecScale), 14.f),
+			NorthRot,
+			FVector(WallSecScale),
+			CryptWallMat);
+		AddWorldMesh(
+			TEXT("EmberCrypt_NorthBastionR"),
+			AetheriaWorldConst::MeshCryptWallA,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(CryptWallMesh, CX + 590.f, CY + HalfL, BaseZ, NorthRot, FVector(WallSecScale), 14.f),
+			NorthRot,
+			FVector(WallSecScale),
+			CryptWallMat);
+		AddWorldMesh(
+			TEXT("EmberCrypt_EntranceArch"),
+			AetheriaWorldConst::MeshGothicArc,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(SolidArcMesh, CX, CY + HalfL, BaseZ, NorthRot, FVector(WallArcScale), 12.f),
+			NorthRot,
+			FVector(WallArcScale));
+	}
 
-	// Open gothic vaulted ceiling arcs (replaces flat BasicShape cube roof so sky light shafts slice across the lava!)
+	// 4. Real Gothic Crypt Vaulted Ceiling Ribs (non-colliding high overhead)
 	const float VaultYs[4] = { CY - 680.f, CY - 220.f, CY + 240.f, CY + 700.f };
 	for (int32 Idx = 0; Idx < 4; ++Idx)
 	{
 		AddWorldMesh(
 			FString::Printf(TEXT("EmberCrypt_VaultArch_%d"), Idx),
-			AetheriaWorldConst::MeshGothicArchSpan,
-			FVector(CX, VaultYs[Idx], BaseZ + 440.f),
-			FRotator(0.f, 0.f, 0.f),
-			FVector(2.85f, 1.35f, 1.65f));
+			AetheriaWorldConst::MeshCryptCeilingArch,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(VaultArchMesh, CX, VaultYs[Idx], BaseZ + 430.f, FRotator::ZeroRotator, FVector(VaultScale * 1.4f, VaultScale, VaultScale), 0.f),
+			FRotator::ZeroRotator,
+			FVector(VaultScale * 1.4f, VaultScale, VaultScale),
+			CryptWallMat,
+			AetheriaWorldConst::MeshGothicArc,
+			false);
 	}
 
-	// 6 Grounded Wall Torch Sconces on SM_Pillar2 + flame bowl (750 lm, Atten 1150)
-	UMaterialInstanceDynamic* CryptFlameMID = CreateColorMID(FLinearColor(2.4f, 0.72f, 0.10f, 1.0f), true);
+	// 5. 6 Grounded Wall Torch Sconces (SM_Pillar2 + SM_Fire_Pit + REAL P_Torch_Fire Cascade + calibrated 520 lm SpecularScale=0.14)
 	for (int32 Row = -1; Row <= 1; ++Row)
 	{
 		for (int32 Side = -1; Side <= 1; Side += 2)
@@ -2476,168 +3630,216 @@ void AAetheriaWorldBuilder::BuildAshCalderaAndEmberCrypt()
 			const int32 TorchIdx = (Row + 1) * 2 + (Side > 0 ? 1 : 0);
 			const float TX = CX + Side * (HalfW - 140.f);
 			const float TY = CY + Row * 620.f;
-			const float PostZ  = AetheriaWorldHelpers::ComputeGroundedZ(Pillar2Mesh, BaseZ + 18.f, SconceP2Scale, 6.f);
-			const float BowlZ  = AetheriaWorldHelpers::ComputeStackedZ(Pillar2Mesh, PostZ, SconceP2Scale, BowlMesh, BowlScale, 4.f);
-			const float FlameZ = AetheriaWorldHelpers::ComputeStackedZ(BowlMesh, BowlZ, BowlScale, FlameMesh, FlameScale, 8.f);
+			const FRotator PostRot(0.f, Side > 0 ? 180.f : 0.f, 0.f);
+			const FVector PostLoc = AetheriaWorldHelpers::ComputeGroundedCenterLoc(Pillar2Mesh, TX, TY, BaseZ + 18.f, PostRot, FVector(SconceP2Scale), 6.f);
+			const float BowlZ = AetheriaWorldHelpers::ComputeStackedZ(Pillar2Mesh, PostLoc.Z, SconceP2Scale, BowlMesh, BowlScale, 4.f);
+			const FBox BowlBox = AetheriaWorldHelpers::GetSafeBoundingBox(BowlMesh);
+			const FVector BowlCenter = BowlBox.GetCenter();
+			const FVector BowlLoc(TX - BowlCenter.X * BowlScale, TY - BowlCenter.Y * BowlScale, BowlZ);
+			const float FireTopZ = BowlZ + BowlBox.Max.Z * BowlScale - 4.f;
 
 			AddWorldMesh(
 				FString::Printf(TEXT("EmberCrypt_TorchPost_%d"), TorchIdx),
 				AetheriaWorldConst::MeshGothicPillar2,
-				FVector(TX, TY, PostZ),
-				FRotator(0.f, Side > 0 ? 180.f : 0.f, 0.f),
-				FVector(SconceP2Scale));
+				PostLoc,
+				PostRot,
+				FVector(SconceP2Scale),
+				PillarMat);
 
 			AddWorldMesh(
 				FString::Printf(TEXT("EmberCrypt_TorchBowl_%d"), TorchIdx),
-				AetheriaWorldConst::MeshStoneFirePit,
-				FVector(TX, TY, BowlZ),
+				AetheriaWorldConst::MeshFirePit,
+				BowlLoc,
 				FRotator::ZeroRotator,
-				FVector(BowlScale));
+				FVector(BowlScale),
+				FirePitMat);
 
-			AddWorldMesh(
-				FString::Printf(TEXT("EmberCrypt_TorchFlame_%d"), TorchIdx),
-				AetheriaWorldConst::MeshBrazierFlame,
-				FVector(TX, TY, FlameZ),
-				FRotator::ZeroRotator,
-				FVector(FlameScale),
-				CryptFlameMID,
-				AetheriaWorldConst::MeshCone,
-				false);
+			SpawnFireParticle(
+				FString::Printf(TEXT("EmberCrypt_TorchFireVFX_%d"), TorchIdx),
+				AetheriaWorldConst::ParticleTorchFire,
+				FVector(TX, TY, FireTopZ),
+				FVector(0.80f));
 
 			AddAmbientFireLight(
 				FString::Printf(TEXT("EmberCrypt_WallTorchLight_%d"), TorchIdx),
-				FVector(TX - Side * 35.f, TY, BaseZ + 275.f),
-				750.f,
+				FVector(TX - Side * 35.f, TY, FireTopZ + 48.f),
+				520.f,
 				2100.f,
-				1150.f,
-				FLinearColor(1.0f, 0.48f, 0.12f, 1.0f),
-				0.20f,
+				1050.f,
+				FLinearColor(1.0f, 0.48f, 0.14f, 1.0f),
+				0.18f,
 				TorchIdx * 1.1f,
-				false);
+				false,
+				0.14f);
 		}
 	}
 
-	// Controlled molten lava bounce illumination (1,850 lm, Atten 1,750)
+	// 6. Moody Volcanic Lava Bounce Illumination (750 lm, SpecularScale=0.12 for rich dark stone contrast)
 	AddAmbientFireLight(
 		TEXT("EmberCrypt_LavaBounce"),
-		FVector(CX, CY, BaseZ + 110.f),
-		1850.f,
+		FVector(CX, CY, BaseZ + 115.f),
+		750.f,
 		1900.f,
-		1750.f,
-		FLinearColor(1.0f, 0.28f, 0.05f, 1.0f),
+		1650.f,
+		FLinearColor(1.0f, 0.30f, 0.06f, 1.0f),
 		0.12f,
 		0.5f,
-		false);
+		false,
+		0.12f);
 
-	// 1 Destructible Obsidian Seal Wall blocking the inner sanctum doorway (LinkedQuestId = "Q_EmberCrypt")
+	// 7. 1 Destructible Obsidian Seal Wall blocking the inner sanctum doorway (LinkedQuestId = "Q_EmberCrypt")
 	SpawnDestructibleProp(
-		FVector(CX, CY + HalfL - 40.f, AetheriaWorldHelpers::ComputeGroundedZ(Section1Mesh, BaseZ, WallSecScale, 12.f)),
-		FRotator(0.f, -90.f, 0.f),
+		FVector(CX, CY + HalfL - 40.f, AetheriaWorldHelpers::ComputeGroundedZ(CryptWallMesh, BaseZ, WallSecScale * 0.85f, 12.f)),
+		FRotator(0.f, 0.f, 0.f),
 		EDestructibleKind::Obsidian,
 		160.f,
-		AetheriaWorldConst::MeshGothicSection1,
+		AetheriaWorldConst::MeshCryptWallA,
 		FVector(WallSecScale * 0.85f),
 		FName(TEXT("Q_EmberCrypt")));
 
-	// Glowing Sunstone Altar in the deepest apse + flanking Sarcophagi
-	const FVector AltarPos(CX, CY - 740.f, BaseZ + 22.f);
+	// 8. Waist-High Carved Sunstone Altar (SM_Alter + M_Stone_Altar_Inst), Volcanic Sunstone Core & M_Stone_Coffin_Inst Sarcophagi
+	const FVector AltarLoc = AetheriaWorldHelpers::ComputeGroundedCenterLoc(
+		AltarMesh, CX, CY - 740.f, WalkwayTopZ, FRotator::ZeroRotator, FVector(AltarScale), 4.f);
 	AddWorldMesh(
 		TEXT("EmberCrypt_SunstoneAltar"),
-		AetheriaWorldConst::MeshRunicAltar,
-		AltarPos,
+		AetheriaWorldConst::MeshMedievalAltar,
+		AltarLoc,
 		FRotator::ZeroRotator,
-		FVector(1.65f));
+		FVector(AltarScale),
+		StoneAltarMat);
 
-	UMaterialInstanceDynamic* SunstoneCoreMID = CreateColorMID(FLinearColor(2.8f, 1.35f, 0.28f, 1.0f), true);
+	UStaticMesh* SphereMesh = LoadMeshSafe(AetheriaWorldConst::MeshSphere, AetheriaWorldConst::MeshSphere);
+	const float CoreScale = 0.68f;
+	const float CoreZ = AetheriaWorldHelpers::ComputeStackedZ(AltarMesh, AltarLoc.Z, AltarScale, SphereMesh, CoreScale, -18.f);
+	const FVector CoreWorldPos(CX, CY - 740.f, CoreZ);
+
 	AddWorldMesh(
 		TEXT("EmberCrypt_SunstoneCore"),
 		AetheriaWorldConst::MeshSphere,
-		AltarPos + FVector(0.f, 0.f, 185.f),
+		CoreWorldPos,
 		FRotator::ZeroRotator,
-		FVector(0.95f),
-		SunstoneCoreMID,
+		FVector(CoreScale),
+		ActiveLavaMat,
 		AetheriaWorldConst::MeshSphere,
 		false);
 
+	SpawnFireParticle(
+		TEXT("EmberCrypt_SunstoneEmbersVFX"),
+		AetheriaWorldConst::ParticlePitFire,
+		CoreWorldPos - FVector(0.f, 0.f, 18.f),
+		FVector(0.85f));
+
 	AddAmbientFireLight(
 		TEXT("EmberCrypt_SunstoneGlow"),
-		AltarPos + FVector(0.f, 0.f, 220.f),
-		1400.f,
-		3200.f,
-		1250.f,
-		FLinearColor(1.0f, 0.78f, 0.34f, 1.0f),
-		0.08f,
+		CoreWorldPos + FVector(0.f, 0.f, 40.f),
+		650.f,
+		2600.f,
+		1100.f,
+		FLinearColor(1.0f, 0.52f, 0.16f, 1.0f),
+		0.10f,
 		2.7f,
-		false);
+		false,
+		0.14f);
 
+	const FRotator CoffinRotL(0.f, 20.f, 0.f);
+	const FRotator CoffinRotR(0.f, -20.f, 0.f);
 	AddWorldMesh(
 		TEXT("EmberCrypt_SarcophagusL"),
-		AetheriaWorldConst::MeshCryptSarcophagus,
-		FVector(CX - 430.f, CY - 580.f, BaseZ + 22.f),
-		FRotator(0.f, 20.f, 0.f),
-		FVector(1.35f));
+		AetheriaWorldConst::MeshStoneCoffin,
+		AetheriaWorldHelpers::ComputeGroundedCenterLoc(CoffinMesh, CX - 430.f, CY - 580.f, WalkwayTopZ, CoffinRotL, FVector(CoffinScale), 4.f),
+		CoffinRotL,
+		FVector(CoffinScale),
+		StoneCoffinMat);
 	AddWorldMesh(
 		TEXT("EmberCrypt_SarcophagusR"),
-		AetheriaWorldConst::MeshCryptSarcophagus,
-		FVector(CX + 430.f, CY - 580.f, BaseZ + 22.f),
-		FRotator(0.f, -20.f, 0.f),
-		FVector(1.35f));
+		AetheriaWorldConst::MeshStoneCoffin,
+		AetheriaWorldHelpers::ComputeGroundedCenterLoc(CoffinMesh, CX + 430.f, CY - 580.f, WalkwayTopZ, CoffinRotR, FVector(CoffinScale), 4.f),
+		CoffinRotR,
+		FVector(CoffinScale),
+		StoneCoffinMat);
 }
 
 void AAetheriaWorldBuilder::BuildCrystalGlacierPeaks()
 {
-	// Frost crystalline spires & warming sanctuary braziers (SM_StoneFirePit) at (-6800, -6400)
+	// Frost crystalline spires & warming sanctuary braziers at (-6800, -6400)
 	const float CX = -6800.f;
 	const float CY = -6400.f;
 	const float CenterZ = SampleGroundZ(CX, CY, FallbackGroundZ);
 
-	UMaterialInstanceDynamic* IceCrystalMID = CreateColorMID(FLinearColor(0.32f, 0.92f, 1.65f, 1.0f), true);
-	UMaterialInstanceDynamic* FrostedStoneMID = CreateColorMID(FLinearColor(0.58f, 0.74f, 0.86f, 1.0f), false);
+	UMaterialInterface* PrismCrystalMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatAetheriaPrismWall
+	});
+	UMaterialInterface* GlacierStoneMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatNamaqualandCliff,
+		AetheriaWorldConst::MatStoneAltar,
+		AetheriaWorldConst::MatStoneWall
+	});
 
-	// Central Quas Frost Sanctuary Shrine
+	if (!PrismCrystalMat)
+	{
+		PrismCrystalMat = CreateColorMID(FLinearColor(0.28f, 0.85f, 1.45f, 1.0f), true);
+	}
+
+	// Grounded Central Quas Frost Sanctuary Shrine (SM_Mausoleum + textured stone)
+	UStaticMesh* ShrineMesh  = LoadMeshSafe(AetheriaWorldConst::MeshMausoleum, AetheriaWorldConst::MeshMedievalAltar);
+	UStaticMesh* SpireMesh   = LoadMeshSafe(AetheriaWorldConst::MeshCoreCrystal, AetheriaWorldConst::MeshEarthSpikeSingle);
+	UStaticMesh* RockMesh    = LoadMeshSafe(AetheriaWorldConst::MeshKiteMountainRock, AetheriaWorldConst::MeshCliffBoulder);
+
+	const float ShrineScale = AetheriaWorldHelpers::ComputeUniformScaleForHeight(ShrineMesh, 420.f, 0.2f, 3.0f);
+	const FRotator ShrineRot(0.f, 35.f, 0.f);
 	AddWorldMesh(
 		TEXT("Glacier_SanctuaryShrine"),
-		AetheriaWorldConst::MeshSanctuaryShrine,
-		FVector(CX, CY, CenterZ - 10.f),
-		FRotator(0.f, 35.f, 0.f),
-		FVector(1.65f),
-		FrostedStoneMID);
+		AetheriaWorldConst::MeshMausoleum,
+		AetheriaWorldHelpers::ComputeGroundedCenterLoc(ShrineMesh, CX, CY, CenterZ, ShrineRot, FVector(ShrineScale), 10.f),
+		ShrineRot,
+		FVector(ShrineScale),
+		GlacierStoneMat);
 
-	// 12 Tall Faceted Frost Crystalline Spires encircling the glacier basin
+	// 12 Grounded Faceted Frost Crystalline Spires encircling the glacier basin (M_AetheriaPrismWall + ComputeGroundedZ)
 	FRandomStream GlacierRng(99107);
+	const float SpireBaseUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(SpireMesh, 420.f, 0.2f, 3.2f);
+	const float BoulderBaseUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(RockMesh, 220.f, 0.15f, 3.0f);
+
 	for (int32 Idx = 0; Idx < 12; ++Idx)
 	{
 		const float Angle = (static_cast<float>(Idx) / 12.f) * UE_TWO_PI + GlacierRng.FRandRange(-0.15f, 0.15f);
 		const float Dist = GlacierRng.FRandRange(620.f, 1650.f);
 		const float SX = CX + FMath::Cos(Angle) * Dist;
 		const float SY = CY + FMath::Sin(Angle) * Dist;
-		const float SZ = SampleGroundZ(SX, SY, CenterZ) - 24.f;
-		const float SpireHeight = GlacierRng.FRandRange(3.2f, 7.2f);
-		const float SpireRadius = GlacierRng.FRandRange(1.1f, 2.2f);
+		const float SZ = SampleGroundZ(SX, SY, CenterZ);
+		const float HeightMult = GlacierRng.FRandRange(0.85f, 1.75f);
+		const float WidthMult = GlacierRng.FRandRange(0.75f, 1.25f);
+		const FVector SpireScale(SpireBaseUnit * WidthMult, SpireBaseUnit * WidthMult, SpireBaseUnit * HeightMult);
+		const FRotator SpireRot(GlacierRng.FRandRange(-8.f, 8.f), GlacierRng.FRandRange(0.f, 360.f), GlacierRng.FRandRange(-8.f, 8.f));
 
 		AddWorldMesh(
 			FString::Printf(TEXT("Glacier_FrostSpire_%d"), Idx),
-			AetheriaWorldConst::MeshCone,
-			FVector(SX, SY, SZ + SpireHeight * 42.f),
-			FRotator(GlacierRng.FRandRange(-12.f, 12.f), GlacierRng.FRandRange(0.f, 360.f), GlacierRng.FRandRange(-12.f, 12.f)),
-			FVector(SpireRadius, SpireRadius, SpireHeight),
-			IceCrystalMID,
-			AetheriaWorldConst::MeshCone,
+			AetheriaWorldConst::MeshCoreCrystal,
+			AetheriaWorldHelpers::ComputeGroundedCenterLoc(SpireMesh, SX, SY, SZ, SpireRot, SpireScale, 24.f),
+			SpireRot,
+			SpireScale,
+			PrismCrystalMat,
+			AetheriaWorldConst::MeshEarthSpikeSingle,
 			true);
 
 		if (Idx % 3 == 0)
 		{
+			const float BX = SX + 140.f;
+			const float BY = SY - 110.f;
+			const float BGZ = SampleGroundZ(BX, BY, SZ);
+			const float BScale = BoulderBaseUnit * GlacierRng.FRandRange(0.95f, 1.55f);
+			const FRotator BRot(0.f, GlacierRng.FRandRange(0.f, 360.f), 0.f);
 			AddWorldMesh(
 				FString::Printf(TEXT("Glacier_IceBoulder_%d"), Idx),
-				AetheriaWorldConst::MeshCliffBoulder,
-				FVector(SX + 140.f, SY - 110.f, SZ),
-				FRotator(0.f, GlacierRng.FRandRange(0.f, 360.f), 0.f),
-				FVector(GlacierRng.FRandRange(1.4f, 2.4f)),
-				FrostedStoneMID);
+				AetheriaWorldConst::MeshKiteMountainRock,
+				AetheriaWorldHelpers::ComputeGroundedCenterLoc(RockMesh, BX, BY, BGZ, BRot, FVector(BScale), 18.f),
+				BRot,
+				FVector(BScale),
+				GlacierStoneMat);
 		}
 	}
 
-	// 3 Warming Sanctuary Braziers (SM_StoneFirePit + 1,100 lm warm orange contrast against glacier ice)
+	// 3 Warming Sanctuary Braziers (SM_Fire_Pit + P_Torch_Fire + 850 lm warm contrast against glacier ice)
 	for (int32 Idx = 0; Idx < 3; ++Idx)
 	{
 		const float Angle = (static_cast<float>(Idx) / 3.f) * UE_TWO_PI + 0.45f;
@@ -2648,10 +3850,10 @@ void AAetheriaWorldBuilder::BuildCrystalGlacierPeaks()
 		AddBrazierAssembly(
 			FString::Printf(TEXT("Glacier_FirePit_%d"), Idx),
 			FVector(FX, FY, FZ),
-			1100.f,
-			1450.f,
-			AetheriaWorldConst::MeshStoneFirePit,
-			1.25f,
+			850.f,
+			1350.f,
+			AetheriaWorldConst::MeshFirePit,
+			1.15f,
 			Idx * 1.4f);
 	}
 }
@@ -2665,13 +3867,30 @@ void AAetheriaWorldBuilder::BuildSkyRuneRings()
 		float AltitudeAboveGround;
 		float YawDeg;
 		FLinearColor Color;
+		bool bUseFireShader;
 	};
 
 	const FSkyRingSpec Rings[3] = {
-		{ FVector2D(-1800.f,  -400.f), 3200.f,  -28.f, FLinearColor(0.25f, 1.65f, 2.40f, 1.0f) },
-		{ FVector2D(    0.f, -2600.f), 3600.f,    0.f, FLinearColor(2.20f, 1.25f, 0.25f, 1.0f) },
-		{ FVector2D(    0.f, -6600.f), 4000.f,    0.f, FLinearColor(1.25f, 0.45f, 2.40f, 1.0f) }
+		{ FVector2D(-1800.f,  -400.f), 3200.f,  -28.f, FLinearColor(0.25f, 1.45f, 2.10f, 1.0f), false },
+		{ FVector2D(    0.f, -2600.f), 3600.f,    0.f, FLinearColor(1.90f, 1.05f, 0.22f, 1.0f), true  },
+		{ FVector2D(    0.f, -6600.f), 4000.f,    0.f, FLinearColor(1.15f, 0.42f, 2.05f, 1.0f), false }
 	};
+
+	UMaterialInterface* PrismMat = LoadPBRMaterial({ AetheriaWorldConst::MatAetheriaPrismWall });
+	UMaterialInterface* FireMat  = nullptr;
+	if (UMaterialInterface* BaseFire = LoadPBRMaterial({ AetheriaWorldConst::MatAetheriaFireball, AetheriaWorldConst::MatAetheriaMasterPBR }))
+	{
+		if (UMaterialInstanceDynamic* RingFireMID = UMaterialInstanceDynamic::Create(BaseFire, this))
+		{
+			RingFireMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.32f, 0.08f, 0.01f, 1.0f));
+			RingFireMID->SetVectorParameterValue(TEXT("AccentColor"), FLinearColor(1.0f, 0.35f, 0.04f, 1.0f));
+			RingFireMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(1.0f, 0.40f, 0.05f, 1.0f));
+			RingFireMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.4f);
+			RingFireMID->SetScalarParameterValue(TEXT("EmissiveStrength"), 2.4f);
+			DynamicMaterials.Add(RingFireMID);
+			FireMat = RingFireMID;
+		}
+	}
 
 	const float RingRadius = 480.f;
 	const int32 NumSegments = 12;
@@ -2694,7 +3913,11 @@ void AAetheriaWorldBuilder::BuildSkyRuneRings()
 		Pivot->RegisterComponent();
 		SkyRuneRingPivots.Add(Pivot);
 
-		UMaterialInstanceDynamic* RingMID = CreateColorMID(Spec.Color, true);
+		UMaterialInterface* RingMat = Spec.bUseFireShader ? FireMat : PrismMat;
+		if (!RingMat)
+		{
+			RingMat = CreateColorMID(Spec.Color, true);
+		}
 
 		for (int32 Seg = 0; Seg < NumSegments; ++Seg)
 		{
@@ -2710,19 +3933,19 @@ void AAetheriaWorldBuilder::BuildSkyRuneRings()
 				WorldPos,
 				SegRot,
 				FVector(0.45f, 1.95f, 0.52f),
-				RingMID,
+				RingMat,
 				AetheriaWorldConst::MeshCube,
 				false,
 				Pivot);
 		}
 
-		// Aerial guidance beacon light (2,200 lm)
+		// Aerial guidance beacon light
 		AddAmbientFireLight(
 			FString::Printf(TEXT("SkyRuneRing_Beacon_%d"), RingIdx),
 			RingCenter,
-			2200.f,
+			1600.f,
 			6500.f,
-			2600.f,
+			2400.f,
 			FLinearColor(
 				FMath::Clamp(Spec.Color.R, 0.15f, 1.0f),
 				FMath::Clamp(Spec.Color.G, 0.15f, 1.0f),
@@ -2730,6 +3953,7 @@ void AAetheriaWorldBuilder::BuildSkyRuneRings()
 				1.0f),
 			0.10f,
 			RingIdx * 2.1f,
-			false);
+			false,
+			0.16f);
 	}
 }

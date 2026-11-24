@@ -64,8 +64,13 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathCylinder[]      = TEXT("/Engine/BasicShapes/Cylinder.Cylinder");
 	static constexpr TCHAR PathCone[]          = TEXT("/Engine/BasicShapes/Cone.Cone");
 	static constexpr TCHAR PathCube[]          = TEXT("/Engine/BasicShapes/Cube.Cube");
-	static constexpr TCHAR PathMatBasic[]      = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
-	static constexpr TCHAR PathMatEmissive[]   = TEXT("/Engine/EngineMaterials/EmissiveMeshMaterial.EmissiveMeshMaterial");
+	static constexpr TCHAR PathMatBasic[]        = TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial");
+	static constexpr TCHAR PathMatEmissive[]     = TEXT("/Engine/EngineMaterials/EmissiveMeshMaterial.EmissiveMeshMaterial");
+	static constexpr TCHAR PathMatMasterPBR[]    = TEXT("/Game/Materials/M_AetheriaMasterPBR.M_AetheriaMasterPBR");
+	static constexpr TCHAR PathMatObsidian[]     = TEXT("/Game/Materials/M_AetheriaObsidian.M_AetheriaObsidian");
+	static constexpr TCHAR PathMatDarkIron[]     = TEXT("/Game/Materials/M_AetheriaDarkIron.M_AetheriaDarkIron");
+	static constexpr TCHAR PathMatEmissiveCore[] = TEXT("/Game/Materials/M_AetheriaEmissiveCore.M_AetheriaEmissiveCore");
+	static constexpr TCHAR PathMatFireball[]     = TEXT("/Game/Materials/M_AetheriaFireball.M_AetheriaFireball");
 
 	static constexpr TCHAR PathABPCombat[]     = TEXT("/Game/Variant_Combat/Anims/ABP_Manny_Combat.ABP_Manny_Combat_C");
 	static constexpr TCHAR PathABPUnarmed[]    = TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed.ABP_Unarmed_C");
@@ -86,6 +91,8 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathMobRanged[]     = TEXT("/Game/Characters/Mobs/SKM_Mob_Ranged.SKM_Mob_Ranged");
 	static constexpr TCHAR PathBossMain[]      = TEXT("/Game/Characters/Mobs/SKM_Boss_Main.SKM_Boss_Main");
 	static constexpr TCHAR PathStaffArcane[]   = TEXT("/Game/Meshes/SM_Staff_Arcane01.SM_Staff_Arcane01");
+	static constexpr TCHAR PathLongswordMesh[] = TEXT("/Game/Longsword/Longsword/SM_Longsword.SM_Longsword");
+	static constexpr TCHAR PathSwordMesh[]     = TEXT("/Game/Sword/Sword/SM_Sword.SM_Sword");
 
 	// Staged Fab / VaultCache High-Poly Skeletal Packs: FourEvilDragonsHP (DragonTheUsurper)
 	static constexpr TCHAR PathDragonUsurperMesh[]    = TEXT("/Game/FourEvilDragonsHP/Meshes/DragonTheUsurper/DragonTheUsurperSK.DragonTheUsurperSK");
@@ -129,8 +136,52 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathSevarogDeath[]         = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Death_front.Death_front");
 	static constexpr TCHAR PathBossExplosionFX[]      = TEXT("/Game/FXVarietyPack/Particles/P_ky_explosion.P_ky_explosion");
 	static constexpr TCHAR PathBossShockwaveNS[]      = TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave");
-	static constexpr TCHAR PathGideonMesh[]    = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Meshes/Gideon.Gideon");
-	static constexpr TCHAR PathGideonABP[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Gideon_AnimBlueprint.Gideon_AnimBlueprint_C");
+	static constexpr TCHAR PathGideonMesh[]         = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Meshes/Gideon.Gideon");
+	static constexpr TCHAR PathGideonToughMesh[]    = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Skins/Tough/Meshes/Gideon_Tough.Gideon_Tough");
+	static constexpr TCHAR PathGideonABP[]          = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Gideon_AnimBlueprint.Gideon_AnimBlueprint_C");
+	static constexpr TCHAR PathGideonPedestalIdle[] = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/HeroPedestal_Idle.HeroPedestal_Idle");
+	static constexpr TCHAR PathGideonIdle[]         = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Idle.Idle");
+	static constexpr TCHAR PathGideonRun[]          = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathGideonCast[]         = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Cast.Cast");
+	static constexpr TCHAR PathGideonAttackASeq[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_A_Medium.Primary_Attack_A_Medium");
+	static constexpr TCHAR PathGideonAttackBSeq[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_B_Medium.Primary_Attack_B_Medium");
+	static constexpr TCHAR PathGideonAttackCSeq[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_C_Medium.Primary_Attack_C_Medium");
+	static constexpr TCHAR PathGideonHitReact[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathGideonDeath[]        = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Death_Fwd.Death_Fwd");
+
+	static constexpr TCHAR PathAuroraMesh[]         = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Meshes/Aurora.Aurora");
+	static constexpr TCHAR PathAuroraABP[]          = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Aurora_AnimBlueprint.Aurora_AnimBlueprint_C");
+	static constexpr TCHAR PathAuroraIdle[]         = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Idle.Idle");
+	static constexpr TCHAR PathAuroraRun[]          = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathAuroraRunBwd[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Jog_Bwd.Jog_Bwd");
+	static constexpr TCHAR PathAuroraCast[]         = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Cast.Cast");
+	static constexpr TCHAR PathAuroraAttackASeq[]   = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_A.Primary_Attack_A");
+	static constexpr TCHAR PathAuroraAttackBSeq[]   = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_B.Primary_Attack_B");
+	static constexpr TCHAR PathAuroraAttackCSeq[]   = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_C.Primary_Attack_C");
+	static constexpr TCHAR PathAuroraHitReact[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathAuroraDeath[]        = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Death.Death");
+
+	static constexpr TCHAR PathGruxMesh[]           = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Meshes/Grux.Grux");
+	static constexpr TCHAR PathGruxABP[]            = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Grux_AnimBlueprint.Grux_AnimBlueprint_C");
+	static constexpr TCHAR PathGruxIdle[]           = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Idle.Idle");
+	static constexpr TCHAR PathGruxRun[]            = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathGruxCast[]           = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Cast.Cast");
+	static constexpr TCHAR PathGruxAttackASeq[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_LA.PrimaryAttack_LA");
+	static constexpr TCHAR PathGruxAttackBSeq[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_RA.PrimaryAttack_RA");
+	static constexpr TCHAR PathGruxAttackCSeq[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_FourStrikes.PrimaryAttack_FourStrikes");
+	static constexpr TCHAR PathGruxHitReact[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathGruxDeath[]          = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Death_A.Death_A");
+
+	static constexpr TCHAR PathMorigeshMesh[]       = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Meshes/Morigesh.Morigesh");
+	static constexpr TCHAR PathMorigeshABP[]        = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Morigesh_AnimBlueprint.Morigesh_AnimBlueprint_C");
+	static constexpr TCHAR PathMorigeshIdle[]       = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Idle.Idle");
+	static constexpr TCHAR PathMorigeshRun[]        = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathMorigeshCast[]       = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Cast.Cast");
+	static constexpr TCHAR PathMorigeshAttackASeq[] = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_A_Slow.PrimaryAttack_A_Slow");
+	static constexpr TCHAR PathMorigeshAttackBSeq[] = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_B_Slow.PrimaryAttack_B_Slow");
+	static constexpr TCHAR PathMorigeshAttackCSeq[] = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_C_Slow.PrimaryAttack_C_Slow");
+	static constexpr TCHAR PathMorigeshHitReact[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathMorigeshDeath[]      = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Death.Death");
 	static constexpr TCHAR PathKwangMesh[]     = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Meshes/Kwang_GDC.Kwang_GDC");
 	static constexpr TCHAR PathKwangABP[]      = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Animations/Kwang_AnimBlueprint.Kwang_AnimBlueprint_C");
 	static constexpr TCHAR PathKwangMeleeA[]   = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Animations/PrimaryAttack_A_Slow_Montage.PrimaryAttack_A_Slow_Montage");
@@ -152,13 +203,19 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathGreystoneABP[]  = TEXT("/Game/ParagonGreystone/Characters/Heroes/Greystone/Greystone_AnimBlueprint.Greystone_AnimBlueprint_C");
 
 	// Staged Paragon Khaimera (FrostWarden / Highland Berserker)
-	static constexpr TCHAR PathKhaimeraMesh[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Meshes/Khaimera.Khaimera");
-	static constexpr TCHAR PathKhaimeraABP[]      = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Khaimera_AnimBlueprint.Khaimera_AnimBlueprint_C");
-	static constexpr TCHAR PathKhaimeraMeleeA[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_A_Montage.Melee_A_Montage");
-	static constexpr TCHAR PathKhaimeraMeleeB[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_B_Montage.Melee_B_Montage");
-	static constexpr TCHAR PathKhaimeraMeleeC[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_C_Montage.Melee_C_Montage");
-	static constexpr TCHAR PathKhaimeraHitReact[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/HitReact_Front.HitReact_Front");
-	static constexpr TCHAR PathKhaimeraDeath[]    = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Death_A.Death_A");
+	static constexpr TCHAR PathKhaimeraMesh[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Meshes/Khaimera.Khaimera");
+	static constexpr TCHAR PathKhaimeraABP[]        = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Khaimera_AnimBlueprint.Khaimera_AnimBlueprint_C");
+	static constexpr TCHAR PathKhaimeraIdle[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Idle.Idle");
+	static constexpr TCHAR PathKhaimeraRun[]        = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathKhaimeraCast[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Cast.Cast");
+	static constexpr TCHAR PathKhaimeraAttackASeq[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_A.Melee_A");
+	static constexpr TCHAR PathKhaimeraAttackBSeq[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_B.Melee_B");
+	static constexpr TCHAR PathKhaimeraAttackCSeq[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_C.Melee_C");
+	static constexpr TCHAR PathKhaimeraMeleeA[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_A_Montage.Melee_A_Montage");
+	static constexpr TCHAR PathKhaimeraMeleeB[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_B_Montage.Melee_B_Montage");
+	static constexpr TCHAR PathKhaimeraMeleeC[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_C_Montage.Melee_C_Montage");
+	static constexpr TCHAR PathKhaimeraHitReact[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathKhaimeraDeath[]      = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Death_A.Death_A");
 
 	// Staged Dragon Fire FX, Free_Spells Niagara & FreeModularMagicSFX
 	static constexpr TCHAR PathDragonFireStormFX[]   = TEXT("/Game/FXVarietyPack/Particles/P_ky_fireStorm.P_ky_fireStorm");
@@ -439,16 +496,57 @@ namespace AetheriaActorsUtil
 		return false;
 	}
 
+	static UMaterialInstanceDynamic* CreateDragonPBRMID(
+		UObject* Outer,
+		const TCHAR* PrimaryMatPath,
+		const TCHAR* SecondaryMatPath,
+		const FLinearColor& BaseColor,
+		float Metallic,
+		float Roughness,
+		float Specular,
+		const FLinearColor& RimAccentColor,
+		float EmissiveBoost = 0.0f)
+	{
+		UMaterialInterface* BaseMat = SafeLoadObjectIfPresent<UMaterialInterface>(PrimaryMatPath);
+		if (!BaseMat && SecondaryMatPath)
+		{
+			BaseMat = SafeLoadObjectIfPresent<UMaterialInterface>(SecondaryMatPath);
+		}
+		if (!BaseMat)
+		{
+			BaseMat = LoadObject<UMaterialInterface>(nullptr, PathMatBasic);
+		}
+		if (!BaseMat)
+		{
+			return nullptr;
+		}
+
+		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(BaseMat, Outer);
+		if (MID)
+		{
+			MID->SetVectorParameterValue(TEXT("BaseColor"), BaseColor);
+			MID->SetVectorParameterValue(TEXT("Color"), BaseColor);
+			MID->SetVectorParameterValue(TEXT("AccentColor"), RimAccentColor);
+			MID->SetVectorParameterValue(TEXT("EmissiveColor"), RimAccentColor);
+			MID->SetScalarParameterValue(TEXT("Metallic"), Metallic);
+			MID->SetScalarParameterValue(TEXT("Roughness"), Roughness);
+			MID->SetScalarParameterValue(TEXT("Specular"), Specular);
+			MID->SetScalarParameterValue(TEXT("EmissiveBoost"), EmissiveBoost);
+			MID->SetScalarParameterValue(TEXT("ClothWind"), 0.0f);
+		}
+		return MID;
+	}
+
 	static FLinearColor GetOrbVisualColor(EChronicleOrb Orb)
 	{
 		switch (Orb)
 		{
 		case EChronicleOrb::Exort:
-			return FLinearColor(1.00f, 0.32f, 0.06f, 1.0f);
+			return FLinearColor(1.00f, 0.28f, 0.04f, 1.0f); // Rich deep molten orange
 		case EChronicleOrb::Wex:
-			return FLinearColor(0.56f, 0.24f, 1.00f, 1.0f);
+			return FLinearColor(0.52f, 0.18f, 1.00f, 1.0f); // Royal arcane violet
 		case EChronicleOrb::Quas:
-			return FLinearColor(0.14f, 0.72f, 1.00f, 1.0f);
+			return FLinearColor(0.12f, 0.68f, 1.00f, 1.0f); // Frost sapphire
 		default:
 			return FLinearColor(0.35f, 0.35f, 0.40f, 1.0f);
 		}
@@ -608,9 +706,10 @@ AAetheriaDragonActor::AAetheriaDragonActor()
 	MouthFireLight->SetupAttachment(MouthSocket);
 	MouthFireLight->SetIntensityUnits(ELightUnits::Lumens);
 	MouthFireLight->SetIntensity(450.f);
-	MouthFireLight->SetLightColor(FLinearColor(1.0f, 0.42f, 0.10f, 1.0f));
+	MouthFireLight->SetLightColor(FLinearColor(1.0f, 0.40f, 0.08f, 1.0f));
 	MouthFireLight->SetAttenuationRadius(2600.f);
 	MouthFireLight->SetSourceRadius(32.f);
+	MouthFireLight->SetSpecularScale(0.45f);
 	MouthFireLight->SetCastShadows(false);
 
 	// Sweeping cinematic dragon flight camera boom (unobstructed full-wingspan Crimson Desert framing)
@@ -649,9 +748,29 @@ void AAetheriaDragonActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Emissive fire cone dynamic materials
-	FireOuterMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(14.0f, 3.6f, 0.45f, 1.0f), true);
-	FireCoreMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(22.0f, 15.0f, 4.5f, 1.0f), true);
+	// Emissive fire cone dynamic materials (prefer M_AetheriaFireball magma shader when fallback cones are active)
+	if (UMaterialInterface* FireballMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatFireball))
+	{
+		FireOuterMID = UMaterialInstanceDynamic::Create(FireballMat, this);
+		if (FireOuterMID)
+		{
+			FireOuterMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(1.0f, 0.26f, 0.03f, 1.0f));
+			FireOuterMID->SetVectorParameterValue(TEXT("AccentColor"), FLinearColor(1.0f, 0.58f, 0.08f, 1.0f));
+			FireOuterMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 3.2f);
+		}
+		FireCoreMID = UMaterialInstanceDynamic::Create(FireballMat, this);
+		if (FireCoreMID)
+		{
+			FireCoreMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(1.0f, 0.68f, 0.14f, 1.0f));
+			FireCoreMID->SetVectorParameterValue(TEXT("AccentColor"), FLinearColor(1.0f, 0.90f, 0.35f, 1.0f));
+			FireCoreMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 4.2f);
+		}
+	}
+	else
+	{
+		FireOuterMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(5.5f, 1.5f, 0.18f, 1.0f), true);
+		FireCoreMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(8.0f, 4.8f, 1.1f, 1.0f), true);
+	}
 
 	if (FireBreathConeMesh && FireOuterMID)
 	{
@@ -695,8 +814,18 @@ void AAetheriaDragonActor::BeginPlay()
 	UParticleSystem* FireBallFX  = AetheriaActorsUtil::SafeLoadObjectIfPresent<UParticleSystem>(AetheriaActorsUtil::PathDragonFireBallFX);
 	DragonFireSFX = AetheriaActorsUtil::SafeLoadObjectIfPresent<USoundBase>(AetheriaActorsUtil::PathSFXFireBall);
 
-	DragonFireStormPSC = CreateMouthFirePSC(FireStormFX, FVector(80.f, 0.f, 0.f), FVector(2.1f));
+	DragonFireStormPSC = CreateMouthFirePSC(FireStormFX, FVector(80.f, 0.f, 0.f), FVector(2.15f));
 	DragonFireBallPSC  = CreateMouthFirePSC(FireBallFX,  FVector(140.f, 0.f, 0.f), FVector(1.85f));
+	if (DragonFireStormPSC)
+	{
+		DragonFireStormPSC->SetVisibility(true);
+		DragonFireStormPSC->bSuppressSpawning = false;
+	}
+	if (DragonFireBallPSC)
+	{
+		DragonFireBallPSC->SetVisibility(true);
+		DragonFireBallPSC->bSuppressSpawning = false;
+	}
 	bHasRealDragonFireFX = (DragonFireStormPSC != nullptr) || (DragonFireBallPSC != nullptr);
 	bWasBreathingFire = false;
 
@@ -898,17 +1027,73 @@ void AAetheriaDragonActor::BuildProceduralRedDragon()
 		return;
 	}
 
-	// Rich crimson metallic scales, burnished bronze-gold membranes, obsidian horns, emissive molten eyes
-	CrimsonScaleMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(0.56f, 0.055f, 0.035f, 1.0f), false, 0.72f, 0.28f);
-	CrimsonBellyMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(0.76f, 0.28f, 0.09f, 1.0f), false, 0.55f, 0.36f);
-	HornObsidianMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(0.06f, 0.05f, 0.06f, 1.0f), false, 0.40f, 0.25f);
-	EyeGlowMID      = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(12.0f, 6.5f, 0.6f, 1.0f), true);
+	// Richly shaded Aetheria PBR dragon materials (deep crimson-obsidian scales, burnished bronze-crimson membranes,
+	// volcanic obsidian horns, and churning golden-ember M_AetheriaFireball eyes & chest furnace)
+	CrimsonScaleMID = AetheriaActorsUtil::CreateDragonPBRMID(
+		this,
+		AetheriaActorsUtil::PathMatMasterPBR,
+		AetheriaActorsUtil::PathMatObsidian,
+		FLinearColor(0.58f, 0.055f, 0.038f, 1.0f),
+		0.42f,
+		0.48f,
+		0.36f,
+		FLinearColor(0.88f, 0.18f, 0.03f, 1.0f),
+		0.22f);
 
-	// --- Torso, Armored Chest Keel & Muscular Haunches ---
+	CrimsonBellyMID = AetheriaActorsUtil::CreateDragonPBRMID(
+		this,
+		AetheriaActorsUtil::PathMatMasterPBR,
+		AetheriaActorsUtil::PathMatDarkIron,
+		FLinearColor(0.56f, 0.18f, 0.068f, 1.0f),
+		0.28f,
+		0.58f,
+		0.30f,
+		FLinearColor(0.82f, 0.24f, 0.05f, 1.0f),
+		0.14f);
+
+	HornObsidianMID = AetheriaActorsUtil::CreateDragonPBRMID(
+		this,
+		AetheriaActorsUtil::PathMatObsidian,
+		AetheriaActorsUtil::PathMatDarkIron,
+		FLinearColor(0.055f, 0.045f, 0.052f, 1.0f),
+		0.38f,
+		0.42f,
+		0.38f,
+		FLinearColor(0.28f, 0.08f, 0.02f, 1.0f),
+		0.0f);
+
+	if (UMaterialInterface* FireballMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatFireball))
+	{
+		EyeGlowMID = UMaterialInstanceDynamic::Create(FireballMat, this);
+		if (EyeGlowMID)
+		{
+			EyeGlowMID->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(1.0f, 0.36f, 0.04f, 1.0f));
+			EyeGlowMID->SetVectorParameterValue(TEXT("AccentColor"), FLinearColor(1.0f, 0.72f, 0.14f, 1.0f));
+			EyeGlowMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.8f);
+		}
+	}
+	else if (UMaterialInterface* EmissiveCoreMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatEmissiveCore))
+	{
+		EyeGlowMID = UMaterialInstanceDynamic::Create(EmissiveCoreMat, this);
+		if (EyeGlowMID)
+		{
+			EyeGlowMID->SetVectorParameterValue(TEXT("EmissiveColor"), FLinearColor(1.0f, 0.52f, 0.08f, 1.0f));
+			EyeGlowMID->SetScalarParameterValue(TEXT("EmissiveBoost"), 3.2f);
+			EyeGlowMID->SetScalarParameterValue(TEXT("Opacity"), 1.0f);
+		}
+	}
+	else
+	{
+		EyeGlowMID = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(3.8f, 1.9f, 0.25f, 1.0f), true);
+	}
+
+	// --- Torso, Armored Chest Keel, Ember Furnace Core & Muscular Haunches ---
 	AddProceduralPart(TEXT("DragonTorso"), SphereMeshAsset, ProceduralDragonRoot,
 		FVector(0.f, 0.f, 15.f), FRotator(0.f, 0.f, 0.f), FVector(3.2f, 1.35f, 1.25f), CrimsonScaleMID);
 	AddProceduralPart(TEXT("DragonChest"), SphereMeshAsset, ProceduralDragonRoot,
 		FVector(95.f, 0.f, 24.f), FRotator(10.f, 0.f, 0.f), FVector(1.85f, 1.45f, 1.38f), CrimsonScaleMID);
+	AddProceduralPart(TEXT("DragonChestFurnace"), SphereMeshAsset, ProceduralDragonRoot,
+		FVector(128.f, 0.f, -2.f), FRotator(12.f, 0.f, 0.f), FVector(0.58f, 0.52f, 0.44f), EyeGlowMID);
 	AddProceduralPart(TEXT("DragonBellyKeel"), SphereMeshAsset, ProceduralDragonRoot,
 		FVector(40.f, 0.f, -26.f), FRotator(0.f, 0.f, 0.f), FVector(2.55f, 0.98f, 0.70f), CrimsonBellyMID);
 	AddProceduralPart(TEXT("DragonHaunchL"), SphereMeshAsset, ProceduralDragonRoot,
@@ -1584,20 +1769,22 @@ AAetheriaHeroCharacter::AAetheriaHeroCharacter()
 		MeshComp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	}
 
-	// Over-the-shoulder Crimson Desert / Wukong camera framing (never clips inside Kwang's cape or world shrines!)
+	// Over-the-shoulder Crimson Desert / Wukong camera framing (never clips inside cape or world shrines!)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
 	CameraBoom->TargetArmLength = 470.f;
 	CameraBoom->SocketOffset = FVector(0.f, 48.f, 96.f);
 	CameraBoom->ProbeSize = 6.f;
 	CameraBoom->bUsePawnControlRotation = true;
-	CameraBoom->bEnableCameraLag = false;
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 12.0f;
 	CameraBoom->bEnableCameraRotationLag = false;
 	CameraBoom->bDoCollisionTest = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
+	FollowCamera->FieldOfView = 78.0f;
 
 	// Core RPG & Combat Components
 	SpellSystem = CreateDefaultSubobject<USpellSystemComponent>(TEXT("SpellSystem"));
@@ -1614,17 +1801,33 @@ AAetheriaHeroCharacter::AAetheriaHeroCharacter()
 	CombatFlashLight->SetAttenuationRadius(1100.f);
 	CombatFlashLight->SetCastShadows(false);
 
-	// Creator Studio warm portrait fill light (0 lm until Creator Studio camera mode activates)
+	// Creator Studio warm 3/4 portrait key light (0 lm & hidden until Creator Studio camera mode activates)
 	CreatorStudioFillLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("CreatorStudioFillLight"));
 	CreatorStudioFillLight->SetupAttachment(RootComponent);
-	CreatorStudioFillLight->SetRelativeLocation(FVector(135.f, 0.f, 70.f));
+	CreatorStudioFillLight->SetRelativeLocation(FVector(120.f, 110.f, 115.f));
 	CreatorStudioFillLight->SetIntensityUnits(ELightUnits::Lumens);
 	CreatorStudioFillLight->SetIntensity(0.f);
-	CreatorStudioFillLight->SetLightColor(FLinearColor(1.0f, 0.88f, 0.74f, 1.0f));
-	CreatorStudioFillLight->SetAttenuationRadius(650.f);
+	CreatorStudioFillLight->SetLightColor(FLinearColor(1.0f, 0.90f, 0.78f, 1.0f));
+	CreatorStudioFillLight->SetAttenuationRadius(480.f);
+	CreatorStudioFillLight->SetSpecularScale(0.22f);
+	CreatorStudioFillLight->SetSourceRadius(28.f);
 	CreatorStudioFillLight->SetCastShadows(false);
+	CreatorStudioFillLight->SetVisibility(false);
 
-	// 3 Orbiting Invoker Primal Spheres hovering behind shoulders
+	// Creator Studio cool silhouette rim light placed behind-opposite camera (0 lm & hidden outside studio)
+	CreatorStudioRimLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("CreatorStudioRimLight"));
+	CreatorStudioRimLight->SetupAttachment(RootComponent);
+	CreatorStudioRimLight->SetRelativeLocation(FVector(-120.f, -85.f, 105.f));
+	CreatorStudioRimLight->SetIntensityUnits(ELightUnits::Lumens);
+	CreatorStudioRimLight->SetIntensity(0.f);
+	CreatorStudioRimLight->SetLightColor(FLinearColor(0.58f, 0.78f, 1.0f, 1.0f));
+	CreatorStudioRimLight->SetAttenuationRadius(460.f);
+	CreatorStudioRimLight->SetSpecularScale(0.20f);
+	CreatorStudioRimLight->SetSourceRadius(24.f);
+	CreatorStudioRimLight->SetCastShadows(false);
+	CreatorStudioRimLight->SetVisibility(false);
+
+	// 3 Orbiting Invoker Primal Spheres hovering behind shoulders (jewel-scale 0.105)
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(AetheriaActorsUtil::PathSphere);
 	UStaticMesh* SphereMesh = SphereFinder.Succeeded() ? SphereFinder.Object : nullptr;
 
@@ -1636,7 +1839,7 @@ AAetheriaHeroCharacter::AAetheriaHeroCharacter()
 		OrbitingOrbMeshes[i]->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		OrbitingOrbMeshes[i]->SetGenerateOverlapEvents(false);
 		OrbitingOrbMeshes[i]->SetCastShadow(false);
-		OrbitingOrbMeshes[i]->SetRelativeScale3D(FVector(0.13f));
+		OrbitingOrbMeshes[i]->SetRelativeScale3D(FVector(0.105f));
 		OrbitingOrbMeshes[i]->bDisallowNanite = true;
 		OrbitingOrbMeshes[i]->SetVisibility(false);
 		if (SphereMesh)
@@ -1725,6 +1928,163 @@ void AAetheriaHeroCharacter::BeginPlay()
 	FAetheriaStyleHarmonizer::HarmonizeActorMaterials(this, EChronicleStyleCategory::Character);
 }
 
+bool AAetheriaHeroCharacter::BindParagonHeroSingleNodeAnims(USkeletalMesh* SkelMesh)
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	ActiveIdleAnimSeq = nullptr;
+	ActiveRunAnimSeq = nullptr;
+	CombatAnimLockUntilTime = 0.f;
+	bPlayingRunAnim = false;
+	bPlayingCombatOneShot = false;
+
+	if (!MeshComp || !SkelMesh || !SkelMesh->GetSkeleton())
+	{
+		return false;
+	}
+
+	const FString MeshId = SkelMesh->GetPathName() + TEXT(" ") + SkelMesh->GetName();
+
+	const TCHAR* IdlePrimary   = nullptr;
+	const TCHAR* IdleFallback  = nullptr;
+	const TCHAR* RunPrimary    = nullptr;
+	const TCHAR* RunFallback   = nullptr;
+	const TCHAR* CastPath      = nullptr;
+	const TCHAR* AttackSeqs[3] = { nullptr, nullptr, nullptr };
+	const TCHAR* HitPath       = nullptr;
+	const TCHAR* DeathPath     = nullptr;
+
+	if (MeshId.Contains(TEXT("Gideon"), ESearchCase::IgnoreCase))
+	{
+		IdlePrimary   = AetheriaActorsUtil::PathGideonPedestalIdle;
+		IdleFallback  = AetheriaActorsUtil::PathGideonIdle;
+		RunPrimary    = AetheriaActorsUtil::PathGideonRun;
+		CastPath      = AetheriaActorsUtil::PathGideonCast;
+		AttackSeqs[0] = AetheriaActorsUtil::PathGideonAttackASeq;
+		AttackSeqs[1] = AetheriaActorsUtil::PathGideonAttackBSeq;
+		AttackSeqs[2] = AetheriaActorsUtil::PathGideonAttackCSeq;
+		HitPath       = AetheriaActorsUtil::PathGideonHitReact;
+		DeathPath     = AetheriaActorsUtil::PathGideonDeath;
+	}
+	else if (MeshId.Contains(TEXT("Aurora"), ESearchCase::IgnoreCase))
+	{
+		IdlePrimary   = AetheriaActorsUtil::PathAuroraIdle;
+		RunPrimary    = AetheriaActorsUtil::PathAuroraRun;
+		RunFallback   = AetheriaActorsUtil::PathAuroraRunBwd;
+		CastPath      = AetheriaActorsUtil::PathAuroraCast;
+		AttackSeqs[0] = AetheriaActorsUtil::PathAuroraAttackASeq;
+		AttackSeqs[1] = AetheriaActorsUtil::PathAuroraAttackBSeq;
+		AttackSeqs[2] = AetheriaActorsUtil::PathAuroraAttackCSeq;
+		HitPath       = AetheriaActorsUtil::PathAuroraHitReact;
+		DeathPath     = AetheriaActorsUtil::PathAuroraDeath;
+	}
+	else if (MeshId.Contains(TEXT("Khaimera"), ESearchCase::IgnoreCase))
+	{
+		IdlePrimary   = AetheriaActorsUtil::PathKhaimeraIdle;
+		RunPrimary    = AetheriaActorsUtil::PathKhaimeraRun;
+		CastPath      = AetheriaActorsUtil::PathKhaimeraCast;
+		AttackSeqs[0] = AetheriaActorsUtil::PathKhaimeraAttackASeq;
+		AttackSeqs[1] = AetheriaActorsUtil::PathKhaimeraAttackBSeq;
+		AttackSeqs[2] = AetheriaActorsUtil::PathKhaimeraAttackCSeq;
+		HitPath       = AetheriaActorsUtil::PathKhaimeraHitReact;
+		DeathPath     = AetheriaActorsUtil::PathKhaimeraDeath;
+	}
+	else if (MeshId.Contains(TEXT("Grux"), ESearchCase::IgnoreCase))
+	{
+		IdlePrimary   = AetheriaActorsUtil::PathGruxIdle;
+		RunPrimary    = AetheriaActorsUtil::PathGruxRun;
+		CastPath      = AetheriaActorsUtil::PathGruxCast;
+		AttackSeqs[0] = AetheriaActorsUtil::PathGruxAttackASeq;
+		AttackSeqs[1] = AetheriaActorsUtil::PathGruxAttackBSeq;
+		AttackSeqs[2] = AetheriaActorsUtil::PathGruxAttackCSeq;
+		HitPath       = AetheriaActorsUtil::PathGruxHitReact;
+		DeathPath     = AetheriaActorsUtil::PathGruxDeath;
+	}
+	else if (MeshId.Contains(TEXT("Morigesh"), ESearchCase::IgnoreCase))
+	{
+		IdlePrimary   = AetheriaActorsUtil::PathMorigeshIdle;
+		RunPrimary    = AetheriaActorsUtil::PathMorigeshRun;
+		CastPath      = AetheriaActorsUtil::PathMorigeshCast;
+		AttackSeqs[0] = AetheriaActorsUtil::PathMorigeshAttackASeq;
+		AttackSeqs[1] = AetheriaActorsUtil::PathMorigeshAttackBSeq;
+		AttackSeqs[2] = AetheriaActorsUtil::PathMorigeshAttackCSeq;
+		HitPath       = AetheriaActorsUtil::PathMorigeshHitReact;
+		DeathPath     = AetheriaActorsUtil::PathMorigeshDeath;
+	}
+	else
+	{
+		return false;
+	}
+
+	auto LoadCompatibleSeq = [SkelMesh](const TCHAR* PrimaryPath, const TCHAR* FallbackPath = nullptr) -> UAnimSequence*
+	{
+		if (PrimaryPath)
+		{
+			if (UAnimSequence* Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(PrimaryPath))
+			{
+				if (AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
+				{
+					return Seq;
+				}
+			}
+		}
+		if (FallbackPath)
+		{
+			if (UAnimSequence* Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(FallbackPath))
+			{
+				if (AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
+				{
+					return Seq;
+				}
+			}
+		}
+		return nullptr;
+	};
+
+	ActiveIdleAnimSeq = LoadCompatibleSeq(IdlePrimary, IdleFallback);
+	ActiveRunAnimSeq  = LoadCompatibleSeq(RunPrimary, RunFallback);
+	if (UAnimSequence* CastSeq = LoadCompatibleSeq(CastPath))
+	{
+		AnimCast = CastSeq;
+	}
+	for (int32 i = 0; i < 3; ++i)
+	{
+		if (UAnimSequence* AtkSeq = LoadCompatibleSeq(AttackSeqs[i]))
+		{
+			AnimAttack[i] = AtkSeq;
+		}
+	}
+	if (UAnimSequence* HitSeq = LoadCompatibleSeq(HitPath))
+	{
+		AnimHitReact = HitSeq;
+	}
+	if (UAnimSequence* DeathSeq = LoadCompatibleSeq(DeathPath))
+	{
+		AnimDeath = DeathSeq;
+	}
+
+	if (!ActiveIdleAnimSeq)
+	{
+		return false;
+	}
+
+	// SingleNode mode bypasses legacy Paragon *_AnimBlueprint assets that fail UE 5.8 BP compilation (eliminates A-pose!)
+	for (int32 i = 0; i < 4; ++i)
+	{
+		HeroAttackMontages[i] = nullptr;
+	}
+	MeshComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+	MeshComp->SetPlayRate(1.0f);
+	bPlayingRunAnim = false;
+	bPlayingCombatOneShot = false;
+
+	UE_LOG(LogChronicles, Log, TEXT("AAetheriaHeroCharacter bound SingleNode Paragon anims for %s (Idle=%s, Run=%s)"),
+		*SkelMesh->GetName(),
+		*ActiveIdleAnimSeq->GetName(),
+		ActiveRunAnimSeq ? *ActiveRunAnimSeq->GetName() : TEXT("None"));
+	return true;
+}
+
 void AAetheriaHeroCharacter::SetupHeroSkeletalMeshAndAnims()
 {
 	USkeletalMeshComponent* MeshComp = GetMesh();
@@ -1733,8 +2093,20 @@ void AAetheriaHeroCharacter::SetupHeroSkeletalMeshAndAnims()
 		return;
 	}
 
+	// Silky Crimson Desert 3rd-person camera framing & lag
+	if (FollowCamera && !bCreatorStudioCameraActive)
+	{
+		FollowCamera->SetFieldOfView(78.0f);
+	}
+	if (CameraBoom && !bCreatorStudioCameraActive)
+	{
+		CameraBoom->bEnableCameraLag = true;
+		CameraBoom->CameraLagSpeed = 12.0f;
+	}
+
 	// Auto-upgrade priority:
-	// /Game/FabImports/Hero -> ParagonGideon -> ParagonKwang -> ParagonSerath -> ParagonGreystone
+	// /Game/FabImports/Hero -> ParagonGideon -> ParagonKwang -> ParagonKhaimera -> ParagonGrux
+	// -> ParagonAurora -> ParagonMorigesh -> ParagonSerath -> ParagonGreystone
 	// -> SKM_Hero_00 -> SKM_Manny_Simple
 	USkeletalMesh* ChosenMesh = nullptr;
 	const TCHAR* PreferredParagonABP = nullptr;
@@ -1754,10 +2126,15 @@ void AAetheriaHeroCharacter::SetupHeroSkeletalMeshAndAnims()
 		const TCHAR* AnimBPPath;
 	};
 	static const FParagonHeroSpec ParagonHeroSpecs[] = {
-		{ TEXT("/Game/ParagonGideon"),    AetheriaActorsUtil::PathGideonMesh,    AetheriaActorsUtil::PathGideonABP },
-		{ TEXT("/Game/ParagonKwang"),     AetheriaActorsUtil::PathKwangMesh,     AetheriaActorsUtil::PathKwangABP },
-		{ TEXT("/Game/ParagonSerath"),    AetheriaActorsUtil::PathSerathMesh,    AetheriaActorsUtil::PathSerathABP },
-		{ TEXT("/Game/ParagonGreystone"), AetheriaActorsUtil::PathGreystoneMesh, AetheriaActorsUtil::PathGreystoneABP }
+		{ TEXT("/Game/ParagonGideon"),    AetheriaActorsUtil::PathGideonToughMesh, AetheriaActorsUtil::PathGideonABP },
+		{ TEXT("/Game/ParagonGideon"),    AetheriaActorsUtil::PathGideonMesh,      AetheriaActorsUtil::PathGideonABP },
+		{ TEXT("/Game/ParagonKwang"),     AetheriaActorsUtil::PathKwangMesh,       AetheriaActorsUtil::PathKwangABP },
+		{ TEXT("/Game/ParagonKhaimera"),  AetheriaActorsUtil::PathKhaimeraMesh,    AetheriaActorsUtil::PathKhaimeraABP },
+		{ TEXT("/Game/ParagonGrux"),      AetheriaActorsUtil::PathGruxMesh,        AetheriaActorsUtil::PathGruxABP },
+		{ TEXT("/Game/ParagonAurora"),    AetheriaActorsUtil::PathAuroraMesh,      AetheriaActorsUtil::PathAuroraABP },
+		{ TEXT("/Game/ParagonMorigesh"),  AetheriaActorsUtil::PathMorigeshMesh,    AetheriaActorsUtil::PathMorigeshABP },
+		{ TEXT("/Game/ParagonSerath"),    AetheriaActorsUtil::PathSerathMesh,      AetheriaActorsUtil::PathSerathABP },
+		{ TEXT("/Game/ParagonGreystone"), AetheriaActorsUtil::PathGreystoneMesh,   AetheriaActorsUtil::PathGreystoneABP }
 	};
 
 	for (const FParagonHeroSpec& Spec : ParagonHeroSpecs)
@@ -1808,24 +2185,26 @@ void AAetheriaHeroCharacter::SetupHeroSkeletalMeshAndAnims()
 	{
 		MeshComp->SetSkeletalMesh(ChosenMesh);
 
-		TArray<const TCHAR*> CandidateABPs;
-		if (PreferredParagonABP)
+		// Drive staged Paragon heroes via AnimationSingleNode (Idle + Jog_Fwd + combat sequences) so broken legacy
+		// Paragon *_AnimBlueprint graphs never freeze the Hero in ref A-pose!
+		const bool bBoundSingleNodeParagon = BindParagonHeroSingleNodeAnims(ChosenMesh);
+		if (!bBoundSingleNodeParagon)
 		{
-			CandidateABPs.Add(PreferredParagonABP);
+			TArray<const TCHAR*> CandidateABPs;
+			if (PreferredParagonABP && !FString(PreferredParagonABP).Contains(TEXT("/Game/Paragon")))
+			{
+				CandidateABPs.Add(PreferredParagonABP);
+			}
+			CandidateABPs.Add(AetheriaActorsUtil::PathABPCombat);
+			CandidateABPs.Add(AetheriaActorsUtil::PathABPUnarmed);
+			AetheriaActorsUtil::TryBindCompatibleAnimBPFromList(MeshComp, CandidateABPs);
 		}
-		CandidateABPs.Add(AetheriaActorsUtil::PathGideonABP);
-		CandidateABPs.Add(AetheriaActorsUtil::PathKwangABP);
-		CandidateABPs.Add(AetheriaActorsUtil::PathSerathABP);
-		CandidateABPs.Add(AetheriaActorsUtil::PathGreystoneABP);
-		CandidateABPs.Add(AetheriaActorsUtil::PathABPCombat);
-		CandidateABPs.Add(AetheriaActorsUtil::PathABPUnarmed);
-		AetheriaActorsUtil::TryBindCompatibleAnimBPFromList(MeshComp, CandidateABPs);
 
 		const bool bIsParagonHero = ChosenMesh->GetPathName().Contains(TEXT("/Game/Paragon"));
 		if (bIsParagonHero)
 		{
 			HeroAnimSlotName = FName(TEXT("FullBody"));
-			// Paragon heroes (such as Kwang) carry native sculpted weapons
+			// Paragon heroes carry native sculpted weapons / astral casting rings
 			if (HeroWeaponMesh)
 			{
 				HeroWeaponMesh->SetVisibility(false);
@@ -1833,16 +2212,25 @@ void AAetheriaHeroCharacter::SetupHeroSkeletalMeshAndAnims()
 		}
 		else if (HeroWeaponMesh)
 		{
-			// Optionally attach staged arcane staff/blade for Mannequin/Hero_00 meshes
+			// Attach real PBR sword (/Game/Longsword or /Game/Sword) -> fallback arcane staff for non-Paragon meshes
 			const FName WeaponSocket = MeshComp->DoesSocketExist(TEXT("weapon_r")) ? FName(TEXT("weapon_r"))
 				: (MeshComp->DoesSocketExist(TEXT("hand_r")) ? FName(TEXT("hand_r")) : NAME_None);
 			if (!WeaponSocket.IsNone())
 			{
-				if (UStaticMesh* StaffMesh = AetheriaActorsUtil::SafeLoadObjectIfPresent<UStaticMesh>(AetheriaActorsUtil::PathStaffArcane))
+				UStaticMesh* WeaponMeshAsset = AetheriaActorsUtil::SafeLoadObjectIfPresent<UStaticMesh>(AetheriaActorsUtil::PathLongswordMesh);
+				if (!WeaponMeshAsset)
 				{
-					HeroWeaponMesh->SetStaticMesh(StaffMesh);
+					WeaponMeshAsset = AetheriaActorsUtil::SafeLoadObjectIfPresent<UStaticMesh>(AetheriaActorsUtil::PathSwordMesh);
+				}
+				if (!WeaponMeshAsset)
+				{
+					WeaponMeshAsset = AetheriaActorsUtil::SafeLoadObjectIfPresent<UStaticMesh>(AetheriaActorsUtil::PathStaffArcane);
+				}
+				if (WeaponMeshAsset)
+				{
+					HeroWeaponMesh->SetStaticMesh(WeaponMeshAsset);
 					HeroWeaponMesh->AttachToComponent(MeshComp, FAttachmentTransformRules::SnapToTargetNotIncludingScale, WeaponSocket);
-					HeroWeaponMesh->SetRelativeScale3D(FVector(0.85f));
+					HeroWeaponMesh->SetRelativeScale3D(FVector(0.92f));
 					HeroWeaponMesh->SetVisibility(true);
 				}
 			}
@@ -1938,38 +2326,40 @@ bool AAetheriaHeroCharacter::ApplyCustomSkeletalRig(
 
 	MeshComp->SetSkeletalMesh(NewMesh);
 
-	// Bind preferred AnimBP if compatible, otherwise fall back across staged Hero/Mannequin ABPs
-	TArray<const TCHAR*> CandidateABPs;
-	if (!AnimBPPath.IsEmpty())
-	{
-		CandidateABPs.Add(*AnimBPPath);
-	}
-	CandidateABPs.Add(AetheriaActorsUtil::PathGideonABP);
-	CandidateABPs.Add(AetheriaActorsUtil::PathKwangABP);
-	CandidateABPs.Add(AetheriaActorsUtil::PathSerathABP);
-	CandidateABPs.Add(AetheriaActorsUtil::PathGreystoneABP);
-	CandidateABPs.Add(AetheriaActorsUtil::PathABPCombat);
-	CandidateABPs.Add(AetheriaActorsUtil::PathABPUnarmed);
-	AetheriaActorsUtil::TryBindCompatibleAnimBPFromList(MeshComp, CandidateABPs);
-
 	for (int32 i = 0; i < 4; ++i)
 	{
 		HeroAttackMontages[i] = nullptr;
 	}
-	const int32 NumMontages = FMath::Min(4, AttackMontagePaths.Num());
-	for (int32 i = 0; i < NumMontages; ++i)
+	AnimHitReact = nullptr;
+	AnimDeath = nullptr;
+
+	// Drive staged Paragon heroes via AnimationSingleNode (Idle + Jog_Fwd + combat sequences) instead of broken Paragon AnimBPs
+	const bool bBoundSingleNodeParagon = BindParagonHeroSingleNodeAnims(NewMesh);
+	if (!bBoundSingleNodeParagon)
 	{
-		if (UAnimMontage* Montage = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimMontage>(*AttackMontagePaths[i]))
+		TArray<const TCHAR*> CandidateABPs;
+		if (!AnimBPPath.IsEmpty() && !AnimBPPath.Contains(TEXT("/Game/Paragon")))
 		{
-			if (Montage->GetSkeleton() && AetheriaActorsUtil::IsSkeletonCompatible(NewMesh, Montage->GetSkeleton()))
+			CandidateABPs.Add(*AnimBPPath);
+		}
+		CandidateABPs.Add(AetheriaActorsUtil::PathABPCombat);
+		CandidateABPs.Add(AetheriaActorsUtil::PathABPUnarmed);
+		AetheriaActorsUtil::TryBindCompatibleAnimBPFromList(MeshComp, CandidateABPs);
+
+		const int32 NumMontages = FMath::Min(4, AttackMontagePaths.Num());
+		for (int32 i = 0; i < NumMontages; ++i)
+		{
+			if (UAnimMontage* Montage = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimMontage>(*AttackMontagePaths[i]))
 			{
-				HeroAttackMontages[i] = Montage;
+				if (Montage->GetSkeleton() && AetheriaActorsUtil::IsSkeletonCompatible(NewMesh, Montage->GetSkeleton()))
+				{
+					HeroAttackMontages[i] = Montage;
+				}
 			}
 		}
 	}
 
-	AnimHitReact = nullptr;
-	if (!HitReactPath.IsEmpty())
+	if (!AnimHitReact && !HitReactPath.IsEmpty())
 	{
 		if (UAnimSequence* HitSeq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(*HitReactPath))
 		{
@@ -1980,8 +2370,7 @@ bool AAetheriaHeroCharacter::ApplyCustomSkeletalRig(
 		}
 	}
 
-	AnimDeath = nullptr;
-	if (!DeathPath.IsEmpty())
+	if (!AnimDeath && !DeathPath.IsEmpty())
 	{
 		if (UAnimSequence* DeathSeq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(*DeathPath))
 		{
@@ -2017,25 +2406,141 @@ void AAetheriaHeroCharacter::SetCreatorStudioCameraMode(bool bEnable, float Orbi
 	CreatorStudioOrbitYaw = OrbitYawDeg;
 	CreatorStudioZoomMode = FMath::Clamp(ZoomMode, 0, 2);
 
+	const float HeightScale = Customization
+		? (Customization->Profile.HeightMeters / UHeroCustomizationComponent::BASE_HEIGHT_METERS)
+		: 1.0f;
+
 	if (CameraBoom)
 	{
 		CameraBoom->bUsePawnControlRotation = !bEnable;
 		CameraBoom->bDoCollisionTest = !bEnable;
+		CameraBoom->bEnableCameraLag = !bEnable;
+		CameraBoom->CameraLagSpeed = 12.0f;
 	}
-	if (!bEnable && CreatorStudioFillLight)
+	if (FollowCamera)
 	{
-		CreatorStudioFillLight->SetIntensity(0.f);
+		// 54 deg portrait lens in Creator Studio vs 78 deg Crimson Desert 3rd-person lens
+		FollowCamera->SetFieldOfView(bEnable ? 54.0f : 78.0f);
+	}
+
+	if (bEnable)
+	{
+		// Immediately pose Hero in crisp heroic breathing idle inside Creator Studio (never A-pose!)
+		if (ActiveIdleAnimSeq)
+		{
+			if (USkeletalMeshComponent* MeshComp = GetMesh())
+			{
+				MeshComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+				MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+				MeshComp->SetPlayRate(1.0f);
+				bPlayingRunAnim = false;
+				bPlayingCombatOneShot = false;
+				CombatAnimLockUntilTime = 0.f;
+			}
+		}
+
+		// Hide orbiting element orbs cleanly in Hero Customizer Studio
+		for (int32 i = 0; i < 3; ++i)
+		{
+			if (OrbitingOrbMeshes[i])
+			{
+				OrbitingOrbMeshes[i]->SetVisibility(false);
+			}
+		}
+
+		// Position calibrated 3-point studio lighting immediately (warm 3/4 key + cool rim)
+		const float CamYaw = CreatorStudioOrbitYaw + 180.f;
+		if (CreatorStudioFillLight)
+		{
+			const FVector KeyDir = FRotator(25.f, CamYaw + 45.f, 0.f).Vector();
+			CreatorStudioFillLight->SetRelativeLocation(KeyDir * (175.f * HeightScale) + FVector(0.f, 0.f, 45.f * HeightScale));
+			CreatorStudioFillLight->SetLightColor(FLinearColor(1.0f, 0.90f, 0.78f, 1.0f));
+			CreatorStudioFillLight->SetAttenuationRadius(480.f);
+			CreatorStudioFillLight->SetSpecularScale(0.22f);
+			CreatorStudioFillLight->SetIntensity(145.0f);
+			CreatorStudioFillLight->SetVisibility(true);
+		}
+		if (CreatorStudioRimLight)
+		{
+			const FVector RimDir = FRotator(28.f, CreatorStudioOrbitYaw - 35.f, 0.f).Vector();
+			CreatorStudioRimLight->SetRelativeLocation(RimDir * (165.f * HeightScale) + FVector(0.f, 0.f, 55.f * HeightScale));
+			CreatorStudioRimLight->SetLightColor(FLinearColor(0.58f, 0.78f, 1.0f, 1.0f));
+			CreatorStudioRimLight->SetAttenuationRadius(460.f);
+			CreatorStudioRimLight->SetSpecularScale(0.20f);
+			CreatorStudioRimLight->SetIntensity(95.0f);
+			CreatorStudioRimLight->SetVisibility(true);
+		}
+	}
+	else
+	{
+		if (CreatorStudioFillLight)
+		{
+			CreatorStudioFillLight->SetIntensity(0.f);
+			CreatorStudioFillLight->SetVisibility(false);
+		}
+		if (CreatorStudioRimLight)
+		{
+			CreatorStudioRimLight->SetIntensity(0.f);
+			CreatorStudioRimLight->SetVisibility(false);
+		}
+
+		// Restore active orbiting element orbs immediately upon exiting studio mode
+		UpdateOrbitingOrbs(0.f);
 	}
 }
 
 void AAetheriaHeroCharacter::SetupOrbitingOrbs()
 {
+	// Prefer M_AetheriaEmissiveCore -> M_AetheriaFireball -> Engine EmissiveMeshMaterial at calibrated 2.2x intensity
+	UMaterialInterface* OrbBaseMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatEmissiveCore);
+	if (OrbBaseMat)
+	{
+		OrbitingOrbMatMode = 1;
+	}
+	else if (UMaterialInterface* FireballMat = AetheriaActorsUtil::SafeLoadObjectIfPresent<UMaterialInterface>(AetheriaActorsUtil::PathMatFireball))
+	{
+		OrbBaseMat = FireballMat;
+		OrbitingOrbMatMode = 2;
+	}
+	else
+	{
+		OrbitingOrbMatMode = 0;
+	}
+
+	const FLinearColor DefaultCol = AetheriaActorsUtil::GetOrbVisualColor(EChronicleOrb::Exort);
 	for (int32 i = 0; i < 3; ++i)
 	{
-		OrbitingOrbMIDs[i] = AetheriaActorsUtil::CreateColorMID(this, FLinearColor(6.0f, 2.4f, 0.5f, 1.0f), true);
-		if (OrbitingOrbMeshes[i] && OrbitingOrbMIDs[i])
+		if (OrbBaseMat && OrbitingOrbMatMode != 0)
 		{
-			OrbitingOrbMeshes[i]->SetMaterial(0, OrbitingOrbMIDs[i]);
+			OrbitingOrbMIDs[i] = UMaterialInstanceDynamic::Create(OrbBaseMat, this);
+			if (OrbitingOrbMIDs[i])
+			{
+				if (OrbitingOrbMatMode == 1)
+				{
+					OrbitingOrbMIDs[i]->SetVectorParameterValue(TEXT("EmissiveColor"), DefaultCol);
+					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("Opacity"), 0.92f);
+				}
+				else
+				{
+					OrbitingOrbMIDs[i]->SetVectorParameterValue(TEXT("BaseColor"), DefaultCol);
+					OrbitingOrbMIDs[i]->SetVectorParameterValue(TEXT("AccentColor"), DefaultCol * 1.10f);
+					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+				}
+			}
+		}
+		else
+		{
+			OrbitingOrbMIDs[i] = AetheriaActorsUtil::CreateColorMID(this, DefaultCol * 2.2f, true);
+		}
+
+		if (OrbitingOrbMeshes[i])
+		{
+			OrbitingOrbMeshes[i]->SetRelativeScale3D(FVector(0.105f));
+			if (OrbitingOrbMIDs[i])
+			{
+				OrbitingOrbMeshes[i]->SetMaterial(0, OrbitingOrbMIDs[i]);
+			}
 		}
 	}
 }
@@ -2047,7 +2552,34 @@ UStaticMeshComponent* AAetheriaHeroCharacter::GetOrbitingOrbMesh(int32 Index) co
 
 void AAetheriaHeroCharacter::PlayCombatAnimSequence(UAnimSequence* Seq, float PlayRate)
 {
-	AetheriaActorsUtil::PlaySafeDynamicMontage(GetMesh(), Seq, PlayRate, 0.08f, 0.16f, HeroAnimSlotName);
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp || !Seq)
+	{
+		return;
+	}
+
+	if (ActiveIdleAnimSeq || MeshComp->GetAnimationMode() == EAnimationMode::AnimationSingleNode)
+	{
+		USkeletalMesh* SkelMesh = MeshComp->GetSkeletalMeshAsset();
+		const USkeleton* SeqSkeleton = Seq->GetSkeleton();
+		if (!SkelMesh || !SeqSkeleton || !AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, SeqSkeleton))
+		{
+			return;
+		}
+
+		const float SafeRate = FMath::Max(PlayRate, 0.2f);
+		MeshComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		MeshComp->PlayAnimation(Seq, false);
+		MeshComp->SetPlayRate(SafeRate);
+		bPlayingRunAnim = false;
+		bPlayingCombatOneShot = true;
+
+		const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+		CombatAnimLockUntilTime = WorldTime + FMath::Clamp(Seq->GetPlayLength() / SafeRate, 0.35f, 1.4f);
+		return;
+	}
+
+	AetheriaActorsUtil::PlaySafeDynamicMontage(MeshComp, Seq, PlayRate, 0.08f, 0.16f, HeroAnimSlotName);
 }
 
 void AAetheriaHeroCharacter::PlayHeroMeleeVisualsAndAudio(int32 Step)
@@ -2060,8 +2592,10 @@ void AAetheriaHeroCharacter::PlayHeroMeleeVisualsAndAudio(int32 Step)
 
 	bool bPlayedNativeMontage = false;
 	USkeletalMeshComponent* MeshComp = GetMesh();
+	const bool bUsingSingleNode = (ActiveIdleAnimSeq != nullptr)
+		|| (MeshComp && MeshComp->GetAnimationMode() == EAnimationMode::AnimationSingleNode);
 	UAnimMontage* NativeMontage = HeroAttackMontages[ClampedStep].Get();
-	if (MeshComp && NativeMontage)
+	if (!bUsingSingleNode && MeshComp && NativeMontage)
 	{
 		USkeletalMesh* SkelMesh = MeshComp->GetSkeletalMeshAsset();
 		UAnimInstance* AnimInst = MeshComp->GetAnimInstance();
@@ -2563,6 +3097,19 @@ void AAetheriaHeroCharacter::ExecuteRespawn_Internal()
 		MoveComp->SetMovementMode(MOVE_Walking);
 	}
 
+	CombatAnimLockUntilTime = 0.f;
+	bPlayingRunAnim = false;
+	bPlayingCombatOneShot = false;
+	if (ActiveIdleAnimSeq)
+	{
+		if (USkeletalMeshComponent* MeshComp = GetMesh())
+		{
+			MeshComp->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+			MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+			MeshComp->SetPlayRate(1.0f);
+		}
+	}
+
 	// Cleanly reset any alive Malakor boss encounter on player respawn
 	if (UWorld* World = GetWorld())
 	{
@@ -2703,7 +3250,7 @@ void AAetheriaHeroCharacter::UpdateOrbitingOrbs(float DeltaTime)
 			continue;
 		}
 
-		const bool bShow = (!bDead) && (i < ActiveCount) && (SpellSystem->ActiveOrbs[i] != EChronicleOrb::None);
+		const bool bShow = (!bCreatorStudioCameraActive) && (!bDead) && (i < ActiveCount) && (SpellSystem->ActiveOrbs[i] != EChronicleOrb::None);
 		OrbMesh->SetVisibility(bShow);
 		if (!bShow)
 		{
@@ -2724,10 +3271,27 @@ void AAetheriaHeroCharacter::UpdateOrbitingOrbs(float DeltaTime)
 		if (UMaterialInstanceDynamic* MID = OrbitingOrbMIDs[i])
 		{
 			const FLinearColor BaseCol = AetheriaActorsUtil::GetOrbVisualColor(SpellSystem->ActiveOrbs[i]);
-			const FLinearColor EmissiveCol = BaseCol * 7.5f;
-			MID->SetVectorParameterValue(TEXT("Color"), EmissiveCol);
-			MID->SetVectorParameterValue(TEXT("BaseColor"), BaseCol);
-			MID->SetVectorParameterValue(TEXT("EmissiveColor"), EmissiveCol);
+			if (OrbitingOrbMatMode == 1)
+			{
+				// M_AetheriaEmissiveCore: EmissiveColor * EmissiveBoost -> rich jewel orb at 2.2x
+				MID->SetVectorParameterValue(TEXT("EmissiveColor"), BaseCol);
+				MID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+				MID->SetScalarParameterValue(TEXT("Opacity"), 0.92f);
+			}
+			else if (OrbitingOrbMatMode == 2)
+			{
+				// M_AetheriaFireball: churning elemental core at 2.2x
+				MID->SetVectorParameterValue(TEXT("BaseColor"), BaseCol);
+				MID->SetVectorParameterValue(TEXT("AccentColor"), BaseCol * 1.10f);
+				MID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+			}
+			else
+			{
+				const FLinearColor EmissiveCol = BaseCol * 2.2f;
+				MID->SetVectorParameterValue(TEXT("Color"), EmissiveCol);
+				MID->SetVectorParameterValue(TEXT("BaseColor"), BaseCol);
+				MID->SetVectorParameterValue(TEXT("EmissiveColor"), EmissiveCol);
+			}
 		}
 	}
 }
@@ -2969,42 +3533,102 @@ void AAetheriaHeroCharacter::Tick(float DeltaTime)
 		}
 	}
 
-	// Smoothly frame Creator Studio portrait camera or normal over-the-shoulder camera
+	// SingleNode Paragon locomotion state machine (Idle <-> Jog_Fwd; bypasses broken Paragon *_AnimBlueprint A-pose!)
+	if (ActiveIdleAnimSeq && !bDead)
+	{
+		if (USkeletalMeshComponent* MeshComp = GetMesh())
+		{
+			const bool bIsMountedOnDragon = (Cast<AAetheriaDragonActor>(GetAttachParentActor()) != nullptr);
+			const float WorldTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.f;
+			if (!bIsMountedOnDragon && WorldTime >= CombatAnimLockUntilTime)
+			{
+				const bool bShouldRun = (!bCreatorStudioCameraActive) && (GetVelocity().Size2D() > 45.f) && (ActiveRunAnimSeq != nullptr);
+				if (bShouldRun)
+				{
+					if (!bPlayingRunAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
+					{
+						MeshComp->PlayAnimation(ActiveRunAnimSeq, true);
+						MeshComp->SetPlayRate(1.0f);
+						bPlayingRunAnim = true;
+						bPlayingCombatOneShot = false;
+					}
+				}
+				else
+				{
+					if (bPlayingRunAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying())
+					{
+						MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+						MeshComp->SetPlayRate(1.0f);
+						bPlayingRunAnim = false;
+						bPlayingCombatOneShot = false;
+					}
+				}
+			}
+			else if (bIsMountedOnDragon && (bPlayingRunAnim || bPlayingCombatOneShot || !MeshComp->IsPlaying()))
+			{
+				MeshComp->PlayAnimation(ActiveIdleAnimSeq, true);
+				MeshComp->SetPlayRate(1.0f);
+				bPlayingRunAnim = false;
+				bPlayingCombatOneShot = false;
+			}
+		}
+	}
+
+	// Smoothly frame Creator Studio portrait camera (54 deg lens + 3-point lighting) or Crimson Desert gameplay camera (78 deg)
 	if (CameraBoom)
 	{
 		if (bCreatorStudioCameraActive)
 		{
-			float StudioArm = 330.f * HeightScale;
-			float StudioZ = 15.f * HeightScale;
+			// Calibrated for 54 deg portrait lens so full-body / torso / face portraits frame cleanly
+			float StudioArm = 440.f * HeightScale;
+			float StudioZ = 12.f * HeightScale;
 			if (CreatorStudioZoomMode == 1)
 			{
-				StudioArm = 185.f * HeightScale;
-				StudioZ = 52.f * HeightScale;
+				StudioArm = 245.f * HeightScale;
+				StudioZ = 48.f * HeightScale;
 			}
 			else if (CreatorStudioZoomMode == 2)
 			{
-				StudioArm = 105.f * HeightScale;
-				StudioZ = 74.f * HeightScale;
+				StudioArm = 135.f * HeightScale;
+				StudioZ = 68.f * HeightScale;
 			}
 
 			CameraBoom->bUsePawnControlRotation = false;
 			CameraBoom->bDoCollisionTest = false;
+			CameraBoom->bEnableCameraLag = false;
 			CameraBoom->TargetArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, StudioArm, DeltaTime, 10.f);
 			CameraBoom->SocketOffset = FMath::VInterpTo(CameraBoom->SocketOffset, FVector(0.f, 0.f, StudioZ), DeltaTime, 10.f);
-			const FRotator TargetRelRot(-6.f, CreatorStudioOrbitYaw, 0.f);
+			const FRotator TargetRelRot(-8.f, CreatorStudioOrbitYaw, 0.f);
 			CameraBoom->SetRelativeRotation(FMath::RInterpTo(CameraBoom->GetRelativeRotation(), TargetRelRot, DeltaTime, 10.f));
 
+			if (FollowCamera && !FMath::IsNearlyEqual(FollowCamera->FieldOfView, 54.0f, 0.1f))
+			{
+				FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, 54.0f, DeltaTime, 12.f));
+			}
+
+			// Calibrated 3-point Crimson Desert studio lighting: warm 3/4 key (+45 deg side, +25 deg above) + cool silhouette rim
+			const float CamYaw = CreatorStudioOrbitYaw + 180.f;
 			if (CreatorStudioFillLight)
 			{
-				const FVector FillDir = FRotator(0.f, CreatorStudioOrbitYaw + 180.f, 0.f).Vector();
-				CreatorStudioFillLight->SetRelativeLocation(FillDir * (135.f * HeightScale) + FVector(0.f, 0.f, 70.f * HeightScale));
-				CreatorStudioFillLight->SetIntensity(550.f);
+				const FVector KeyDir = FRotator(25.f, CamYaw + 45.f, 0.f).Vector();
+				CreatorStudioFillLight->SetRelativeLocation(KeyDir * (175.f * HeightScale) + FVector(0.f, 0.f, 45.f * HeightScale));
+				CreatorStudioFillLight->SetIntensity(145.0f);
+				CreatorStudioFillLight->SetVisibility(true);
+			}
+			if (CreatorStudioRimLight)
+			{
+				const FVector RimDir = FRotator(28.f, CreatorStudioOrbitYaw - 35.f, 0.f).Vector();
+				CreatorStudioRimLight->SetRelativeLocation(RimDir * (165.f * HeightScale) + FVector(0.f, 0.f, 55.f * HeightScale));
+				CreatorStudioRimLight->SetIntensity(95.0f);
+				CreatorStudioRimLight->SetVisibility(true);
 			}
 		}
 		else
 		{
 			CameraBoom->bUsePawnControlRotation = true;
 			CameraBoom->bDoCollisionTest = true;
+			CameraBoom->bEnableCameraLag = true;
+			CameraBoom->CameraLagSpeed = 12.0f;
 			CameraBoom->TargetArmLength = FMath::FInterpTo(
 				CameraBoom->TargetArmLength,
 				470.f * FMath::Clamp(HeightScale, 0.85f, 1.45f),
@@ -3016,9 +3640,20 @@ void AAetheriaHeroCharacter::Tick(float DeltaTime)
 				DeltaTime,
 				10.f);
 
+			if (FollowCamera && !FMath::IsNearlyEqual(FollowCamera->FieldOfView, 78.0f, 0.1f))
+			{
+				FollowCamera->SetFieldOfView(FMath::FInterpTo(FollowCamera->FieldOfView, 78.0f, DeltaTime, 12.f));
+			}
+
 			if (CreatorStudioFillLight)
 			{
 				CreatorStudioFillLight->SetIntensity(0.f);
+				CreatorStudioFillLight->SetVisibility(false);
+			}
+			if (CreatorStudioRimLight)
+			{
+				CreatorStudioRimLight->SetIntensity(0.f);
+				CreatorStudioRimLight->SetVisibility(false);
 			}
 		}
 	}

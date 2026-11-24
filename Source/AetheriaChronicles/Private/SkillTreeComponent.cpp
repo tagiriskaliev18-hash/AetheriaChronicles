@@ -6,6 +6,7 @@
 
 #include "HeroCustomizationComponent.h"
 #include "HeroDragonBoss.h"
+#include "SpellSystemComponent.h"
 
 #include "GameFramework/Actor.h"
 #include "Kismet/GameplayStatics.h"
@@ -75,6 +76,11 @@ namespace ChroniclesSkillNodes
 
 UChroniclesSaveGame::UChroniclesSaveGame()
 {
+	// Keep fresh SaveGame orb unlock state aligned with USpellSystemComponent (awakened via Story Quest 1).
+	bUnlockedExort = false;
+	bUnlockedWex = false;
+	bUnlockedQuas = false;
+	bUnlockedDragonMount = false;
 	FogOfWarGrid.Init(0, FogOfWarGridSize);
 }
 
@@ -742,6 +748,16 @@ void USkillTreeComponent::PopulateSaveGame(UChroniclesSaveGame* SaveObj) const
 	if (const AActor* Owner = GetOwner())
 	{
 		SaveObj->LastPlayerLocation = Owner->GetActorLocation();
+		if (const AAetheriaHeroCharacter* HeroOwner = Cast<AAetheriaHeroCharacter>(Owner))
+		{
+			if (HeroOwner->SpellSystem)
+			{
+				SaveObj->bUnlockedExort = HeroOwner->SpellSystem->bUnlockedExort;
+				SaveObj->bUnlockedWex = HeroOwner->SpellSystem->bUnlockedWex;
+				SaveObj->bUnlockedQuas = HeroOwner->SpellSystem->bUnlockedQuas;
+			}
+			SaveObj->bUnlockedDragonMount = HeroOwner->bDragonUnlocked;
+		}
 	}
 }
 

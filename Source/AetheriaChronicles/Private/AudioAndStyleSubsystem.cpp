@@ -113,13 +113,13 @@ void FAetheriaStyleHarmonizer::ApplyCrimsonDesertPostProcess(FPostProcessSetting
 	PP.ColorContrast = FVector4(1.08f, 1.08f, 1.08f, 1.0f);
 
 	PP.bOverride_ColorGamma = true;
-	PP.ColorGamma = FVector4(0.97f, 0.97f, 0.97f, 1.0f);
+	PP.ColorGamma = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	PP.bOverride_ColorGainHighlights = true;
 	PP.ColorGainHighlights = FVector4(1.05f, 0.99f, 0.92f, 1.0f);
 
 	PP.bOverride_ColorGainShadows = true;
-	PP.ColorGainShadows = FVector4(0.91f, 0.95f, 1.04f, 1.0f);
+	PP.ColorGainShadows = FVector4(0.94f, 0.97f, 1.04f, 1.0f);
 
 	PP.bOverride_ColorOffset = true;
 	PP.ColorOffset = FVector4(0.002f, 0.004f, 0.008f, 0.0f);
@@ -128,19 +128,19 @@ void FAetheriaStyleHarmonizer::ApplyCrimsonDesertPostProcess(FPostProcessSetting
 	PP.FilmSlope = 0.89f;
 
 	PP.bOverride_FilmToe = true;
-	PP.FilmToe = 0.51f;
+	PP.FilmToe = 0.44f;
 
 	PP.bOverride_FilmShoulder = true;
 	PP.FilmShoulder = 0.28f;
 
 	PP.bOverride_BloomIntensity = true;
-	PP.BloomIntensity = 0.32f;
+	PP.BloomIntensity = 0.28f;
 
 	PP.bOverride_BloomThreshold = true;
-	PP.BloomThreshold = 1.18f;
+	PP.BloomThreshold = 1.35f;
 
 	PP.bOverride_VignetteIntensity = true;
-	PP.VignetteIntensity = 0.34f;
+	PP.VignetteIntensity = 0.28f;
 
 	PP.bOverride_MotionBlurAmount = true;
 	PP.MotionBlurAmount = 0.0f;

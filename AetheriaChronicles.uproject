@@ -65,6 +65,34 @@
     },
     {
       "Name": "Reflex",
+      "Enabled": false
+    },
+    {
+      "Name": "DLSS",
+      "Enabled": true
+    },
+    {
+      "Name": "NIS",
+      "Enabled": true
+    },
+    {
+      "Name": "StreamlineNGXCommon",
+      "Enabled": true
+    },
+    {
+      "Name": "StreamlineCore",
+      "Enabled": true
+    },
+    {
+      "Name": "StreamlineDLSSG",
+      "Enabled": true
+    },
+    {
+      "Name": "StreamlineReflex",
+      "Enabled": true
+    },
+    {
+      "Name": "StreamlineDeepDVC",
       "Enabled": true
     },
     {

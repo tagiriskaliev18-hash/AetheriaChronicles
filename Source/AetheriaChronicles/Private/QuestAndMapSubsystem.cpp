@@ -502,6 +502,11 @@ void UQuestSubsystem::PushNotification(const FString& Message)
 		return;
 	}
 
+	if (NotificationQueue.Num() > 0 && NotificationQueue.Last() == Message)
+	{
+		return;
+	}
+
 	if (NotificationQueue.Num() >= MAX_NOTIFICATION_QUEUE)
 	{
 		NotificationQueue.RemoveAt(0);
@@ -537,8 +542,8 @@ void UFogOfWarMapSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	SeedMapPins();
 	RebuildExplorationCounts();
 
-	// Uncover starting Oakhaven Valley village footprint so the hero's home hub starts explored.
-	RevealAroundWorldLocation(FVector(0.f, 4200.f, 450.f), 5500.f);
+	// Uncover starting Oakhaven Valley village footprint so the hero's home hub starts cleanly charted.
+	RevealAroundWorldLocation(FVector(0.f, 4200.f, 450.f), 7500.f);
 
 	bIsInitializing = false;
 

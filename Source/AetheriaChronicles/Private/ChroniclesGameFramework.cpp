@@ -16,6 +16,8 @@
 #include "Misc/Paths.h"
 #include "UnrealClient.h"
 
+#include "Brushes/SlateDynamicImageBrush.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 #include "CollisionQueryParams.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -23,23 +25,34 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/HitResult.h"
 #include "Engine/SkeletalMesh.h"
+#include "Engine/Texture2D.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Fonts/CompositeFont.h"
+#include "Fonts/SlateFontInfo.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerStart.h"
 #include "GenericPlatform/GenericPlatformMisc.h"
+#include "HAL/FileManager.h"
+#include "IImageWrapper.h"
+#include "IImageWrapperModule.h"
+#include "ImageUtils.h"
 #include "InputCoreTypes.h"
 #include "Kismet/GameplayStatics.h"
 #include "Math/RotationMatrix.h"
 #include "Misc/CommandLine.h"
+#include "Misc/CoreDelegates.h"
+#include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
+#include "Modules/ModuleManager.h"
 #include "Net/UnrealNetwork.h"
 #include "Rendering/DrawElements.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateTypes.h"
 #include "UObject/UObjectGlobals.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -55,47 +68,451 @@
 
 namespace ChroniclesHUDPalette
 {
-	static const FLinearColor PanelBg(0.032f, 0.036f, 0.056f, 0.88f);
-	static const FLinearColor PanelBgDeep(0.020f, 0.022f, 0.036f, 0.94f);
-	static const FLinearColor ModalScrim(0.015f, 0.016f, 0.028f, 0.72f);
-	static const FLinearColor CardBg(0.065f, 0.072f, 0.105f, 0.90f);
-	static const FLinearColor CardBgLocked(0.042f, 0.044f, 0.060f, 0.72f);
-	static const FLinearColor HairlineGold(0.72f, 0.58f, 0.34f, 0.52f);
-	static const FLinearColor HairlineCyan(0.08f, 0.85f, 0.98f, 0.55f);
-	static const FLinearColor HairlineCrimson(0.92f, 0.16f, 0.14f, 0.78f);
+	// --- Authentic Dark-Fantasy Crimson Desert / Diablo IV Obsidian & Antique Gold Palette ---
+	static const FLinearColor PanelBg(0.045f, 0.040f, 0.052f, 0.90f);
+	static const FLinearColor PanelBgDeep(0.026f, 0.022f, 0.032f, 0.94f);
+	static const FLinearColor RibbonBg(0.034f, 0.029f, 0.042f, 0.82f);
+	static const FLinearColor ModalScrim(0.012f, 0.010f, 0.018f, 0.76f);
+	static const FLinearColor CardBg(0.058f, 0.050f, 0.066f, 0.92f);
+	static const FLinearColor CardBgLocked(0.036f, 0.033f, 0.044f, 0.78f);
+	static const FLinearColor TrackRecessed(0.030f, 0.025f, 0.035f, 0.92f);
 
-	static const FLinearColor TextPrimary(0.95f, 0.94f, 0.90f, 1.0f);
-	static const FLinearColor TextSecondary(0.70f, 0.72f, 0.78f, 1.0f);
-	static const FLinearColor TextGold(0.98f, 0.82f, 0.42f, 1.0f);
-	static const FLinearColor TextCyan(0.18f, 0.92f, 1.00f, 1.0f);
-	static const FLinearColor TextCrimson(1.00f, 0.28f, 0.24f, 1.0f);
-	static const FLinearColor TextEmerald(0.28f, 0.92f, 0.54f, 1.0f);
+	static const FLinearColor HairlineGold(0.76f, 0.59f, 0.28f, 0.85f);
+	static const FLinearColor HairlineGoldSubtle(0.76f, 0.59f, 0.28f, 0.65f);
+	static const FLinearColor HairlineBronze(0.46f, 0.35f, 0.18f, 0.72f);
+	static const FLinearColor HairlineCyan(0.16f, 0.82f, 0.96f, 0.72f);
+	static const FLinearColor HairlineCrimson(0.86f, 0.16f, 0.18f, 0.88f);
 
-	static const FLinearColor BarHP(0.84f, 0.16f, 0.18f, 1.0f);
-	static const FLinearColor BarMana(0.16f, 0.52f, 0.98f, 1.0f);
-	static const FLinearColor BarStamina(0.22f, 0.78f, 0.44f, 1.0f);
-	static const FLinearColor BarXP(0.88f, 0.70f, 0.24f, 1.0f);
-	static const FLinearColor BarDragonFire(1.00f, 0.42f, 0.08f, 1.0f);
-	static const FLinearColor BarStagger(0.98f, 0.76f, 0.18f, 1.0f);
+	static const FLinearColor TextPrimary(0.95f, 0.92f, 0.86f, 1.0f);
+	static const FLinearColor TextSecondary(0.72f, 0.68f, 0.63f, 1.0f);
+	static const FLinearColor TextGold(0.96f, 0.80f, 0.42f, 1.0f);
+	static const FLinearColor TextCyan(0.24f, 0.90f, 0.98f, 1.0f);
+	static const FLinearColor TextCrimson(0.96f, 0.26f, 0.24f, 1.0f);
+	static const FLinearColor TextEmerald(0.30f, 0.88f, 0.56f, 1.0f);
+	static const FLinearColor TextAmber(0.98f, 0.72f, 0.24f, 1.0f);
 
-	static const FLinearColor OrbExort(1.00f, 0.40f, 0.10f, 1.0f);
-	static const FLinearColor OrbWex(0.62f, 0.32f, 1.00f, 1.0f);
-	static const FLinearColor OrbQuas(0.14f, 0.84f, 1.00f, 1.0f);
-	static const FLinearColor OrbLocked(0.26f, 0.28f, 0.34f, 0.80f);
+	// Semantic Progress Bar Fills
+	static const FLinearColor BarHP(0.722f, 0.114f, 0.141f, 1.0f);       // Deep Crimson #B81D24
+	static const FLinearColor BarMana(0.118f, 0.431f, 0.910f, 1.0f);     // Sapphire Arcana #1E6EE8
+	static const FLinearColor BarStamina(0.224f, 0.659f, 0.420f, 1.0f);  // Emerald-Gold #39A86B
+	static const FLinearColor BarXP(0.831f, 0.659f, 0.263f, 1.0f);       // Burnished Gold #D4A843
+	static const FLinearColor BarDragonFire(0.95f, 0.38f, 0.08f, 1.0f);  // Molten Drake Flame
+	static const FLinearColor BarBossHP(0.76f, 0.09f, 0.12f, 1.0f);      // Blood-Crimson
+	static const FLinearColor BarStagger(0.910f, 0.608f, 0.141f, 1.0f);  // Molten Amber #E89B24
+
+	static const FLinearColor OrbExort(0.98f, 0.42f, 0.12f, 1.0f);
+	static const FLinearColor OrbWex(0.68f, 0.36f, 1.00f, 1.0f);
+	static const FLinearColor OrbQuas(0.20f, 0.86f, 1.00f, 1.0f);
+	static const FLinearColor OrbLocked(0.28f, 0.26f, 0.32f, 0.78f);
 
 	static const FSlateBrush* WhiteBrush()
 	{
 		return FCoreStyle::Get().GetBrush(TEXT("WhiteBrush"));
 	}
 
+	/** Lazily-initialized runtime cache of custom TTF fonts, PNG textures, sculpted brushes, buttons & bar styles. */
+	struct FChroniclesUIStyleCache
+	{
+		bool bInitialized = false;
+		bool bPreExitBound = false;
+
+		TSharedPtr<const FCompositeFont> DisplayFontData;
+		TSharedPtr<const FCompositeFont> SerifFontData;
+
+		TArray<TWeakObjectPtr<UTexture2D>> RootedTextures;
+
+		TSharedPtr<FSlateDynamicImageBrush> PanelObsidianDyn;
+		TSharedPtr<FSlateDynamicImageBrush> BtnStoneNormDyn;
+		TSharedPtr<FSlateDynamicImageBrush> BtnStoneHovDyn;
+		TSharedPtr<FSlateDynamicImageBrush> BtnStonePressDyn;
+		TSharedPtr<FSlateDynamicImageBrush> BtnCrimsonNormDyn;
+		TSharedPtr<FSlateDynamicImageBrush> BtnCrimsonHovDyn;
+		TSharedPtr<FSlateDynamicImageBrush> BtnCrimsonPressDyn;
+		TSharedPtr<FSlateDynamicImageBrush> SocketNormDyn;
+		TSharedPtr<FSlateDynamicImageBrush> SocketArmedDyn;
+		TSharedPtr<FSlateDynamicImageBrush> OrbIgnisDyn;
+		TSharedPtr<FSlateDynamicImageBrush> OrbTempestDyn;
+		TSharedPtr<FSlateDynamicImageBrush> OrbGravitonDyn;
+		TSharedPtr<FSlateDynamicImageBrush> CrestSkullDyn;
+		TSharedPtr<FSlateDynamicImageBrush> MenuVignetteDyn;
+
+		// Sculpted FSlateRoundedBoxBrush fallbacks & card brushes
+		TSharedPtr<FSlateRoundedBoxBrush> PanelObsidianFallback;
+		TSharedPtr<FSlateRoundedBoxBrush> CardObsidianBrush;
+		TSharedPtr<FSlateRoundedBoxBrush> CardObsidianLockedBrush;
+		TSharedPtr<FSlateRoundedBoxBrush> RibbonObsidianBrush;
+		TSharedPtr<FSlateRoundedBoxBrush> SocketNormFallback;
+		TSharedPtr<FSlateRoundedBoxBrush> SocketArmedFallback;
+
+		FButtonStyle StoneBtnStyle;
+		FButtonStyle CrimsonBtnStyle;
+		FButtonStyle ActiveGoldBtnStyle;
+
+		FProgressBarStyle RecessedBaseBarStyle;
+		FProgressBarStyle HPBarStyle;
+		FProgressBarStyle ManaBarStyle;
+		FProgressBarStyle StaminaBarStyle;
+		FProgressBarStyle XPBarStyle;
+		FProgressBarStyle BossHPStyle;
+		FProgressBarStyle BossStaggerStyle;
+		FProgressBarStyle DragonFireStyle;
+
+		UTexture2D* LoadPNGTexture(const FString& RelPath)
+		{
+			if (!GIsRunning || IsEngineExitRequested() || IsRunningCommandlet())
+			{
+				return nullptr;
+			}
+
+			const FString FullPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / RelPath);
+			if (!IFileManager::Get().FileExists(*FullPath))
+			{
+				return nullptr;
+			}
+
+			UTexture2D* Tex = FImageUtils::ImportFileAsTexture2D(FullPath);
+			if (!Tex)
+			{
+				// Secondary direct IImageWrapperModule decode fallback
+				TArray<uint8> FileData;
+				if (FFileHelper::LoadFileToArray(FileData, *FullPath) && !FileData.IsEmpty())
+				{
+					IImageWrapperModule& ImgMod = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName(TEXT("ImageWrapper")));
+					TSharedPtr<IImageWrapper> Wrapper = ImgMod.CreateImageWrapper(EImageFormat::PNG);
+					if (Wrapper.IsValid() && Wrapper->SetCompressed(FileData.GetData(), FileData.Num()))
+					{
+						TArray64<uint8> RawBGRA;
+						if (Wrapper->GetRaw(ERGBFormat::BGRA, 8, RawBGRA) && Wrapper->GetWidth() > 0 && Wrapper->GetHeight() > 0)
+						{
+							Tex = UTexture2D::CreateTransient(Wrapper->GetWidth(), Wrapper->GetHeight(), PF_B8G8R8A8);
+							if (Tex && Tex->GetPlatformData() && !Tex->GetPlatformData()->Mips.IsEmpty())
+							{
+								void* MipData = Tex->GetPlatformData()->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+								if (MipData)
+								{
+									const int64 ByteCount = FMath::Min<int64>(RawBGRA.Num(), static_cast<int64>(Wrapper->GetWidth()) * Wrapper->GetHeight() * 4);
+									FMemory::Memcpy(MipData, RawBGRA.GetData(), ByteCount);
+									Tex->GetPlatformData()->Mips[0].BulkData.Unlock();
+								}
+								Tex->SRGB = true;
+								Tex->UpdateResource();
+							}
+						}
+					}
+				}
+			}
+
+			if (Tex)
+			{
+				Tex->LODGroup = TEXTUREGROUP_UI;
+				Tex->NeverStream = true;
+				Tex->Filter = TF_Bilinear;
+				Tex->AddToRoot();
+				RootedTextures.Add(Tex);
+			}
+			return Tex;
+		}
+
+		void LoadBrush(
+			TSharedPtr<FSlateDynamicImageBrush>& OutBrush,
+			const TCHAR* ResourceId,
+			const TCHAR* RelPath,
+			const FVector2f& Size,
+			ESlateBrushDrawType::Type DrawAs = ESlateBrushDrawType::Image,
+			const FMargin& Margin = FMargin(0.f))
+		{
+			if (UTexture2D* Tex = LoadPNGTexture(RelPath))
+			{
+				OutBrush = MakeShareable(new FSlateDynamicImageBrush(Tex, Size, FName(ResourceId)));
+				OutBrush->DrawAs = DrawAs;
+				OutBrush->Margin = Margin;
+			}
+		}
+
+		static FProgressBarStyle BuildBarStyle(const FLinearColor& FillTint)
+		{
+			FProgressBarStyle Style = FProgressBarStyle::GetDefault();
+			FSlateRoundedBoxBrush BgBrush(
+				TrackRecessed,
+				2.5f,
+				FLinearColor(0.38f, 0.29f, 0.16f, 0.65f),
+				1.0f);
+			FSlateRoundedBoxBrush FillBrush(
+				FillTint,
+				2.0f,
+				FLinearColor(FMath::Min(1.f, FillTint.R * 1.25f), FMath::Min(1.f, FillTint.G * 1.25f), FMath::Min(1.f, FillTint.B * 1.25f), 0.35f),
+				0.5f);
+			Style.SetBackgroundImage(BgBrush);
+			Style.SetFillImage(FillBrush);
+			Style.SetMarqueeImage(FillBrush);
+			Style.SetEnableFillAnimation(false);
+			return Style;
+		}
+
+		void ReleaseOnExit()
+		{
+			for (TWeakObjectPtr<UTexture2D>& WeakTex : RootedTextures)
+			{
+				if (UTexture2D* Tex = WeakTex.Get())
+				{
+					Tex->RemoveFromRoot();
+				}
+			}
+			RootedTextures.Reset();
+			PanelObsidianDyn.Reset();
+			BtnStoneNormDyn.Reset();
+			BtnStoneHovDyn.Reset();
+			BtnStonePressDyn.Reset();
+			BtnCrimsonNormDyn.Reset();
+			BtnCrimsonHovDyn.Reset();
+			BtnCrimsonPressDyn.Reset();
+			SocketNormDyn.Reset();
+			SocketArmedDyn.Reset();
+			OrbIgnisDyn.Reset();
+			OrbTempestDyn.Reset();
+			OrbGravitonDyn.Reset();
+			CrestSkullDyn.Reset();
+			MenuVignetteDyn.Reset();
+			DisplayFontData.Reset();
+			SerifFontData.Reset();
+			bInitialized = false;
+		}
+
+		void EnsureInitialized()
+		{
+			if (bInitialized)
+			{
+				return;
+			}
+			bInitialized = true;
+
+			if (!bPreExitBound)
+			{
+				bPreExitBound = true;
+				FCoreDelegates::OnPreExit.AddLambda([this]()
+				{
+					ReleaseOnExit();
+				});
+			}
+
+			// 1. Custom Dark-Fantasy Fonts (AetheriaDisplay-Bold.ttf & AetheriaSerif-SemiBold.ttf)
+			const FString DisplayPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Fonts/AetheriaDisplay-Bold.ttf"));
+			if (IFileManager::Get().FileExists(*DisplayPath))
+			{
+				DisplayFontData = MakeShared<FStandaloneCompositeFont>(
+					FName(TEXT("AetheriaDisplayBold")), DisplayPath, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+			}
+
+			const FString SerifPath = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir() / TEXT("Fonts/AetheriaSerif-SemiBold.ttf"));
+			if (IFileManager::Get().FileExists(*SerifPath))
+			{
+				SerifFontData = MakeShared<FStandaloneCompositeFont>(
+					FName(TEXT("AetheriaSerifSemiBold")), SerifPath, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+			}
+
+			// 2. Sculpted Fallback Brushes
+			PanelObsidianFallback = MakeShared<FSlateRoundedBoxBrush>(PanelBg, 4.f, HairlineGold, 1.5f);
+			CardObsidianBrush = MakeShared<FSlateRoundedBoxBrush>(CardBg, 3.f, HairlineBronze, 1.0f);
+			CardObsidianLockedBrush = MakeShared<FSlateRoundedBoxBrush>(CardBgLocked, 3.f, FLinearColor(0.24f, 0.22f, 0.27f, 0.55f), 1.0f);
+			RibbonObsidianBrush = MakeShared<FSlateRoundedBoxBrush>(RibbonBg, 3.f, HairlineGoldSubtle, 1.0f);
+			SocketNormFallback = MakeShared<FSlateRoundedBoxBrush>(FLinearColor(0.032f, 0.028f, 0.040f, 0.94f), 3.f, HairlineBronze, 1.5f);
+			SocketArmedFallback = MakeShared<FSlateRoundedBoxBrush>(FLinearColor(0.048f, 0.036f, 0.028f, 0.96f), 3.f, HairlineGold, 2.0f);
+
+			// 3. Load Custom UI Art PNGs from RawAssets/UI/
+			LoadBrush(PanelObsidianDyn,   TEXT("Chronicles_PanelObsidian"),    TEXT("RawAssets/UI/T_UI_PanelObsidian.png"),      FVector2f(512.f, 512.f), ESlateBrushDrawType::Box, FMargin(0.10f));
+			LoadBrush(BtnStoneNormDyn,    TEXT("Chronicles_BtnStoneNorm"),     TEXT("RawAssets/UI/T_UI_BtnStone_Normal.png"),    FVector2f(384.f, 88.f),  ESlateBrushDrawType::Box, FMargin(0.12f, 0.22f));
+			LoadBrush(BtnStoneHovDyn,     TEXT("Chronicles_BtnStoneHov"),      TEXT("RawAssets/UI/T_UI_BtnStone_Hovered.png"),   FVector2f(384.f, 88.f),  ESlateBrushDrawType::Box, FMargin(0.12f, 0.22f));
+			LoadBrush(BtnStonePressDyn,   TEXT("Chronicles_BtnStonePress"),    TEXT("RawAssets/UI/T_UI_BtnStone_Pressed.png"),   FVector2f(384.f, 88.f),  ESlateBrushDrawType::Box, FMargin(0.12f, 0.22f));
+			LoadBrush(BtnCrimsonNormDyn,  TEXT("Chronicles_BtnCrimsonNorm"),   TEXT("RawAssets/UI/T_UI_BtnCrimson_Normal.png"),  FVector2f(384.f, 88.f),  ESlateBrushDrawType::Box, FMargin(0.12f, 0.22f));
+			LoadBrush(BtnCrimsonHovDyn,   TEXT("Chronicles_BtnCrimsonHov"),    TEXT("RawAssets/UI/T_UI_BtnCrimson_Hovered.png"), FVector2f(384.f, 88.f),  ESlateBrushDrawType::Box, FMargin(0.12f, 0.22f));
+			LoadBrush(BtnCrimsonPressDyn, TEXT("Chronicles_BtnCrimsonPress"),  TEXT("RawAssets/UI/T_UI_BtnCrimson_Pressed.png"), FVector2f(384.f, 88.f),  ESlateBrushDrawType::Box, FMargin(0.12f, 0.22f));
+			LoadBrush(SocketNormDyn,      TEXT("Chronicles_SocketNorm"),       TEXT("RawAssets/UI/T_UI_SkillSocket_Normal.png"), FVector2f(128.f, 128.f), ESlateBrushDrawType::Box, FMargin(0.18f));
+			LoadBrush(SocketArmedDyn,     TEXT("Chronicles_SocketArmed"),      TEXT("RawAssets/UI/T_UI_SkillSocket_Armed.png"),  FVector2f(128.f, 128.f), ESlateBrushDrawType::Box, FMargin(0.18f));
+			LoadBrush(OrbIgnisDyn,        TEXT("Chronicles_OrbIgnis"),         TEXT("RawAssets/UI/icon_orb_ignis.png"),          FVector2f(128.f, 128.f));
+			LoadBrush(OrbTempestDyn,      TEXT("Chronicles_OrbTempest"),       TEXT("RawAssets/UI/icon_orb_tempest.png"),        FVector2f(128.f, 128.f));
+			LoadBrush(OrbGravitonDyn,     TEXT("Chronicles_OrbGraviton"),      TEXT("RawAssets/UI/icon_orb_graviton.png"),       FVector2f(128.f, 128.f));
+			LoadBrush(CrestSkullDyn,      TEXT("Chronicles_CrestSkull"),       TEXT("RawAssets/UI/T_UI_Crest_Skull.png"),        FVector2f(64.f, 64.f));
+			LoadBrush(MenuVignetteDyn,    TEXT("Chronicles_MenuVignette"),     TEXT("RawAssets/UI/T_UI_MenuVignette.png"),       FVector2f(1024.f, 1024.f));
+
+			// 4. Sculpted Stone Button Style (Carved Obsidian + Antique Gold Hover + Warm Bronze Press)
+			StoneBtnStyle = FCoreStyle::Get().GetWidgetStyle<FButtonStyle>(TEXT("Button"));
+			if (BtnStoneNormDyn.IsValid() && BtnStoneHovDyn.IsValid() && BtnStonePressDyn.IsValid())
+			{
+				StoneBtnStyle.SetNormal(*BtnStoneNormDyn);
+				StoneBtnStyle.SetHovered(*BtnStoneHovDyn);
+				StoneBtnStyle.SetPressed(*BtnStonePressDyn);
+				FSlateBrush DisabledBrush = *BtnStoneNormDyn;
+				DisabledBrush.TintColor = FSlateColor(FLinearColor(0.45f, 0.43f, 0.48f, 0.55f));
+				StoneBtnStyle.SetDisabled(DisabledBrush);
+			}
+			else
+			{
+				StoneBtnStyle.SetNormal(FSlateRoundedBoxBrush(FLinearColor(0.085f, 0.078f, 0.098f, 0.96f), 3.f, HairlineBronze, 1.2f));
+				StoneBtnStyle.SetHovered(FSlateRoundedBoxBrush(FLinearColor(0.145f, 0.125f, 0.110f, 0.98f), 3.f, HairlineGold, 1.5f));
+				StoneBtnStyle.SetPressed(FSlateRoundedBoxBrush(FLinearColor(0.180f, 0.135f, 0.085f, 0.98f), 3.f, TextGold, 1.5f));
+				StoneBtnStyle.SetDisabled(FSlateRoundedBoxBrush(FLinearColor(0.042f, 0.040f, 0.050f, 0.65f), 3.f, FLinearColor(0.22f, 0.20f, 0.24f, 0.45f), 1.0f));
+			}
+			StoneBtnStyle.SetNormalForeground(FSlateColor(TextPrimary));
+			StoneBtnStyle.SetHoveredForeground(FSlateColor(TextGold));
+			StoneBtnStyle.SetPressedForeground(FSlateColor(FLinearColor(1.0f, 0.88f, 0.56f, 1.0f)));
+			StoneBtnStyle.SetDisabledForeground(FSlateColor(FLinearColor(0.46f, 0.44f, 0.44f, 0.72f)));
+			StoneBtnStyle.SetNormalPadding(FMargin(10.f, 5.f));
+			StoneBtnStyle.SetPressedPadding(FMargin(10.f, 6.f, 10.f, 4.f));
+
+			// 5. Forged Crimson CTA Button Style (Primary Confirm / Save / Close / Respawn)
+			CrimsonBtnStyle = FCoreStyle::Get().GetWidgetStyle<FButtonStyle>(TEXT("Button"));
+			if (BtnCrimsonNormDyn.IsValid() && BtnCrimsonHovDyn.IsValid() && BtnCrimsonPressDyn.IsValid())
+			{
+				CrimsonBtnStyle.SetNormal(*BtnCrimsonNormDyn);
+				CrimsonBtnStyle.SetHovered(*BtnCrimsonHovDyn);
+				CrimsonBtnStyle.SetPressed(*BtnCrimsonPressDyn);
+				FSlateBrush DisabledCrimson = *BtnCrimsonNormDyn;
+				DisabledCrimson.TintColor = FSlateColor(FLinearColor(0.42f, 0.34f, 0.36f, 0.55f));
+				CrimsonBtnStyle.SetDisabled(DisabledCrimson);
+			}
+			else
+			{
+				CrimsonBtnStyle.SetNormal(FSlateRoundedBoxBrush(FLinearColor(0.36f, 0.075f, 0.085f, 0.96f), 3.f, HairlineGold, 1.3f));
+				CrimsonBtnStyle.SetHovered(FSlateRoundedBoxBrush(FLinearColor(0.52f, 0.110f, 0.120f, 0.98f), 3.f, TextGold, 1.6f));
+				CrimsonBtnStyle.SetPressed(FSlateRoundedBoxBrush(FLinearColor(0.28f, 0.055f, 0.065f, 0.98f), 3.f, HairlineBronze, 1.5f));
+				CrimsonBtnStyle.SetDisabled(FSlateRoundedBoxBrush(FLinearColor(0.14f, 0.055f, 0.060f, 0.60f), 3.f, FLinearColor(0.28f, 0.22f, 0.20f, 0.45f), 1.0f));
+			}
+			CrimsonBtnStyle.SetNormalForeground(FSlateColor(FLinearColor(0.98f, 0.91f, 0.76f, 1.0f)));
+			CrimsonBtnStyle.SetHoveredForeground(FSlateColor(FLinearColor(1.0f, 0.97f, 0.88f, 1.0f)));
+			CrimsonBtnStyle.SetPressedForeground(FSlateColor(TextGold));
+			CrimsonBtnStyle.SetDisabledForeground(FSlateColor(FLinearColor(0.55f, 0.48f, 0.46f, 0.70f)));
+			CrimsonBtnStyle.SetNormalPadding(FMargin(12.f, 5.f));
+			CrimsonBtnStyle.SetPressedPadding(FMargin(12.f, 6.f, 12.f, 4.f));
+
+			// 6. Active Burnished-Gold Selected Button Style (Selected Tabs / Chips / Active Modes)
+			ActiveGoldBtnStyle = StoneBtnStyle;
+			ActiveGoldBtnStyle.SetNormal(FSlateRoundedBoxBrush(FLinearColor(0.165f, 0.128f, 0.068f, 0.96f), 3.f, HairlineGold, 1.6f));
+			ActiveGoldBtnStyle.SetHovered(FSlateRoundedBoxBrush(FLinearColor(0.215f, 0.165f, 0.082f, 0.98f), 3.f, TextGold, 1.8f));
+			ActiveGoldBtnStyle.SetPressed(FSlateRoundedBoxBrush(FLinearColor(0.140f, 0.105f, 0.055f, 0.98f), 3.f, HairlineGold, 1.5f));
+			ActiveGoldBtnStyle.SetNormalForeground(FSlateColor(TextGold));
+			ActiveGoldBtnStyle.SetHoveredForeground(FSlateColor(FLinearColor(1.0f, 0.94f, 0.72f, 1.0f)));
+			ActiveGoldBtnStyle.SetPressedForeground(FSlateColor(TextPrimary));
+
+			// 7. Recessed Obsidian Progress Bar Styles
+			RecessedBaseBarStyle = BuildBarStyle(FLinearColor::White);
+			HPBarStyle           = BuildBarStyle(BarHP);
+			ManaBarStyle         = BuildBarStyle(BarMana);
+			StaminaBarStyle      = BuildBarStyle(BarStamina);
+			XPBarStyle           = BuildBarStyle(BarXP);
+			BossHPStyle          = BuildBarStyle(BarBossHP);
+			BossStaggerStyle     = BuildBarStyle(BarStagger);
+			DragonFireStyle      = BuildBarStyle(BarDragonFire);
+		}
+	};
+
+	static FChroniclesUIStyleCache& GetStyles()
+	{
+		static FChroniclesUIStyleCache Cache;
+		Cache.EnsureInitialized();
+		return Cache;
+	}
+
 	static FSlateFontInfo FontBold(int32 Size)
 	{
-		return FCoreStyle::GetDefaultFontStyle("Bold", Size);
+		FChroniclesUIStyleCache& Styles = GetStyles();
+		const FFontOutlineSettings Outline(1, FLinearColor(0.02f, 0.015f, 0.02f, 0.88f));
+		if (Styles.DisplayFontData.IsValid())
+		{
+			return FSlateFontInfo(Styles.DisplayFontData, static_cast<float>(Size), NAME_None, Outline);
+		}
+		FSlateFontInfo Fallback = FCoreStyle::GetDefaultFontStyle("Bold", Size);
+		Fallback.OutlineSettings = Outline;
+		return Fallback;
 	}
 
 	static FSlateFontInfo FontRegular(int32 Size)
 	{
-		return FCoreStyle::GetDefaultFontStyle("Regular", Size);
+		FChroniclesUIStyleCache& Styles = GetStyles();
+		const FFontOutlineSettings Outline(1, FLinearColor(0.02f, 0.015f, 0.02f, 0.88f));
+		if (Styles.SerifFontData.IsValid())
+		{
+			return FSlateFontInfo(Styles.SerifFontData, static_cast<float>(Size), NAME_None, Outline);
+		}
+		FSlateFontInfo Fallback = FCoreStyle::GetDefaultFontStyle("Regular", Size);
+		Fallback.OutlineSettings = Outline;
+		return Fallback;
+	}
+
+	static const FSlateBrush* PanelObsidianBrush()
+	{
+		FChroniclesUIStyleCache& S = GetStyles();
+		return S.PanelObsidianDyn.IsValid() ? static_cast<const FSlateBrush*>(S.PanelObsidianDyn.Get()) : S.PanelObsidianFallback.Get();
+	}
+
+	static const FSlateBrush* ObsidianCardBrush()
+	{
+		return GetStyles().CardObsidianBrush.Get();
+	}
+
+	static const FSlateBrush* ObsidianCardLockedBrush()
+	{
+		return GetStyles().CardObsidianLockedBrush.Get();
+	}
+
+	static const FSlateBrush* RibbonObsidianBrush()
+	{
+		return GetStyles().RibbonObsidianBrush.Get();
+	}
+
+	static const FSlateBrush* SocketNormalBrush()
+	{
+		FChroniclesUIStyleCache& S = GetStyles();
+		return S.SocketNormDyn.IsValid() ? static_cast<const FSlateBrush*>(S.SocketNormDyn.Get()) : S.SocketNormFallback.Get();
+	}
+
+	static const FSlateBrush* SocketArmedBrush()
+	{
+		FChroniclesUIStyleCache& S = GetStyles();
+		return S.SocketArmedDyn.IsValid() ? static_cast<const FSlateBrush*>(S.SocketArmedDyn.Get()) : S.SocketArmedFallback.Get();
+	}
+
+	static const FSlateBrush* OrbIconBrush(EChronicleOrb Orb)
+	{
+		FChroniclesUIStyleCache& S = GetStyles();
+		switch (Orb)
+		{
+		case EChronicleOrb::Exort: return S.OrbIgnisDyn.IsValid() ? S.OrbIgnisDyn.Get() : nullptr;
+		case EChronicleOrb::Wex:   return S.OrbGravitonDyn.IsValid() ? S.OrbGravitonDyn.Get() : nullptr;
+		case EChronicleOrb::Quas:  return S.OrbTempestDyn.IsValid() ? S.OrbTempestDyn.Get() : nullptr;
+		default:                   return nullptr;
+		}
+	}
+
+	static const FSlateBrush* SkullCrestBrush()
+	{
+		FChroniclesUIStyleCache& S = GetStyles();
+		return S.CrestSkullDyn.IsValid() ? S.CrestSkullDyn.Get() : nullptr;
+	}
+
+	static const FButtonStyle& StoneButtonStyle()      { return GetStyles().StoneBtnStyle; }
+	static const FButtonStyle& CrimsonButtonStyle()    { return GetStyles().CrimsonBtnStyle; }
+	static const FButtonStyle& ActiveGoldButtonStyle() { return GetStyles().ActiveGoldBtnStyle; }
+
+	static const FProgressBarStyle& RecessedBarBaseStyle() { return GetStyles().RecessedBaseBarStyle; }
+	static const FProgressBarStyle& HealthBarStyle()       { return GetStyles().HPBarStyle; }
+	static const FProgressBarStyle& ManaBarStyle()         { return GetStyles().ManaBarStyle; }
+	static const FProgressBarStyle& StaminaBarStyle()      { return GetStyles().StaminaBarStyle; }
+	static const FProgressBarStyle& XPBarStyle()           { return GetStyles().XPBarStyle; }
+	static const FProgressBarStyle& BossHPBarStyle()       { return GetStyles().BossHPStyle; }
+	static const FProgressBarStyle& BossStaggerBarStyle()  { return GetStyles().BossStaggerStyle; }
+	static const FProgressBarStyle& DragonFireBarStyle()   { return GetStyles().DragonFireStyle; }
+
+	static const FQuestDef* ResolveQuestForNPC(const UQuestSubsystem* QS, const AAetheriaNPCActor* NPC)
+	{
+		if (!QS || !NPC)
+		{
+			return nullptr;
+		}
+		if (const FQuestDef* Direct = QS->FindQuest(NPC->QuestId))
+		{
+			return Direct;
+		}
+		return QS->FindQuestForGiver(NPC->NpcId);
 	}
 
 	static FString CardinalFromYaw(float YawDegrees)
@@ -118,6 +535,93 @@ namespace ChroniclesHUDPalette
 		case 2:  return TEXT("PHASE II");
 		case 3:  return TEXT("PHASE III");
 		default: return FString::Printf(TEXT("PHASE %d"), Phase);
+		}
+	}
+}
+
+namespace ChroniclesStudioBg
+{
+	static TMap<TWeakObjectPtr<AChroniclesPlayerController>, TArray<TWeakObjectPtr<AActor>>>& HiddenActorsByPC()
+	{
+		static TMap<TWeakObjectPtr<AChroniclesPlayerController>, TArray<TWeakObjectPtr<AActor>>> Map;
+		return Map;
+	}
+
+	static void RestoreHiddenActors(AChroniclesPlayerController* PC)
+	{
+		TMap<TWeakObjectPtr<AChroniclesPlayerController>, TArray<TWeakObjectPtr<AActor>>>& Map = HiddenActorsByPC();
+		for (auto It = Map.CreateIterator(); It; ++It)
+		{
+			if (!It.Key().IsValid())
+			{
+				It.RemoveCurrent();
+			}
+		}
+
+		if (!PC)
+		{
+			return;
+		}
+		const TWeakObjectPtr<AChroniclesPlayerController> Key(PC);
+		if (TArray<TWeakObjectPtr<AActor>>* List = Map.Find(Key))
+		{
+			for (const TWeakObjectPtr<AActor>& WeakActor : *List)
+			{
+				if (AActor* Actor = WeakActor.Get())
+				{
+					Actor->SetActorHiddenInGame(false);
+				}
+			}
+			Map.Remove(Key);
+		}
+	}
+
+	static void SetNearbyBystandersHidden(AChroniclesPlayerController* PC, bool bHide, float RadiusCm = 4500.f)
+	{
+		if (!PC)
+		{
+			return;
+		}
+		RestoreHiddenActors(PC);
+		if (!bHide)
+		{
+			return;
+		}
+
+		UWorld* World = PC->GetWorld();
+		const AAetheriaHeroCharacter* Hero = PC->GetActiveHero();
+		if (!World || !Hero)
+		{
+			return;
+		}
+
+		const FVector Center = Hero->GetActorLocation();
+		const float RadiusSq = FMath::Square(FMath::Max(100.f, RadiusCm));
+		TArray<TWeakObjectPtr<AActor>> NewlyHidden;
+
+		for (TActorIterator<AAetheriaEnemyCharacter> It(World); It; ++It)
+		{
+			AAetheriaEnemyCharacter* Enemy = *It;
+			if (IsValid(Enemy) && !Enemy->IsHidden() && FVector::DistSquared(Center, Enemy->GetActorLocation()) <= RadiusSq)
+			{
+				Enemy->SetActorHiddenInGame(true);
+				NewlyHidden.Add(Enemy);
+			}
+		}
+
+		for (TActorIterator<AAetheriaNPCActor> It(World); It; ++It)
+		{
+			AAetheriaNPCActor* NPC = *It;
+			if (IsValid(NPC) && !NPC->IsHidden() && FVector::DistSquared(Center, NPC->GetActorLocation()) <= RadiusSq)
+			{
+				NPC->SetActorHiddenInGame(true);
+				NewlyHidden.Add(NPC);
+			}
+		}
+
+		if (!NewlyHidden.IsEmpty())
+		{
+			HiddenActorsByPC().Add(TWeakObjectPtr<AChroniclesPlayerController>(PC), MoveTemp(NewlyHidden));
 		}
 	}
 }
@@ -503,6 +1007,8 @@ void AChroniclesPlayerController::BeginPlay()
 
 void AChroniclesPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	ChroniclesStudioBg::RestoreHiddenActors(this);
+
 	if (AppActivationHandle.IsValid() && FSlateApplication::IsInitialized())
 	{
 		FSlateApplication::Get().OnApplicationActivationStateChanged().Remove(AppActivationHandle);
@@ -660,11 +1166,17 @@ void AChroniclesPlayerController::ToggleOverlay(EChroniclesOverlayMode TargetOve
 		ActiveDialogueNPC.Reset();
 	}
 
+	if (bWasCreator && TargetOverlay != EChroniclesOverlayMode::HeroCustomizer)
+	{
+		ChroniclesStudioBg::RestoreHiddenActors(this);
+	}
+
 	if (AAetheriaHeroCharacter* Hero = GetActiveHero())
 	{
 		if (TargetOverlay == EChroniclesOverlayMode::HeroCustomizer)
 		{
 			Hero->SetCreatorStudioCameraMode(true, CreatorOrbitYaw, CreatorZoomMode);
+			ChroniclesStudioBg::SetNearbyBystandersHidden(this, true, 4500.f);
 		}
 		else if (bWasCreator)
 		{
@@ -684,6 +1196,8 @@ void AChroniclesPlayerController::CloseAllOverlays()
 {
 	ActiveOverlay = EChroniclesOverlayMode::None;
 	ActiveDialogueNPC.Reset();
+
+	ChroniclesStudioBg::RestoreHiddenActors(this);
 
 	if (AAetheriaHeroCharacter* Hero = GetActiveHero())
 	{
@@ -767,6 +1281,70 @@ AAetheriaNPCActor* AChroniclesPlayerController::FindNearestInteractableNPC(float
 		if (DistSq < BestDistSq)
 		{
 			BestDistSq = DistSq;
+			BestNPC = NPC;
+		}
+	}
+
+	return BestNPC;
+}
+
+AAetheriaNPCActor* AChroniclesPlayerController::FindTalkableNPC(float MaxDistance) const
+{
+	const AAetheriaHeroCharacter* Hero = GetActiveHero();
+	UWorld* World = GetWorld();
+	if (!Hero || !World)
+	{
+		return nullptr;
+	}
+
+	const UGameInstance* GI = GetGameInstance();
+	const UQuestSubsystem* QuestSub = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
+
+	const FVector HeroLoc = Hero->GetActorLocation();
+	FVector LookDir = GetControlRotation().Vector().GetSafeNormal2D();
+	if (LookDir.IsNearlyZero())
+	{
+		LookDir = Hero->GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	const float SafeMaxDist = FMath::Max(60.f, MaxDistance);
+	float BestScore = TNumericLimits<float>::Max();
+	AAetheriaNPCActor* BestNPC = nullptr;
+
+	for (TActorIterator<AAetheriaNPCActor> It(World); It; ++It)
+	{
+		AAetheriaNPCActor* NPC = *It;
+		if (!IsValid(NPC))
+		{
+			continue;
+		}
+
+		const FVector ToNPC = NPC->GetActorLocation() - HeroLoc;
+		const float Dist = ToNPC.Size();
+		if (Dist > SafeMaxDist)
+		{
+			continue;
+		}
+
+		// Require an active quest/dialogue entry on the NPC so ambient actors don't hijack [E] Exort
+		if (QuestSub && ChroniclesHUDPalette::ResolveQuestForNPC(QuestSub, NPC) == nullptr)
+		{
+			continue;
+		}
+
+		// Must be facing the NPC (within ~72 deg cone) OR standing right beside them (< 135 cm)
+		const FVector ToNPCDir = ToNPC.GetSafeNormal2D();
+		const float FacingDot = FVector::DotProduct(LookDir, ToNPCDir);
+		if (Dist > 135.f && FacingDot < 0.30f)
+		{
+			continue;
+		}
+
+		// Favor closest NPC directly in front of the player's gaze
+		const float Score = Dist - FMath::Max(0.f, FacingDot) * 85.f;
+		if (Score < BestScore)
+		{
+			BestScore = Score;
 			BestNPC = NPC;
 		}
 	}
@@ -911,6 +1489,7 @@ void AChroniclesPlayerController::UpdateDeathOverlayState()
 		{
 			if (ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer)
 			{
+				ChroniclesStudioBg::RestoreHiddenActors(this);
 				if (AAetheriaHeroCharacter* Hero = GetActiveHero())
 				{
 					Hero->SetCreatorStudioCameraMode(false);
@@ -1309,7 +1888,9 @@ bool AChroniclesPlayerController::ComputeSpellAim(
 
 void AChroniclesPlayerController::HandleInteractOrExort()
 {
-	if (AAetheriaNPCActor* NearbyNPC = FindNearestInteractableNPC(420.f))
+	// Only open NPC dialogue when within 280 cm AND facing/closest NPC with active dialogue;
+	// otherwise cleanly push the Exort primal orb without fighting [E] key collisions!
+	if (AAetheriaNPCActor* NearbyNPC = FindTalkableNPC(280.f))
 	{
 		OpenDialogueWithNPC(NearbyNPC);
 		return;
@@ -1342,6 +1923,7 @@ void AChroniclesPlayerController::OpenDialogueWithNPC(AAetheriaNPCActor* NPC)
 
 	if (ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer)
 	{
+		ChroniclesStudioBg::RestoreHiddenActors(this);
 		if (AAetheriaHeroCharacter* Hero = GetActiveHero())
 		{
 			Hero->SetCreatorStudioCameraMode(false);
@@ -1618,6 +2200,13 @@ void AChroniclesPlayerController::ServerFastTravel_Implementation(const FVector&
 	if (AAetheriaHeroCharacter* Hero = GetActiveHero())
 	{
 		Hero->SetActorLocation(TargetLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	}
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UFogOfWarMapSubsystem* MapSub = GI->GetSubsystem<UFogOfWarMapSubsystem>())
+		{
+			MapSub->RevealAroundWorldLocation(TargetLocation, 5500.f);
+		}
 	}
 }
 
@@ -2380,10 +2969,13 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 			{
 				if (UFogOfWarMapSubsystem* MapSub = GI->GetSubsystem<UFogOfWarMapSubsystem>())
 				{
-					MapSub->RevealAroundWorldLocation(FVector(0.f, 4200.f, 0.f), 42000.f);
-					MapSub->RevealAroundWorldLocation(FVector(-2400.f, 1200.f, 0.f), 38000.f);
-					MapSub->RevealAroundWorldLocation(FVector(0.f, -9800.f, 0.f), 36000.f);
-					MapSub->RevealAroundWorldLocation(FVector(9800.f, -2400.f, 0.f), 32000.f);
+					// Reveal a broad multi-biome scenic swath across all 5 realms so the showcase atlas demonstrates rich cartography
+					MapSub->RevealAroundWorldLocation(FVector(0.f, 4200.f, 0.f), 68000.f);         // Central Oakhaven & Heartland
+					MapSub->RevealAroundWorldLocation(FVector(-32000.f, 52000.f, 0.f), 62000.f);   // Southern Oakhaven Valley & Dragon Aerie approaches
+					MapSub->RevealAroundWorldLocation(FVector(74000.f, 44000.f, 0.f), 60000.f);    // Sapphire Whispering Woods
+					MapSub->RevealAroundWorldLocation(FVector(0.f, -72000.f, 0.f), 66000.f);       // Highkeep Citadel Northern Spine
+					MapSub->RevealAroundWorldLocation(FVector(78000.f, -34000.f, 0.f), 62000.f);   // Ash Caldera & Ember Crypt
+					MapSub->RevealAroundWorldLocation(FVector(-76000.f, -48000.f, 0.f), 64000.f);  // Crystal Glacier Peaks
 				}
 			}
 			ToggleOverlay(EChroniclesOverlayMode::WorldMap);
@@ -2397,21 +2989,21 @@ void AChroniclesPlayerController::RunCaptureFramesTick(float DeltaTime)
 		}
 		break;
 
-	case 6: // Stage 6: Live 3D Hero Customizer Studio Overlay in Sunlit Oakhaven Plaza
+	case 6: // Stage 6: Live 3D Hero Customizer Studio Overlay facing sunlit Oakhaven shrine & courtyard
 		if (!bCaptureStageSetupDone)
 		{
 			bCaptureStageSetupDone = true;
 			CaptureStageElapsed = 0.f;
 			CloseAllOverlays();
 			if (Builder) { Builder->SetTimeOfDay(0.72f); }
-			const float GZ = Builder ? Builder->SampleGroundZ(0.f, 3450.f, 120.f) : 120.f;
-			Hero->SetActorLocationAndRotation(FVector(0.f, 3450.f, GZ + 105.f), FRotator(0.f, 90.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
-			SetControlRotation(FRotator(-6.f, 90.f, 0.f));
+			const float GZ = Builder ? Builder->SampleGroundZ(0.f, 3720.f, 120.f) : 120.f;
+			Hero->SetActorLocationAndRotation(FVector(0.f, 3720.f, GZ + 105.f), FRotator(0.f, 145.f, 0.f), false, nullptr, ETeleportType::TeleportPhysics);
+			SetControlRotation(FRotator(-6.f, 145.f, 0.f));
 			CreatorZoomMode = 0;
-			CreatorOrbitYaw = 152.f;
+			CreatorOrbitYaw = 162.f;
 			ToggleOverlay(EChroniclesOverlayMode::HeroCustomizer);
 		}
-		else if (CaptureStageElapsed >= 1.10f)
+		else if (CaptureStageElapsed >= 1.35f)
 		{
 			SnapFrame(TEXT("07_hero_customizer_studio.png"));
 			CaptureStage = 7;
@@ -2448,14 +3040,15 @@ FVector2D SFogOfWarMapWidget::ComputeDesiredSize(float LayoutScaleMultiplier) co
 
 FLinearColor SFogOfWarMapWidget::GetBiomeMapColor(EChronicleBiome Biome)
 {
+	// Rich muted dark-fantasy cartographic biome tones (crimson desert / antique parchment atlas)
 	switch (Biome)
 	{
-	case EChronicleBiome::OakhavenValley:  return FLinearColor(0.32f, 0.44f, 0.22f, 0.96f);
-	case EChronicleBiome::BlueLeafWoods:   return FLinearColor(0.14f, 0.34f, 0.56f, 0.96f);
-	case EChronicleBiome::HighkeepCitadel: return FLinearColor(0.36f, 0.16f, 0.20f, 0.96f);
-	case EChronicleBiome::AshCalderaCrypt: return FLinearColor(0.56f, 0.24f, 0.10f, 0.96f);
-	case EChronicleBiome::CrystalGlacier:  return FLinearColor(0.42f, 0.68f, 0.84f, 0.96f);
-	default:                               return FLinearColor(0.28f, 0.30f, 0.34f, 0.96f);
+	case EChronicleBiome::OakhavenValley:  return FLinearColor(0.34f, 0.36f, 0.20f, 0.96f); // Golden-olive valley
+	case EChronicleBiome::BlueLeafWoods:   return FLinearColor(0.13f, 0.28f, 0.36f, 0.96f); // Deep twilight-teal woods
+	case EChronicleBiome::HighkeepCitadel: return FLinearColor(0.32f, 0.14f, 0.18f, 0.96f); // Dark crimson-slate citadel
+	case EChronicleBiome::AshCalderaCrypt: return FLinearColor(0.42f, 0.20f, 0.12f, 0.96f); // Volcanic ember-umber caldera
+	case EChronicleBiome::CrystalGlacier:  return FLinearColor(0.30f, 0.44f, 0.56f, 0.96f); // Frost-slate glacier peaks
+	default:                               return FLinearColor(0.24f, 0.23f, 0.26f, 0.96f);
 	}
 }
 
@@ -2470,19 +3063,20 @@ int32 SFogOfWarMapWidget::OnPaint(
 {
 	const FSlateBrush* WhiteBrush = ChroniclesHUDPalette::WhiteBrush();
 	const FVector2f LocalSize = AllottedGeometry.GetLocalSize();
-	if (LocalSize.X <= 4.f || LocalSize.Y <= 4.f || !WhiteBrush)
+	if (LocalSize.X <= 8.f || LocalSize.Y <= 8.f || !WhiteBrush)
 	{
 		return LayerId;
 	}
 
-	// 1. Dark uncharted parchment backdrop
+	// 1. Deep weathered obsidian-parchment unexplored shroud
+	const FLinearColor ShroudColor(0.045f, 0.042f, 0.052f, 1.0f);
 	FSlateDrawElement::MakeBox(
 		OutDrawElements,
 		LayerId,
 		AllottedGeometry.ToPaintGeometry(LocalSize, FSlateLayoutTransform(FVector2f::ZeroVector)),
 		WhiteBrush,
 		ESlateDrawEffect::None,
-		FLinearColor(0.025f, 0.030f, 0.048f, 1.0f));
+		ShroudColor);
 
 	AChroniclesPlayerController* PC = OwnerPC.Get();
 	UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
@@ -2499,8 +3093,29 @@ int32 SFogOfWarMapWidget::OnPaint(
 	const float Extent = UFogOfWarMapSubsystem::WORLD_EXTENT_UU;
 	const float CellWorld = UFogOfWarMapSubsystem::CELL_SIZE_UU;
 
-	// 2. Render 64x64 Fog-of-War territory cells
+	// 2. Smooth multi-biome cartographic territory with subtle elevation relief & feathered fog-of-war border
 	const int32 GridLayer = LayerId + 1;
+	const int32 FeatherLayer = GridLayer + 1;
+
+	auto SampleNeighborCoverage = [MapSub](int32 CX, int32 CY) -> float
+	{
+		float Sum = 0.f;
+		float WeightTotal = 0.f;
+		for (int32 dy = -1; dy <= 1; ++dy)
+		{
+			for (int32 dx = -1; dx <= 1; ++dx)
+			{
+				const float W = (dx == 0 && dy == 0) ? 2.2f : ((dx == 0 || dy == 0) ? 1.2f : 0.7f);
+				WeightTotal += W;
+				if (MapSub->IsCellExplored(CX + dx, CY + dy))
+				{
+					Sum += W;
+				}
+			}
+		}
+		return (WeightTotal > 0.f) ? (Sum / WeightTotal) : 0.f;
+	};
+
 	for (int32 Y = 0; Y < GridDim; ++Y)
 	{
 		const float WorldY = -Extent + (static_cast<float>(Y) + 0.5f) * CellWorld;
@@ -2509,107 +3124,395 @@ int32 SFogOfWarMapWidget::OnPaint(
 		for (int32 X = 0; X < GridDim; ++X)
 		{
 			const bool bExplored = MapSub->IsCellExplored(X, Y);
-			if (!bExplored)
+			const float Coverage = SampleNeighborCoverage(X, Y);
+			if (!bExplored && Coverage <= 0.04f)
 			{
-				// Subtle Crimson Desert dark parchment fog with faint cartographic latitude/longitude lines (no dev checkerboard!)
-				if ((X % 8) == 0 || (Y % 8) == 0)
-				{
-					FSlateDrawElement::MakeBox(
-						OutDrawElements,
-						GridLayer,
-						AllottedGeometry.ToPaintGeometry(FVector2f(CellW, CellH), FSlateLayoutTransform(FVector2f(static_cast<float>(X) * CellW, ScreenY))),
-						WhiteBrush,
-						ESlateDrawEffect::None,
-						FLinearColor(0.18f, 0.15f, 0.12f, 0.14f));
-				}
 				continue;
 			}
 
 			const float WorldX = -Extent + (static_cast<float>(X) + 0.5f) * CellWorld;
 			const EChronicleBiome Biome = MapSub->GetBiomeAtLocation(FVector(WorldX, WorldY, 0.f));
-			const FLinearColor TileColor = GetBiomeMapColor(Biome);
+			FLinearColor TileColor = GetBiomeMapColor(Biome);
 
-			FSlateDrawElement::MakeBox(
-				OutDrawElements,
-				GridLayer,
-				AllottedGeometry.ToPaintGeometry(FVector2f(CellW + 0.5f, CellH + 0.5f), FSlateLayoutTransform(FVector2f(static_cast<float>(X) * CellW, ScreenY))),
-				WhiteBrush,
-				ESlateDrawEffect::None,
-				TileColor);
+			// Subtle cartographic relief contour modulation so explored realms feel hand-painted
+			const float Relief = 0.86f
+				+ 0.14f * FMath::Sin(static_cast<float>(X) * 0.34f) * FMath::Cos(static_cast<float>(Y) * 0.31f)
+				+ 0.06f * FMath::Sin(static_cast<float>(X + Y) * 0.22f);
+			TileColor.R = FMath::Clamp(TileColor.R * Relief, 0.f, 1.f);
+			TileColor.G = FMath::Clamp(TileColor.G * Relief, 0.f, 1.f);
+			TileColor.B = FMath::Clamp(TileColor.B * Relief, 0.f, 1.f);
+
+			if (bExplored)
+			{
+				// Soften frontier cells into weathered parchment edge
+				const float EdgeBlend = FMath::Clamp((Coverage - 0.28f) / 0.72f, 0.25f, 1.0f);
+				FLinearColor FinalColor = FMath::Lerp(ShroudColor, TileColor, EdgeBlend);
+				FinalColor.A = 1.0f;
+
+				FSlateDrawElement::MakeBox(
+					OutDrawElements,
+					GridLayer,
+					AllottedGeometry.ToPaintGeometry(
+						FVector2f(CellW + 1.2f, CellH + 1.2f),
+						FSlateLayoutTransform(FVector2f(static_cast<float>(X) * CellW - 0.6f, ScreenY - 0.6f))),
+					WhiteBrush,
+					ESlateDrawEffect::None,
+					FinalColor);
+			}
+			else
+			{
+				// Soft translucent mist feather along the fog-of-war boundary (eliminates blocky staircase edges)
+				const float MistAlpha = FMath::Clamp(Coverage * 0.45f, 0.0f, 0.38f);
+				const FLinearColor MistColor(
+					FMath::Lerp(ShroudColor.R, TileColor.R * 0.75f, 0.6f),
+					FMath::Lerp(ShroudColor.G, TileColor.G * 0.75f, 0.6f),
+					FMath::Lerp(ShroudColor.B, TileColor.B * 0.75f, 0.6f),
+					MistAlpha);
+
+				FSlateDrawElement::MakeBox(
+					OutDrawElements,
+					FeatherLayer,
+					AllottedGeometry.ToPaintGeometry(
+						FVector2f(CellW + 1.5f, CellH + 1.5f),
+						FSlateLayoutTransform(FVector2f(static_cast<float>(X) * CellW - 0.75f, ScreenY - 0.75f))),
+					WhiteBrush,
+					ESlateDrawEffect::None,
+					MistColor);
+			}
 		}
 	}
 
-	// 3. Subtle cartographic meridian crosshairs (N/S & E/W)
-	const int32 LineLayer = GridLayer + 1;
-	const FLinearColor MeridianColor(0.70f, 0.62f, 0.42f, 0.16f);
-	FSlateDrawElement::MakeBox(
-		OutDrawElements, LineLayer,
-		AllottedGeometry.ToPaintGeometry(FVector2f(LocalSize.X, 1.f), FSlateLayoutTransform(FVector2f(0.f, LocalSize.Y * 0.5f))),
-		WhiteBrush, ESlateDrawEffect::None, MeridianColor);
-	FSlateDrawElement::MakeBox(
-		OutDrawElements, LineLayer,
-		AllottedGeometry.ToPaintGeometry(FVector2f(1.f, LocalSize.Y), FSlateLayoutTransform(FVector2f(LocalSize.X * 0.5f, 0.f))),
-		WhiteBrush, ESlateDrawEffect::None, MeridianColor);
+	// 3. Subtle Antique Gold Latitude/Longitude Cartographic Grid (Alpha 0.14) & Meridians
+	const int32 GridLineLayer = FeatherLayer + 1;
+	const FLinearColor LatLonColor(0.76f, 0.62f, 0.34f, 0.14f);
+	const FLinearColor MeridianColor(0.84f, 0.68f, 0.36f, 0.24f);
+	for (int32 Step = 1; Step < 8; ++Step)
+	{
+		const float Frac = static_cast<float>(Step) / 8.f;
+		const bool bCenterLine = (Step == 4);
+		const FLinearColor LineCol = bCenterLine ? MeridianColor : LatLonColor;
+		const float LineThick = bCenterLine ? 1.2f : 1.0f;
 
-	// 4. Landmark Pins
-	const int32 PinLayer = LineLayer + 1;
-	for (const FMapPinInfo& Pin : MapSub->GetMapPins())
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, GridLineLayer, AllottedGeometry.ToPaintGeometry(),
+			TArray<FVector2f>{ FVector2f(0.f, LocalSize.Y * Frac), FVector2f(LocalSize.X, LocalSize.Y * Frac) },
+			ESlateDrawEffect::None, LineCol, true, LineThick);
+
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, GridLineLayer, AllottedGeometry.ToPaintGeometry(),
+			TArray<FVector2f>{ FVector2f(LocalSize.X * Frac, 0.f), FVector2f(LocalSize.X * Frac, LocalSize.Y) },
+			ESlateDrawEffect::None, LineCol, true, LineThick);
+	}
+
+	// 4. Subtle River & Cartographic Trade-Road Contours connecting the 5 realms
+	const int32 RouteLayer = GridLineLayer + 1;
+	const auto NormPt = [&LocalSize](float NX, float NY) -> FVector2f
+	{
+		return FVector2f(NX * LocalSize.X, NY * LocalSize.Y);
+	};
+
+	// Mirror Lake Sapphire River contour winding through the eastern valley
+	const FLinearColor RiverColor(0.24f, 0.62f, 0.82f, 0.42f);
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, RouteLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{
+			NormPt(0.32f, 0.36f), NormPt(0.42f, 0.43f), NormPt(0.51f, 0.50f),
+			NormPt(0.60f, 0.53f), NormPt(0.69f, 0.60f), NormPt(0.76f, 0.72f)
+		},
+		ESlateDrawEffect::None, RiverColor, true, 2.2f);
+
+	// Ochre-Gold Imperial Roads: Oakhaven <-> Mirror Lake Bridge <-> Highkeep / Ember Crypt / Glacier / Woods
+	const FLinearColor RoadColor(0.78f, 0.62f, 0.34f, 0.36f);
+	// Spine road: Oakhaven -> Mirror Lake -> Highkeep Citadel
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, RouteLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{
+			NormPt(0.50f, 0.74f), NormPt(0.51f, 0.62f), NormPt(0.51f, 0.51f),
+			NormPt(0.49f, 0.39f), NormPt(0.50f, 0.25f)
+		},
+		ESlateDrawEffect::None, RoadColor, true, 1.5f);
+	// West spur: Oakhaven -> Dragon Aerie -> Crystal Glacier Peaks
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, RouteLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{
+			NormPt(0.50f, 0.62f), NormPt(0.38f, 0.56f), NormPt(0.24f, 0.52f),
+			NormPt(0.22f, 0.41f), NormPt(0.23f, 0.30f)
+		},
+		ESlateDrawEffect::None, RoadColor, true, 1.3f);
+	// East spurs: Mirror Lake -> Ash Caldera & Ember Crypt + Whispering Woods
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, RouteLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{
+			NormPt(0.51f, 0.51f), NormPt(0.65f, 0.44f), NormPt(0.78f, 0.35f)
+		},
+		ESlateDrawEffect::None, RoadColor, true, 1.3f);
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, RouteLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{
+			NormPt(0.51f, 0.51f), NormPt(0.64f, 0.57f), NormPt(0.76f, 0.64f)
+		},
+		ESlateDrawEffect::None, RoadColor, true, 1.3f);
+
+	// 5. Ornate Antique Gold Compass Rose (lower-left corner)
+	const int32 CompassLayer = RouteLayer + 1;
+	const FVector2f RoseCenter(46.f, LocalSize.Y - 46.f);
+	const float RoseR = 22.f;
+	const FLinearColor RoseGold(0.82f, 0.66f, 0.34f, 0.72f);
+	const FLinearColor RoseDim(0.76f, 0.59f, 0.28f, 0.34f);
+
+	// Compass cardinal & diagonal rays
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, CompassLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{ RoseCenter + FVector2f(0.f, -RoseR), RoseCenter + FVector2f(0.f, RoseR) },
+		ESlateDrawEffect::None, RoseGold, true, 1.4f);
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, CompassLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{ RoseCenter + FVector2f(-RoseR, 0.f), RoseCenter + FVector2f(RoseR, 0.f) },
+		ESlateDrawEffect::None, RoseGold, true, 1.4f);
+	const float DiagR = RoseR * 0.62f;
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, CompassLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{ RoseCenter + FVector2f(-DiagR, -DiagR), RoseCenter + FVector2f(DiagR, DiagR) },
+		ESlateDrawEffect::None, RoseDim, true, 1.0f);
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, CompassLayer, AllottedGeometry.ToPaintGeometry(),
+		TArray<FVector2f>{ RoseCenter + FVector2f(-DiagR, DiagR), RoseCenter + FVector2f(DiagR, -DiagR) },
+		ESlateDrawEffect::None, RoseDim, true, 1.0f);
+
+	// Compass octagon ring
+	TArray<FVector2f> RingPts;
+	RingPts.Reserve(17);
+	for (int32 i = 0; i <= 16; ++i)
+	{
+		const float Ang = (static_cast<float>(i) / 16.f) * UE_TWO_PI;
+		RingPts.Add(RoseCenter + FVector2f(FMath::Cos(Ang) * (RoseR * 0.72f), FMath::Sin(Ang) * (RoseR * 0.72f)));
+	}
+	FSlateDrawElement::MakeLines(
+		OutDrawElements, CompassLayer, AllottedGeometry.ToPaintGeometry(),
+		MoveTemp(RingPts), ESlateDrawEffect::None, RoseDim, true, 1.1f);
+
+	const FSlateFontInfo CompassFont = ChroniclesHUDPalette::FontBold(8);
+	FSlateDrawElement::MakeText(
+		OutDrawElements, CompassLayer + 1,
+		AllottedGeometry.ToPaintGeometry(FVector2f(16.f, 14.f), FSlateLayoutTransform(RoseCenter + FVector2f(-4.f, -RoseR - 12.f))),
+		TEXT("N"), CompassFont, ESlateDrawEffect::None, ChroniclesHUDPalette::TextGold);
+	FSlateDrawElement::MakeText(
+		OutDrawElements, CompassLayer + 1,
+		AllottedGeometry.ToPaintGeometry(FVector2f(16.f, 14.f), FSlateLayoutTransform(RoseCenter + FVector2f(-3.5f, RoseR + 2.f))),
+		TEXT("S"), CompassFont, ESlateDrawEffect::None, RoseGold);
+	FSlateDrawElement::MakeText(
+		OutDrawElements, CompassLayer + 1,
+		AllottedGeometry.ToPaintGeometry(FVector2f(16.f, 14.f), FSlateLayoutTransform(RoseCenter + FVector2f(RoseR + 4.f, -5.5f))),
+		TEXT("E"), CompassFont, ESlateDrawEffect::None, RoseGold);
+	FSlateDrawElement::MakeText(
+		OutDrawElements, CompassLayer + 1,
+		AllottedGeometry.ToPaintGeometry(FVector2f(16.f, 14.f), FSlateLayoutTransform(RoseCenter + FVector2f(-RoseR - 12.f, -5.5f))),
+		TEXT("W"), CompassFont, ESlateDrawEffect::None, RoseGold);
+
+	// 6. Landmark Pins & Crisp Non-Overlapping Regional Cartographic Labels
+	const int32 PinLayer = CompassLayer + 2;
+	const FSlateFontInfo LabelFont = ChroniclesHUDPalette::FontBold(9);
+	const FSlateFontInfo SubFont = ChroniclesHUDPalette::FontRegular(8);
+
+	struct FLandmarkCallout
+	{
+		const TCHAR* PinIdStr;
+		const TCHAR* ShortLabel;
+		float LabelNormX;
+		float LabelNormY;
+	};
+	static const FLandmarkCallout Callouts[] = {
+		{ TEXT("Pin_HighkeepCitadel"), TEXT("Highkeep Citadel"), 0.50f, 0.17f },
+		{ TEXT("Pin_CrystalGlacier"),  TEXT("Glacier Peaks"),    0.20f, 0.27f },
+		{ TEXT("Pin_EmberCrypt"),      TEXT("Ember Crypt"),      0.80f, 0.31f },
+		{ TEXT("Pin_DragonAerie"),     TEXT("Dragon Aerie"),     0.21f, 0.53f },
+		{ TEXT("Pin_MirrorLake"),      TEXT("Mirror Lake"),      0.77f, 0.50f },
+		{ TEXT("Pin_BlueLeafWoods"),   TEXT("Whispering Woods"), 0.77f, 0.67f },
+		{ TEXT("Pin_OakhavenVillage"), TEXT("Oakhaven"),         0.50f, 0.77f }
+	};
+
+	const TArray<FMapPinInfo>& Pins = MapSub->GetMapPins();
+	for (const FMapPinInfo& Pin : Pins)
 	{
 		const FVector2D UV = MapSub->WorldToNormalizedUV(Pin.WorldLocation);
 		const float PX = static_cast<float>(UV.X) * LocalSize.X;
 		const float PY = static_cast<float>(UV.Y) * LocalSize.Y;
-		const float PinRadius = Pin.bDiscovered ? 5.0f : 3.0f;
+		const float PinRadius = Pin.bDiscovered ? (Pin.bFastTravel ? 4.5f : 5.0f) : 2.5f;
 		const FLinearColor PinColor = Pin.bDiscovered
 			? Pin.Color
-			: FLinearColor(0.55f, 0.56f, 0.62f, 0.38f);
+			: FLinearColor(0.55f, 0.52f, 0.48f, 0.34f);
 
-		// Dark outline behind pin for crisp contrast
+		// Soft outer glow halo for discovered landmarks
+		if (Pin.bDiscovered)
+		{
+			FSlateDrawElement::MakeBox(
+				OutDrawElements, PinLayer,
+				AllottedGeometry.ToPaintGeometry(
+					FVector2f((PinRadius + 4.f) * 2.f, (PinRadius + 4.f) * 2.f),
+					FSlateLayoutTransform(FVector2f(PX - PinRadius - 4.f, PY - PinRadius - 4.f))),
+				WhiteBrush, ESlateDrawEffect::None, FLinearColor(PinColor.R, PinColor.G, PinColor.B, 0.26f));
+		}
+
+		// Dark obsidian pin border
 		FSlateDrawElement::MakeBox(
-			OutDrawElements, PinLayer,
+			OutDrawElements, PinLayer + 1,
 			AllottedGeometry.ToPaintGeometry(
 				FVector2f((PinRadius + 1.5f) * 2.f, (PinRadius + 1.5f) * 2.f),
 				FSlateLayoutTransform(FVector2f(PX - PinRadius - 1.5f, PY - PinRadius - 1.5f))),
-			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.02f, 0.02f, 0.04f, 0.90f));
+			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.02f, 0.018f, 0.028f, 0.94f));
 
+		// Glowing pin jewel
 		FSlateDrawElement::MakeBox(
-			OutDrawElements, PinLayer + 1,
+			OutDrawElements, PinLayer + 2,
 			AllottedGeometry.ToPaintGeometry(
 				FVector2f(PinRadius * 2.f, PinRadius * 2.f),
 				FSlateLayoutTransform(FVector2f(PX - PinRadius, PY - PinRadius))),
 			WhiteBrush, ESlateDrawEffect::None, PinColor);
+
+		// Render crisp readable regional label badge + hairline gold leader line for major landmarks
+		if (Pin.bDiscovered)
+		{
+			for (const FLandmarkCallout& Callout : Callouts)
+			{
+				if (Pin.PinId == FName(Callout.PinIdStr))
+				{
+					const FVector2f BadgeCenter = NormPt(Callout.LabelNormX, Callout.LabelNormY);
+					const FString LabelStr(Callout.ShortLabel);
+					const float PillW = FMath::Max(76.f, static_cast<float>(LabelStr.Len()) * 6.8f + 16.f);
+					const float PillH = 19.f;
+					const FVector2f PillPos(
+						FMath::Clamp(BadgeCenter.X - PillW * 0.5f, 10.f, LocalSize.X - PillW - 10.f),
+						FMath::Clamp(BadgeCenter.Y - PillH * 0.5f, 10.f, LocalSize.Y - PillH - 10.f));
+
+					// Subtle cartographic gold leader line from true world pin to regional label pill
+					FSlateDrawElement::MakeLines(
+						OutDrawElements, PinLayer + 1, AllottedGeometry.ToPaintGeometry(),
+						TArray<FVector2f>{ FVector2f(PX, PY), FVector2f(PillPos.X + PillW * 0.5f, PillPos.Y + PillH * 0.5f) },
+						ESlateDrawEffect::None, FLinearColor(PinColor.R, PinColor.G, PinColor.B, 0.36f), true, 1.0f);
+
+					// Dark obsidian pill + antique gold rim
+					FSlateDrawElement::MakeBox(
+						OutDrawElements, PinLayer + 3,
+						AllottedGeometry.ToPaintGeometry(FVector2f(PillW + 2.f, PillH + 2.f), FSlateLayoutTransform(PillPos - FVector2f(1.f, 1.f))),
+						WhiteBrush, ESlateDrawEffect::None, FLinearColor(PinColor.R, PinColor.G, PinColor.B, 0.58f));
+					FSlateDrawElement::MakeBox(
+						OutDrawElements, PinLayer + 4,
+						AllottedGeometry.ToPaintGeometry(FVector2f(PillW, PillH), FSlateLayoutTransform(PillPos)),
+						WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.035f, 0.030f, 0.044f, 0.88f));
+
+					// Colored pin jewel inside pill + crisp label text
+					FSlateDrawElement::MakeBox(
+						OutDrawElements, PinLayer + 5,
+						AllottedGeometry.ToPaintGeometry(FVector2f(5.f, 5.f), FSlateLayoutTransform(PillPos + FVector2f(5.f, 7.f))),
+						WhiteBrush, ESlateDrawEffect::None, PinColor);
+
+					FSlateDrawElement::MakeText(
+						OutDrawElements, PinLayer + 5,
+						AllottedGeometry.ToPaintGeometry(FVector2f(PillW - 14.f, PillH), FSlateLayoutTransform(PillPos + FVector2f(13.f, 2.5f))),
+						LabelStr, LabelFont, ESlateDrawEffect::None, ChroniclesHUDPalette::TextPrimary);
+					break;
+				}
+			}
+		}
 	}
 
-	// 5. Active Player Marker + Facing Indicator
+	// 7. Malakor Red Skull Boss Marker at Highkeep Citadel (north spine)
+	const int32 BossLayer = PinLayer + 6;
+	{
+		const FVector2f BossCenter = NormPt(0.50f, 0.25f);
+		const float PulseTime = (PC && PC->GetWorld()) ? PC->GetWorld()->GetTimeSeconds() : 0.f;
+		const float BossPulse = 0.65f + 0.35f * FMath::Abs(FMath::Sin(PulseTime * 3.5f));
+
+		// Pulsing crimson threat ring
+		FSlateDrawElement::MakeBox(
+			OutDrawElements, BossLayer,
+			AllottedGeometry.ToPaintGeometry(FVector2f(28.f, 28.f), FSlateLayoutTransform(BossCenter - FVector2f(14.f, 14.f))),
+			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.88f, 0.12f, 0.14f, 0.34f * BossPulse));
+
+		if (const FSlateBrush* SkullBrush = ChroniclesHUDPalette::SkullCrestBrush())
+		{
+			FSlateDrawElement::MakeBox(
+				OutDrawElements, BossLayer + 1,
+				AllottedGeometry.ToPaintGeometry(FVector2f(24.f, 24.f), FSlateLayoutTransform(BossCenter - FVector2f(12.f, 12.f))),
+				SkullBrush, ESlateDrawEffect::None, FLinearColor(1.0f, 0.42f, 0.38f, 0.98f));
+		}
+		else
+		{
+			FSlateDrawElement::MakeBox(
+				OutDrawElements, BossLayer + 1,
+				AllottedGeometry.ToPaintGeometry(FVector2f(12.f, 12.f), FSlateLayoutTransform(BossCenter - FVector2f(6.f, 6.f))),
+				WhiteBrush, ESlateDrawEffect::None, ChroniclesHUDPalette::TextCrimson);
+		}
+
+		FSlateDrawElement::MakeText(
+			OutDrawElements, BossLayer + 2,
+			AllottedGeometry.ToPaintGeometry(FVector2f(76.f, 14.f), FSlateLayoutTransform(BossCenter + FVector2f(-26.f, 13.f))),
+			TEXT("MALAKOR"), SubFont, ESlateDrawEffect::None, ChroniclesHUDPalette::TextCrimson);
+	}
+
+	// 8. Pulsing Gold Hero Directional Marker
+	const int32 PlayerLayer = BossLayer + 3;
 	if (const APawn* ActivePawn = PC->GetPawn())
 	{
 		const FVector2D PlayerUV = MapSub->WorldToNormalizedUV(ActivePawn->GetActorLocation());
 		const float UX = static_cast<float>(PlayerUV.X) * LocalSize.X;
 		const float UY = static_cast<float>(PlayerUV.Y) * LocalSize.Y;
-		const int32 PlayerLayer = PinLayer + 2;
+		const float Now = (PC && PC->GetWorld()) ? PC->GetWorld()->GetTimeSeconds() : 0.f;
+		const float Pulse = 0.65f + 0.35f * FMath::Sin(Now * 4.5f);
 
-		// Outer cyan halo
+		// Pulsing radiant gold halo
+		const float HaloSize = 18.f + 4.f * Pulse;
 		FSlateDrawElement::MakeBox(
 			OutDrawElements, PlayerLayer,
-			AllottedGeometry.ToPaintGeometry(FVector2f(16.f, 16.f), FSlateLayoutTransform(FVector2f(UX - 8.f, UY - 8.f))),
-			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.0f, 0.96f, 1.0f, 0.35f));
+			AllottedGeometry.ToPaintGeometry(
+				FVector2f(HaloSize, HaloSize),
+				FSlateLayoutTransform(FVector2f(UX - HaloSize * 0.5f, UY - HaloSize * 0.5f))),
+			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.98f, 0.78f, 0.28f, 0.34f * Pulse));
 
-		// Crisp white-cyan core
+		// Dark obsidian core outline + bright burnished gold Hero jewel
 		FSlateDrawElement::MakeBox(
 			OutDrawElements, PlayerLayer + 1,
-			AllottedGeometry.ToPaintGeometry(FVector2f(9.f, 9.f), FSlateLayoutTransform(FVector2f(UX - 4.5f, UY - 4.5f))),
-			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.95f, 1.0f, 1.0f, 1.0f));
-
-		// Heading pip offset along actor forward XY
-		const FVector Fwd = ActivePawn->GetActorForwardVector().GetSafeNormal2D();
-		const float TipX = UX + static_cast<float>(Fwd.X) * 10.f;
-		const float TipY = UY + static_cast<float>(Fwd.Y) * 10.f;
+			AllottedGeometry.ToPaintGeometry(FVector2f(12.f, 12.f), FSlateLayoutTransform(FVector2f(UX - 6.f, UY - 6.f))),
+			WhiteBrush, ESlateDrawEffect::None, FLinearColor(0.03f, 0.02f, 0.03f, 0.96f));
 		FSlateDrawElement::MakeBox(
-			OutDrawElements, PlayerLayer + 1,
-			AllottedGeometry.ToPaintGeometry(FVector2f(5.f, 5.f), FSlateLayoutTransform(FVector2f(TipX - 2.5f, TipY - 2.5f))),
+			OutDrawElements, PlayerLayer + 2,
+			AllottedGeometry.ToPaintGeometry(FVector2f(8.f, 8.f), FSlateLayoutTransform(FVector2f(UX - 4.f, UY - 4.f))),
 			WhiteBrush, ESlateDrawEffect::None, ChroniclesHUDPalette::TextGold);
+
+		// Directional chevron along actor forward XY
+		const FVector Fwd = ActivePawn->GetActorForwardVector().GetSafeNormal2D();
+		const FVector2f Fwd2(static_cast<float>(Fwd.X), static_cast<float>(Fwd.Y));
+		const FVector2f Right2(-Fwd2.Y, Fwd2.X);
+		const FVector2f HeroPos(UX, UY);
+		const FVector2f Tip = HeroPos + Fwd2 * 14.f;
+		const FVector2f WingL = HeroPos + Fwd2 * 7.f - Right2 * 5.f;
+		const FVector2f WingR = HeroPos + Fwd2 * 7.f + Right2 * 5.f;
+
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, PlayerLayer + 3, AllottedGeometry.ToPaintGeometry(),
+			TArray<FVector2f>{ WingL, Tip, WingR },
+			ESlateDrawEffect::None, FLinearColor(1.0f, 0.92f, 0.58f, 1.0f), true, 2.2f);
 	}
 
-	return PinLayer + 4;
+	// 9. Ornate Double Antique Gold Frame around the Cartographic Canvas
+	const int32 FrameLayer = PlayerLayer + 4;
+	auto DrawRectFrame = [&](float Inset, const FLinearColor& Col, float Thick)
+	{
+		FSlateDrawElement::MakeLines(
+			OutDrawElements, FrameLayer, AllottedGeometry.ToPaintGeometry(),
+			TArray<FVector2f>{
+				FVector2f(Inset, Inset),
+				FVector2f(LocalSize.X - Inset, Inset),
+				FVector2f(LocalSize.X - Inset, LocalSize.Y - Inset),
+				FVector2f(Inset, LocalSize.Y - Inset),
+				FVector2f(Inset, Inset)
+			},
+			ESlateDrawEffect::None, Col, true, Thick);
+	};
+	DrawRectFrame(1.5f, ChroniclesHUDPalette::HairlineGold, 1.6f);
+	DrawRectFrame(6.0f, FLinearColor(0.76f, 0.59f, 0.28f, 0.45f), 1.0f);
+
+	return FrameLayer + 1;
 }
 
 // ============================================================================
@@ -2743,6 +3646,29 @@ void SAetheriaChroniclesHUD::RefreshDynamicPanels()
 
 TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 {
+	auto BuildSkullEmblem = []() -> TSharedRef<SWidget>
+	{
+		if (const FSlateBrush* Skull = ChroniclesHUDPalette::SkullCrestBrush())
+		{
+			return SNew(SBox)
+				.WidthOverride(28.f)
+				.HeightOverride(28.f)
+				[
+					SNew(SImage)
+					.Image(Skull)
+					.ColorAndOpacity(FLinearColor(0.98f, 0.88f, 0.72f, 0.96f))
+				];
+		}
+		return SNew(SBox)
+			.WidthOverride(10.f)
+			.HeightOverride(10.f)
+			[
+				SNew(SBorder)
+				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineCrimson)
+			];
+	};
+
 	return SNew(SVerticalBox)
 		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 		{
@@ -2750,20 +3676,30 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 			return (PC && PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer) ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible;
 		})
 
-		// Ornate Compass & Tracked Quest Strip
+		// Sleek Translucent Dark Obsidian Compass & Tracked Quest Ribbon with 1px Antique Gold Top/Bottom Hairlines
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.HAlign(HAlign_Center)
 		[
-			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-			.Padding(FMargin(1.f))
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(1.f)
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			[
 				SNew(SBorder)
 				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::PanelBg)
-				.Padding(FMargin(18.f, 7.f))
+				.BorderBackgroundColor(ChroniclesHUDPalette::RibbonBg)
+				.Padding(FMargin(24.f, 7.f))
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot()
@@ -2806,7 +3742,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 					[
 						SNew(STextBlock)
 						.Font(ChroniclesHUDPalette::FontRegular(10))
-						.ColorAndOpacity(ChroniclesHUDPalette::TextSecondary)
+						.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
 						.Text_Lambda([WeakPC = OwnerPC]() -> FText
 						{
 							AChroniclesPlayerController* PC = WeakPC.Get();
@@ -2830,16 +3766,27 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 					]
 				]
 			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(SBox)
+				.HeightOverride(1.f)
+				[
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGoldSubtle)
+				]
+			]
 		]
 
-		// Contextual Multi-Phase Boss Bar (Malakor · Phase I/II/III, HP, StaggerGauge & Flashing Crimson Telegraph)
+		// Monumental Dark-Fantasy Boss Frame (Malakor · Skull Crests, Blood-Crimson HP, Molten Amber Poise & Telegraph)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.HAlign(HAlign_Center)
 		.Padding(FMargin(0.f, 12.f, 0.f, 0.f))
 		[
 			SNew(SBox)
-			.WidthOverride(640.f)
+			.WidthOverride(670.f)
 			.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 			{
 				AChroniclesPlayerController* PC = WeakPC.Get();
@@ -2856,32 +3803,39 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 					if (Boss && Boss->bIsTelegraphing)
 					{
 						return Boss->IsCurrentAttackParryable()
-							? FSlateColor(FLinearColor(1.00f, 0.702f, 0.278f, 0.90f))
-							: FSlateColor(FLinearColor(1.00f, 0.165f, 0.165f, 0.90f));
+							? FSlateColor(FLinearColor(1.00f, 0.702f, 0.278f, 0.96f))
+							: FSlateColor(FLinearColor(1.00f, 0.165f, 0.165f, 0.96f));
 					}
 					return FSlateColor(ChroniclesHUDPalette::HairlineGold);
 				})
-				.Padding(FMargin(1.5f))
+				.Padding(FMargin(2.f))
 				[
 					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-					.Padding(FMargin(16.f, 10.f))
+					.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+					.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.96f))
+					.Padding(FMargin(18.f, 12.f))
 					[
 						SNew(SVerticalBox)
 
-						// Title & Phase Header
+						// Title & Phase Header flanked by Sculpted Skull Crests
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						[
 							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(FMargin(0.f, 0.f, 10.f, 0.f))
+							[
+								BuildSkullEmblem()
+							]
+							+ SHorizontalBox::Slot()
 							.FillWidth(1.f)
 							.VAlign(VAlign_Center)
 							[
 								SNew(STextBlock)
-								.Font(ChroniclesHUDPalette::FontBold(13))
-								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Font(ChroniclesHUDPalette::FontBold(14))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 								.Text_Lambda([WeakPC = OwnerPC]() -> FText
 								{
 									AChroniclesPlayerController* PC = WeakPC.Get();
@@ -2894,6 +3848,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 							+ SHorizontalBox::Slot()
 							.AutoWidth()
 							.VAlign(VAlign_Center)
+							.Padding(FMargin(8.f, 0.f, 10.f, 0.f))
 							[
 								SNew(STextBlock)
 								.Font(ChroniclesHUDPalette::FontBold(11))
@@ -2906,20 +3861,25 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 									return FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Boss->HP, Boss->MaxHP));
 								})
 							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								BuildSkullEmblem()
+							]
 						]
 
-						// Boss HP Bar
+						// Blood-Crimson Boss HP Bar
 						+ SVerticalBox::Slot()
 						.AutoHeight()
-						.Padding(FMargin(0.f, 6.f, 0.f, 4.f))
+						.Padding(FMargin(0.f, 7.f, 0.f, 5.f))
 						[
 							SNew(SBox)
-							.HeightOverride(14.f)
+							.HeightOverride(15.f)
 							[
 								SNew(SProgressBar)
-								.BackgroundImage(ChroniclesHUDPalette::WhiteBrush())
-								.FillImage(ChroniclesHUDPalette::WhiteBrush())
-								.FillColorAndOpacity(ChroniclesHUDPalette::BarHP)
+								.Style(&ChroniclesHUDPalette::BossHPBarStyle())
+								.FillColorAndOpacity(FLinearColor::White)
 								.Percent_Lambda([WeakPC = OwnerPC]() -> TOptional<float>
 								{
 									AChroniclesPlayerController* PC = WeakPC.Get();
@@ -2929,7 +3889,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 							]
 						]
 
-						// Boss StaggerGauge Bar
+						// Molten Amber Boss Poise / Stagger Bar
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						[
@@ -2941,7 +3901,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 							[
 								SNew(STextBlock)
 								.Font(ChroniclesHUDPalette::FontBold(9))
-								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+								.ColorAndOpacity(ChroniclesHUDPalette::TextAmber)
 								.Text_Lambda([WeakPC = OwnerPC]() -> FText
 								{
 									AChroniclesPlayerController* PC = WeakPC.Get();
@@ -2956,11 +3916,10 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 							.VAlign(VAlign_Center)
 							[
 								SNew(SBox)
-								.HeightOverride(7.f)
+								.HeightOverride(8.f)
 								[
 									SNew(SProgressBar)
-									.BackgroundImage(ChroniclesHUDPalette::WhiteBrush())
-									.FillImage(ChroniclesHUDPalette::WhiteBrush())
+									.Style(&ChroniclesHUDPalette::RecessedBarBaseStyle())
 									.FillColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
 									{
 										AChroniclesPlayerController* PC = WeakPC.Get();
@@ -2979,11 +3938,11 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 							]
 						]
 
-						// Wukong Amber (#FFB347 Parryable) / Crimson (#FF2A2A Unblockable) Telegraph Warning Strip
+						// High-Contrast Glowing AMBER (PARRY RMB) vs CRIMSON (DODGE Q/Ctrl) Warning Banner
 						+ SVerticalBox::Slot()
 						.AutoHeight()
 						.HAlign(HAlign_Center)
-						.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
+						.Padding(FMargin(0.f, 7.f, 0.f, 0.f))
 						[
 							SNew(SBorder)
 							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
@@ -2991,17 +3950,11 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 							{
 								AChroniclesPlayerController* PC = WeakPC.Get();
 								const AAetheriaBossCharacter* Boss = PC ? PC->FindWorldBoss() : nullptr;
-								const float T = (PC && PC->GetWorld()) ? PC->GetWorld()->GetTimeSeconds() : 0.f;
-								const float Pulse = 0.68f + 0.32f * FMath::Abs(FMath::Sin(T * 10.f));
-								if (Boss && Boss->IsCurrentAttackParryable())
-								{
-									// Amber #FFB347
-									return FSlateColor(FLinearColor(1.00f * Pulse, 0.702f * Pulse, 0.278f * Pulse, 0.95f));
-								}
-								// Crimson #FF2A2A
-								return FSlateColor(FLinearColor(1.00f * Pulse, 0.165f * Pulse, 0.165f * Pulse, 0.95f));
+								return (Boss && Boss->IsCurrentAttackParryable())
+									? FSlateColor(FLinearColor(1.00f, 0.85f, 0.42f, 0.98f))
+									: FSlateColor(FLinearColor(1.00f, 0.36f, 0.32f, 0.98f));
 							})
-							.Padding(FMargin(14.f, 3.f))
+							.Padding(FMargin(1.5f))
 							.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 							{
 								AChroniclesPlayerController* PC = WeakPC.Get();
@@ -3009,32 +3962,44 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 								return (Boss && Boss->bIsTelegraphing) ? EVisibility::Visible : EVisibility::Collapsed;
 							})
 							[
-								SNew(STextBlock)
-								.Font(ChroniclesHUDPalette::FontBold(11))
-								.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+								SNew(SBorder)
+								.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+								.BorderBackgroundColor_Lambda([WeakPC = OwnerPC]() -> FSlateColor
 								{
 									AChroniclesPlayerController* PC = WeakPC.Get();
 									const AAetheriaBossCharacter* Boss = PC ? PC->FindWorldBoss() : nullptr;
-									return (Boss && Boss->IsCurrentAttackParryable())
-										? FSlateColor(FLinearColor(0.05f, 0.03f, 0.01f, 1.0f))
-										: FSlateColor(ChroniclesHUDPalette::TextPrimary);
-								})
-								.Text_Lambda([WeakPC = OwnerPC]() -> FText
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaBossCharacter* Boss = PC ? PC->FindWorldBoss() : nullptr;
-									if (!Boss) return FText::GetEmpty();
-									const FString AttackName = GetBossAttackWarningText(Boss->CurrentAttack);
-									if (Boss->IsCurrentAttackParryable())
+									const float T = (PC && PC->GetWorld()) ? PC->GetWorld()->GetTimeSeconds() : 0.f;
+									const float Pulse = 0.72f + 0.28f * FMath::Abs(FMath::Sin(T * 10.f));
+									if (Boss && Boss->IsCurrentAttackParryable())
 									{
-										return FText::FromString(FString::Printf(
-											TEXT("[AMBER · PARRY RMB] INCOMING: %s (+2.5x STAGGER)"),
-											*AttackName));
+										// Glowing Amber #FFB347
+										return FSlateColor(FLinearColor(0.95f * Pulse, 0.62f * Pulse, 0.16f * Pulse, 0.96f));
 									}
-									return FText::FromString(FString::Printf(
-										TEXT("[CRIMSON · DODGE Q/Ctrl] INCOMING: %s (UNBLOCKABLE)"),
-										*AttackName));
+									// Glowing Blood-Crimson #FF2A2A
+									return FSlateColor(FLinearColor(0.86f * Pulse, 0.12f * Pulse, 0.14f * Pulse, 0.96f));
 								})
+								.Padding(FMargin(16.f, 4.f))
+								[
+									SNew(STextBlock)
+									.Font(ChroniclesHUDPalette::FontBold(11))
+									.ColorAndOpacity(FLinearColor(0.99f, 0.96f, 0.88f, 1.0f))
+									.Text_Lambda([WeakPC = OwnerPC]() -> FText
+									{
+										AChroniclesPlayerController* PC = WeakPC.Get();
+										const AAetheriaBossCharacter* Boss = PC ? PC->FindWorldBoss() : nullptr;
+										if (!Boss) return FText::GetEmpty();
+										const FString AttackName = GetBossAttackWarningText(Boss->CurrentAttack);
+										if (Boss->IsCurrentAttackParryable())
+										{
+											return FText::FromString(FString::Printf(
+												TEXT("AMBER · PARRY [RMB]  —  %s (+2.5x STAGGER)"),
+												*AttackName));
+										}
+										return FText::FromString(FString::Printf(
+											TEXT("CRIMSON · DODGE [Q / Ctrl]  —  %s (UNBLOCKABLE)"),
+											*AttackName));
+									})
+								]
 							]
 						]
 					]
@@ -3046,139 +4011,160 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopCenterCompassAndBossBar()
 TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildTopRightStatusAndHotkeys()
 {
 	return SNew(SBorder)
-		.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-		.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-		.Padding(FMargin(1.f))
+		.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+		.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.92f))
+		.Padding(FMargin(16.f, 11.f))
 		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 		{
 			AChroniclesPlayerController* PC = WeakPC.Get();
 			return (PC && PC->ActiveOverlay == EChroniclesOverlayMode::HeroCustomizer) ? EVisibility::Collapsed : EVisibility::SelfHitTestInvisible;
 		})
 		[
-			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::PanelBg)
-			.Padding(FMargin(14.f, 10.f))
+			SNew(SVerticalBox)
+
+			// Antique Gold Header: LV · GOLD · SP · MAP% · CO-OP
+			+ SVerticalBox::Slot()
+			.AutoHeight()
 			[
-				SNew(SVerticalBox)
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontBold(11))
+				.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+				.Text_Lambda([WeakPC = OwnerPC]() -> FText
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+					const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
+					UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+					const UFogOfWarMapSubsystem* MapSub = GI ? GI->GetSubsystem<UFogOfWarMapSubsystem>() : nullptr;
+					const AChroniclesGameState* GS = (PC && PC->GetWorld()) ? PC->GetWorld()->GetGameState<AChroniclesGameState>() : nullptr;
 
-				// Top Row: Level, Gold, Exploration %, Co-op Players
-				+ SVerticalBox::Slot()
-				.AutoHeight()
+					const int32 Lv = Skills ? Skills->Level : 1;
+					const int32 Gold = Skills ? Skills->Gold : 0;
+					const int32 Pts = Skills ? Skills->UnspentSkillPoints : 0;
+					const float Explored = MapSub ? MapSub->GetTotalExplorationPercent() : 0.f;
+					const int32 Players = GS ? GS->ConnectedPlayers : 1;
+
+					return FText::FromString(FString::Printf(
+						TEXT("LV %d  ·  %d G  ·  SP %d  ·  MAP %.1f%%%s"),
+						Lv, Gold, Pts, Explored,
+						(Players > 1) ? *FString::Printf(TEXT("  ·  CO-OP %d"), Players) : TEXT("")));
+				})
+			]
+
+			// Active Race + Stature Badge
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.f, 4.f, 0.f, 0.f))
+			[
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontRegular(9))
+				.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+					const UHeroCustomizationComponent* Custom = Hero ? Hero->Customization.Get() : nullptr;
+					if (!Custom)
+					{
+						return FSlateColor(ChroniclesHUDPalette::TextPrimary);
+					}
+					const float H = Custom->Profile.HeightMeters;
+					if (H < UHeroCustomizationComponent::SMALL_NO_MAGIC_MAX)
+					{
+						return FSlateColor(ChroniclesHUDPalette::TextCrimson);
+					}
+					if (H >= UHeroCustomizationComponent::GIANT_TITAN_MIN)
+					{
+						return FSlateColor(ChroniclesHUDPalette::TextGold);
+					}
+					return FSlateColor(ChroniclesHUDPalette::TextPrimary);
+				})
+				.Text_Lambda([WeakPC = OwnerPC]() -> FText
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+					const UHeroCustomizationComponent* Custom = Hero ? Hero->Customization.Get() : nullptr;
+					if (!Custom)
+					{
+						return LOCTEXT("DefaultRaceStature", "Human · 1.85m");
+					}
+					const float H = Custom->Profile.HeightMeters;
+					const TCHAR* Tag = (H < UHeroCustomizationComponent::SMALL_NO_MAGIC_MAX)
+						? TEXT(" · NO MAGIC")
+						: (H >= UHeroCustomizationComponent::GIANT_TITAN_MIN ? TEXT(" · GIANT") : TEXT(""));
+					return FText::FromString(FString::Printf(TEXT("%s · %.2fm%s"),
+						*UHeroCustomizationComponent::GetRaceLabel(Custom->Profile.Race), H, Tag));
+				})
+			]
+
+			// Live RTX HWRT / NVIDIA DLSS 4.5 Status Line (Cyan / Emerald)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.f, 4.f, 0.f, 6.f))
+			[
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontBold(9))
+				.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+					const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+					if (RTXSub && RTXSub->IsRTXActive())
+					{
+						return RTXSub->IsDLSSActive()
+							? FSlateColor(ChroniclesHUDPalette::TextEmerald)
+							: FSlateColor(ChroniclesHUDPalette::TextCyan);
+					}
+					return FSlateColor(ChroniclesHUDPalette::TextGold);
+				})
+				.Text_Lambda([WeakPC = OwnerPC]() -> FText
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+					const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+					if (!RTXSub)
+					{
+						return LOCTEXT("RTXBadgeUnknown", "RENDERER · INITIALIZING");
+					}
+					const FGraphicsTelemetry& Tel = RTXSub->GetTelemetry();
+					if (Tel.ActiveTier == EChronicleRenderTier::CrimsonRTXUltra)
+					{
+						if (Tel.bDLSSActive)
+						{
+							const FString ModeLabel = RTXSub->GetDLSSModeLabel();
+							const TCHAR* RRTag = RTXSub->IsDLSSRayReconstructionEnabled() ? TEXT("+RR") : TEXT("");
+							const TCHAR* FGTag = RTXSub->IsDLSSFrameGenEnabled() ? TEXT("+FG") : TEXT("");
+							return FText::FromString(FString::Printf(
+								TEXT("RTX HWRT · DLSS 4.5 %s%s%s"),
+								ModeLabel.IsEmpty() ? TEXT("Quality") : *ModeLabel,
+								RRTag,
+								FGTag));
+						}
+						return FText::FromString(FString::Printf(TEXT("RTX HWRT · TSR · %dMB"), Tel.TexturePoolMB));
+					}
+					return FText::FromString(FString::Printf(TEXT("Standard · %dMB"), Tel.TexturePoolMB));
+				})
+			]
+
+			// Thin Antique Gold Divider + Compact Keybind Footer
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
+			[
+				SNew(SBox)
+				.HeightOverride(1.f)
 				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontBold(11))
-					.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
-					.Text_Lambda([WeakPC = OwnerPC]() -> FText
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-						const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
-						UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
-						const UFogOfWarMapSubsystem* MapSub = GI ? GI->GetSubsystem<UFogOfWarMapSubsystem>() : nullptr;
-						const AChroniclesGameState* GS = (PC && PC->GetWorld()) ? PC->GetWorld()->GetGameState<AChroniclesGameState>() : nullptr;
-
-						const int32 Lv = Skills ? Skills->Level : 1;
-						const int32 Gold = Skills ? Skills->Gold : 0;
-						const int32 Pts = Skills ? Skills->UnspentSkillPoints : 0;
-						const float Explored = MapSub ? MapSub->GetTotalExplorationPercent() : 0.f;
-						const int32 Players = GS ? GS->ConnectedPlayers : 1;
-
-						return FText::FromString(FString::Printf(
-							TEXT("LV %d  |  %d G  |  SP: %d  |  MAP %.1f%%%s"),
-							Lv, Gold, Pts, Explored,
-							(Players > 1) ? *FString::Printf(TEXT("  |  CO-OP %d"), Players) : TEXT("")));
-					})
+					SNew(SBorder)
+					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+					.BorderBackgroundColor(ChroniclesHUDPalette::HairlineBronze)
 				]
-
-				// Active Race + Stature Badge
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(FMargin(0.f, 4.f, 0.f, 0.f))
-				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontBold(9))
-					.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-						const UHeroCustomizationComponent* Custom = Hero ? Hero->Customization.Get() : nullptr;
-						if (!Custom)
-						{
-							return FSlateColor(ChroniclesHUDPalette::TextCyan);
-						}
-						const float H = Custom->Profile.HeightMeters;
-						if (H < UHeroCustomizationComponent::SMALL_NO_MAGIC_MAX)
-						{
-							return FSlateColor(ChroniclesHUDPalette::TextCrimson);
-						}
-						if (H >= UHeroCustomizationComponent::GIANT_TITAN_MIN)
-						{
-							return FSlateColor(ChroniclesHUDPalette::TextGold);
-						}
-						return FSlateColor(ChroniclesHUDPalette::TextCyan);
-					})
-					.Text_Lambda([WeakPC = OwnerPC]() -> FText
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-						const UHeroCustomizationComponent* Custom = Hero ? Hero->Customization.Get() : nullptr;
-						if (!Custom)
-						{
-							return LOCTEXT("DefaultRaceStature", "Human · 1.85m");
-						}
-						const float H = Custom->Profile.HeightMeters;
-						const TCHAR* Tag = (H < UHeroCustomizationComponent::SMALL_NO_MAGIC_MAX)
-							? TEXT(" NO MAGIC")
-							: (H >= UHeroCustomizationComponent::GIANT_TITAN_MIN ? TEXT(" GIANT") : TEXT(""));
-						return FText::FromString(FString::Printf(TEXT("%s · %.2fm%s"),
-							*UHeroCustomizationComponent::GetRaceLabel(Custom->Profile.Race), H, Tag));
-					})
-				]
-
-				// GPU RTX / Standard Tier Badge
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				.Padding(FMargin(0.f, 4.f, 0.f, 6.f))
-				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontBold(9))
-					.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
-						const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
-						return (RTXSub && RTXSub->IsRTXActive())
-							? FSlateColor(ChroniclesHUDPalette::TextCyan)
-							: FSlateColor(ChroniclesHUDPalette::TextGold);
-					})
-					.Text_Lambda([WeakPC = OwnerPC]() -> FText
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
-						const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
-						if (!RTXSub)
-						{
-							return LOCTEXT("RTXBadgeUnknown", "RENDERER: INITIALIZING");
-						}
-						const FGraphicsTelemetry& Tel = RTXSub->GetTelemetry();
-						const TCHAR* TierName = (Tel.ActiveTier == EChronicleRenderTier::CrimsonRTXUltra)
-							? TEXT("CRIMSON RTX ULTRA")
-							: TEXT("STANDARD PERF");
-						const TCHAR* DLSSStr = Tel.bDLSSActive ? TEXT(" + DLSS") : TEXT(" + TSR");
-						return FText::FromString(FString::Printf(TEXT("%s%s  (%dMB Pool)"), TierName, DLSSStr, Tel.TexturePoolMB));
-					})
-				]
-
-				// Compact Hotkey Bar
-				+ SVerticalBox::Slot()
-				.AutoHeight()
-				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontRegular(9))
-					.ColorAndOpacity(ChroniclesHUDPalette::TextSecondary)
-					.Text(LOCTEXT("HotkeyHint", "[M] Map  [K] Skills  [C] Hero  [J] Quests  [Tab] Grimoire  [T] Time  [F10] RTX"))
-				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontRegular(9))
+				.ColorAndOpacity(ChroniclesHUDPalette::TextSecondary)
+				.Text(LOCTEXT("HotkeyHint", "[M] Map  [K] Skills  [C] Hero  [J] Quests  [Tab] Grimoire  [T] Time  [F10] RTX"))
 			]
 		];
 }
@@ -3195,11 +4181,11 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildResourceBarRow(
 		.VAlign(VAlign_Center)
 		[
 			SNew(SBox)
-			.WidthOverride(42.f)
+			.WidthOverride(44.f)
 			[
 				SNew(STextBlock)
 				.Font(ChroniclesHUDPalette::FontBold(9))
-				.ColorAndOpacity(ChroniclesHUDPalette::TextSecondary)
+				.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 				.Text(LabelText)
 			]
 		]
@@ -3209,11 +4195,10 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildResourceBarRow(
 		.Padding(FMargin(4.f, 0.f, 8.f, 0.f))
 		[
 			SNew(SBox)
-			.HeightOverride(10.f)
+			.HeightOverride(11.f)
 			[
 				SNew(SProgressBar)
-				.BackgroundImage(ChroniclesHUDPalette::WhiteBrush())
-				.FillImage(ChroniclesHUDPalette::WhiteBrush())
+				.Style(&ChroniclesHUDPalette::RecessedBarBaseStyle())
 				.FillColorAndOpacity(FillColor)
 				.Percent(PercentAttr)
 			]
@@ -3223,19 +4208,78 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildResourceBarRow(
 		.VAlign(VAlign_Center)
 		[
 			SNew(SBox)
-			.WidthOverride(74.f)
+			.WidthOverride(78.f)
 			[
-				SNew(STextBlock)
-				.Font(ChroniclesHUDPalette::FontRegular(9))
-				.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
-				.Justification(ETextJustify::Right)
-				.Text(ValueTextAttr)
+				SNew(SBorder)
+				.BorderImage(ChroniclesHUDPalette::ObsidianCardLockedBrush())
+				.BorderBackgroundColor(FLinearColor::White)
+				.Padding(FMargin(5.f, 1.f))
+				[
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontRegular(9))
+					.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+					.Justification(ETextJustify::Right)
+					.Text(ValueTextAttr)
+				]
 			]
 		];
 }
 
 TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildOrbBadgeWidget(EChronicleOrb Orb, const FString& KeyHint) const
 {
+	const FSlateBrush* IconBrush = ChroniclesHUDPalette::OrbIconBrush(Orb);
+
+	TSharedRef<SHorizontalBox> InnerContent = SNew(SHorizontalBox);
+	if (IconBrush)
+	{
+		InnerContent->AddSlot()
+		.AutoWidth()
+		.VAlign(VAlign_Center)
+		.Padding(FMargin(0.f, 0.f, 6.f, 0.f))
+		[
+			SNew(SBox)
+			.WidthOverride(22.f)
+			.HeightOverride(22.f)
+			[
+				SNew(SImage)
+				.Image(IconBrush)
+				.ColorAndOpacity_Lambda([WeakPC = OwnerPC, Orb]() -> FSlateColor
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+					const bool bUnlocked = (Hero && Hero->SpellSystem && Hero->SpellSystem->IsOrbUnlocked(Orb));
+					return bUnlocked
+						? FSlateColor(FLinearColor(1.f, 1.f, 1.f, 1.f))
+						: FSlateColor(FLinearColor(0.28f, 0.26f, 0.30f, 0.48f));
+				})
+			]
+		];
+	}
+
+	InnerContent->AddSlot()
+	.FillWidth(1.f)
+	.VAlign(VAlign_Center)
+	[
+		SNew(STextBlock)
+		.Font(ChroniclesHUDPalette::FontBold(9))
+		.ColorAndOpacity_Lambda([WeakPC = OwnerPC, Orb]() -> FSlateColor
+		{
+			AChroniclesPlayerController* PC = WeakPC.Get();
+			const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+			const bool bUnlocked = (Hero && Hero->SpellSystem && Hero->SpellSystem->IsOrbUnlocked(Orb));
+			return bUnlocked ? FSlateColor(GetOrbColor(Orb)) : FSlateColor(ChroniclesHUDPalette::TextSecondary);
+		})
+		.Text_Lambda([WeakPC = OwnerPC, Orb, KeyHint]() -> FText
+		{
+			AChroniclesPlayerController* PC = WeakPC.Get();
+			const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+			const bool bUnlocked = (Hero && Hero->SpellSystem && Hero->SpellSystem->IsOrbUnlocked(Orb));
+			return FText::FromString(bUnlocked
+				? KeyHint
+				: FString::Printf(TEXT("%s (Lock)"), *KeyHint));
+		})
+	];
+
 	return SNew(SBorder)
 		.BorderImage(ChroniclesHUDPalette::WhiteBrush())
 		.BorderBackgroundColor_Lambda([WeakPC = OwnerPC, Orb]() -> FSlateColor
@@ -3243,33 +4287,21 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildOrbBadgeWidget(EChronicleOrb Or
 			AChroniclesPlayerController* PC = WeakPC.Get();
 			const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
 			const bool bUnlocked = (Hero && Hero->SpellSystem && Hero->SpellSystem->IsOrbUnlocked(Orb));
-			return bUnlocked ? FSlateColor(GetOrbColor(Orb)) : FSlateColor(ChroniclesHUDPalette::OrbLocked);
+			if (bUnlocked)
+			{
+				const FLinearColor C = GetOrbColor(Orb);
+				return FSlateColor(FLinearColor(C.R, C.G, C.B, 0.85f));
+			}
+			return FSlateColor(ChroniclesHUDPalette::OrbLocked);
 		})
 		.Padding(FMargin(1.5f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-			.Padding(FMargin(10.f, 5.f))
+			.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+			.BorderBackgroundColor(FLinearColor::White)
+			.Padding(FMargin(7.f, 4.f))
 			[
-				SNew(STextBlock)
-				.Font(ChroniclesHUDPalette::FontBold(10))
-				.ColorAndOpacity_Lambda([WeakPC = OwnerPC, Orb]() -> FSlateColor
-				{
-					AChroniclesPlayerController* PC = WeakPC.Get();
-					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-					const bool bUnlocked = (Hero && Hero->SpellSystem && Hero->SpellSystem->IsOrbUnlocked(Orb));
-					return bUnlocked ? FSlateColor(GetOrbColor(Orb)) : FSlateColor(ChroniclesHUDPalette::TextSecondary);
-				})
-				.Text_Lambda([WeakPC = OwnerPC, Orb, KeyHint]() -> FText
-				{
-					AChroniclesPlayerController* PC = WeakPC.Get();
-					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-					const bool bUnlocked = (Hero && Hero->SpellSystem && Hero->SpellSystem->IsOrbUnlocked(Orb));
-					return FText::FromString(bUnlocked
-						? KeyHint
-						: FString::Printf(TEXT("%s [LOCKED]"), *KeyHint));
-				})
+				InnerContent
 			]
 		];
 }
@@ -3278,64 +4310,98 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildSpellSlotWidget(bool bIsSlotF) 
 {
 	const FString KeyBadge = bIsSlotF ? TEXT("[5/Z] SLOT F") : TEXT("[4/X] SLOT D");
 	return SNew(SBox)
-		.WidthOverride(176.f)
+		.WidthOverride(180.f)
 		[
-			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor_Lambda([WeakPC = OwnerPC, bIsSlotF]() -> FSlateColor
-			{
-				AChroniclesPlayerController* PC = WeakPC.Get();
-				const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-				const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
-				const EChronicleSpellId Id = Spells ? (bIsSlotF ? Spells->SlotF : Spells->SlotD) : EChronicleSpellId::None;
-				if (Id == EChronicleSpellId::None)
-				{
-					return FSlateColor(ChroniclesHUDPalette::OrbLocked);
-				}
-				return FSlateColor(USpellSystemComponent::GetSpellDef(Id).PrimaryColor);
-			})
-			.Padding(FMargin(1.5f))
+			SNew(SOverlay)
+
+			// Base carved dark obsidian backing so transparent socket center stays rich and readable
+			+ SOverlay::Slot()
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
-				.Padding(FMargin(8.f, 6.f))
+				.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+				.BorderBackgroundColor(FLinearColor::White)
+			]
+
+			// Sculpted T_UI_SkillSocket_Normal / Armed metallic frame overlay
+			+ SOverlay::Slot()
+			[
+				SNew(SImage)
+				.Image_Lambda([WeakPC = OwnerPC, bIsSlotF]() -> const FSlateBrush*
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+					const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
+					const EChronicleSpellId Id = Spells ? (bIsSlotF ? Spells->SlotF : Spells->SlotD) : EChronicleSpellId::None;
+					return (Id != EChronicleSpellId::None)
+						? ChroniclesHUDPalette::SocketArmedBrush()
+						: ChroniclesHUDPalette::SocketNormalBrush();
+				})
+				.ColorAndOpacity_Lambda([WeakPC = OwnerPC, bIsSlotF]() -> FSlateColor
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+					const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
+					const EChronicleSpellId Id = Spells ? (bIsSlotF ? Spells->SlotF : Spells->SlotD) : EChronicleSpellId::None;
+					if (Id == EChronicleSpellId::None)
+					{
+						return FSlateColor(FLinearColor(0.75f, 0.72f, 0.68f, 0.85f));
+					}
+					const FLinearColor SpellCol = USpellSystemComponent::GetSpellDef(Id).PrimaryColor;
+					return FSlateColor(FLinearColor(
+						FMath::Lerp(1.f, SpellCol.R, 0.45f),
+						FMath::Lerp(1.f, SpellCol.G, 0.45f),
+						FMath::Lerp(1.f, SpellCol.B, 0.45f),
+						0.98f));
+				})
+			]
+
+			// Spell Slot Keybind & Invoked Name / Cooldown
+			+ SOverlay::Slot()
+			.Padding(FMargin(11.f, 8.f))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					[
-						SNew(STextBlock)
-						.Font(ChroniclesHUDPalette::FontBold(8))
-						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-						.Text(FText::FromString(KeyBadge))
-					]
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(FMargin(0.f, 2.f, 0.f, 0.f))
-					[
-						SNew(STextBlock)
-						.Font(ChroniclesHUDPalette::FontBold(10))
-						.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
-						.Text_Lambda([WeakPC = OwnerPC, bIsSlotF]() -> FText
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontBold(8))
+					.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+					.Text(FText::FromString(KeyBadge))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.f, 2.f, 0.f, 0.f))
+				[
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontBold(10))
+					.ColorAndOpacity_Lambda([WeakPC = OwnerPC, bIsSlotF]() -> FSlateColor
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+						const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
+						const EChronicleSpellId Id = Spells ? (bIsSlotF ? Spells->SlotF : Spells->SlotD) : EChronicleSpellId::None;
+						return (Id != EChronicleSpellId::None)
+							? FSlateColor(ChroniclesHUDPalette::TextPrimary)
+							: FSlateColor(ChroniclesHUDPalette::TextSecondary);
+					})
+					.Text_Lambda([WeakPC = OwnerPC, bIsSlotF]() -> FText
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+						const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
+						const EChronicleSpellId Id = Spells ? (bIsSlotF ? Spells->SlotF : Spells->SlotD) : EChronicleSpellId::None;
+						if (Id == EChronicleSpellId::None)
 						{
-							AChroniclesPlayerController* PC = WeakPC.Get();
-							const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-							const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
-							const EChronicleSpellId Id = Spells ? (bIsSlotF ? Spells->SlotF : Spells->SlotD) : EChronicleSpellId::None;
-							if (Id == EChronicleSpellId::None)
-							{
-								return LOCTEXT("EmptySpellSlot", "Empty — Press [R]");
-							}
-							const FChronicleSpellDef Def = USpellSystemComponent::GetSpellDef(Id);
-							const float CD = Spells->GetSpellCooldownRemaining(Id);
-							if (CD > 0.05f)
-							{
-								return FText::FromString(FString::Printf(TEXT("%s (%.1fs)"), *Def.DisplayName.ToString(), CD));
-							}
-							return Def.DisplayName;
-						})
-					]
+							return LOCTEXT("EmptySpellSlot", "Empty — Press [R]");
+						}
+						const FChronicleSpellDef Def = USpellSystemComponent::GetSpellDef(Id);
+						const float CD = Spells->GetSpellCooldownRemaining(Id);
+						if (CD > 0.05f)
+						{
+							return FText::FromString(FString::Printf(TEXT("%s (%.1fs)"), *Def.DisplayName.ToString(), CD));
+						}
+						return Def.DisplayName;
+					})
 				]
 			]
 		];
@@ -3356,7 +4422,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomLeftVitalsAndInvokerPanel
 		.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
 		[
 			SNew(SBox)
-			.WidthOverride(372.f)
+			.WidthOverride(396.f)
 			.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 			{
 				AChroniclesPlayerController* PC = WeakPC.Get();
@@ -3369,9 +4435,9 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomLeftVitalsAndInvokerPanel
 				.Padding(FMargin(1.5f))
 				[
 					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-					.Padding(FMargin(12.f, 8.f))
+					.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+					.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.96f))
+					.Padding(FMargin(14.f, 9.f))
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot()
@@ -3397,188 +4463,182 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomLeftVitalsAndInvokerPanel
 						]
 						+ SVerticalBox::Slot()
 						.AutoHeight()
-						.Padding(FMargin(0.f, 4.f, 0.f, 0.f))
+						.Padding(FMargin(0.f, 5.f, 0.f, 0.f))
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontRegular(9))
 							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-							.Text(LOCTEXT("DragonFlightHint", "IGNIS: [WASD] Steer · [Space/Shift] Climb/Dive · [LMB] Fire Breath · [F] Land"))
+							.Text(LOCTEXT("DragonFlightHint", "IGNIS: [WASD] Fly · [Space/Shift] Alt · [LMB] Flame"))
 						]
 					]
 				]
 			]
 		]
 
-		// Hero Vitals + Invoker Spheres & Invoked Slots Card
+		// Carved Obsidian Hero Vitals + Sculpted Invoker Orbs & Socket Cards Console
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
 			SNew(SBox)
-			.WidthOverride(372.f)
+			.WidthOverride(396.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-				.Padding(FMargin(1.f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.94f))
+				.Padding(FMargin(15.f, 13.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBg)
-					.Padding(FMargin(12.f, 10.f))
+					SNew(SVerticalBox)
+
+					// HP (Deep Crimson #B81D24)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
 					[
-						SNew(SVerticalBox)
+						BuildResourceBarRow(
+							LOCTEXT("HPLbl", "HP"),
+							ChroniclesHUDPalette::BarHP,
+							TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								return (Hero && Hero->MaxHP > 0.f) ? FMath::Clamp(Hero->HP / Hero->MaxHP, 0.f, 1.f) : 0.f;
+							}),
+							TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								return Hero ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Hero->HP, Hero->MaxHP)) : LOCTEXT("ZeroVal", "0 / 0");
+							}))
+					]
 
-						// HP
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
-						[
-							BuildResourceBarRow(
-								LOCTEXT("HPLbl", "HP"),
-								ChroniclesHUDPalette::BarHP,
-								TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									return (Hero && Hero->MaxHP > 0.f) ? FMath::Clamp(Hero->HP / Hero->MaxHP, 0.f, 1.f) : 0.f;
-								}),
-								TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									return Hero ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Hero->HP, Hero->MaxHP)) : LOCTEXT("ZeroVal", "0 / 0");
-								}))
-						]
-
-						// Mana
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
-						[
-							BuildResourceBarRow(
-								LOCTEXT("MPLbl", "MANA"),
-								ChroniclesHUDPalette::BarMana,
-								TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
-									return (Spells && Spells->MaxMana > 0.f) ? FMath::Clamp(Spells->Mana / Spells->MaxMana, 0.f, 1.f) : 0.f;
-								}),
-								TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
-									return Spells ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Spells->Mana, Spells->MaxMana)) : LOCTEXT("ZeroVal", "0 / 0");
-								}))
-						]
-
-						// Stamina
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 4.f))
-						[
-							BuildResourceBarRow(
-								LOCTEXT("STALbl", "STAM"),
-								ChroniclesHUDPalette::BarStamina,
-								TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									return (Hero && Hero->MaxStamina > 0.f) ? FMath::Clamp(Hero->Stamina / Hero->MaxStamina, 0.f, 1.f) : 0.f;
-								}),
-								TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									return Hero ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Hero->Stamina, Hero->MaxStamina)) : LOCTEXT("ZeroVal", "0 / 0");
-								}))
-						]
-
-						// XP
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
-						[
-							BuildResourceBarRow(
-								LOCTEXT("XPLbl", "XP"),
-								ChroniclesHUDPalette::BarXP,
-								TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
-									const int32 Need = Skills ? FMath::Max(1, Skills->GetXPForNextLevel()) : 120;
-									return Skills ? FMath::Clamp(static_cast<float>(Skills->CurrentXP) / static_cast<float>(Need), 0.f, 1.f) : 0.f;
-								}),
-								TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
-									return Skills ? FText::FromString(FString::Printf(TEXT("%d / %d"), Skills->CurrentXP, Skills->GetXPForNextLevel())) : LOCTEXT("ZeroVal", "0 / 120");
-								}))
-						]
-
-						// Primal Sphere Unlock Badges (1:Exort / 2:Wex / 3:Quas)
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 6.f))
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(0.f, 0.f, 4.f, 0.f))
-							[ BuildOrbBadgeWidget(EChronicleOrb::Exort, TEXT("[1] Exort")) ]
-							+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(2.f, 0.f, 2.f, 0.f))
-							[ BuildOrbBadgeWidget(EChronicleOrb::Wex, TEXT("[2] Wex")) ]
-							+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(4.f, 0.f, 0.f, 0.f))
-							[ BuildOrbBadgeWidget(EChronicleOrb::Quas, TEXT("[3] Quas")) ]
-						]
-
-						// Active 3-Orb FIFO Queue & Invoke Preview
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
-						[
-							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontBold(10))
-							.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
-							.Text_Lambda([WeakPC = OwnerPC]() -> FText
+					// Mana (Sapphire Arcana #1E6EE8)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
+					[
+						BuildResourceBarRow(
+							LOCTEXT("MPLbl", "MANA"),
+							ChroniclesHUDPalette::BarMana,
+							TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
 							{
 								AChroniclesPlayerController* PC = WeakPC.Get();
 								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
 								const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
-								if (!Spells) return LOCTEXT("NoOrbs", "ORBS: [ - - - ]");
+								return (Spells && Spells->MaxMana > 0.f) ? FMath::Clamp(Spells->Mana / Spells->MaxMana, 0.f, 1.f) : 0.f;
+							}),
+							TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
+								return Spells ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Spells->Mana, Spells->MaxMana)) : LOCTEXT("ZeroVal", "0 / 0");
+							}))
+					]
 
-								const FString OrbsStr = Spells->GetActiveOrbsString();
-								const EChronicleSpellId Preview = Spells->ResolveCurrentCombo();
-								if (Preview != EChronicleSpellId::None)
-								{
-									const FChronicleSpellDef Def = USpellSystemComponent::GetSpellDef(Preview);
-									return FText::FromString(FString::Printf(TEXT("ORBS: [ %s ]  ->  [R] %s"),
-										*OrbsStr, *Def.DisplayName.ToString()));
-								}
-								return FText::FromString(FString::Printf(TEXT("ORBS: [ %s ]  (%d/10 Spells Unlocked)"),
-									*OrbsStr, Spells->GetUnlockedSpellCount()));
-							})
-						]
+					// Stamina (Emerald-Gold #39A86B)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
+					[
+						BuildResourceBarRow(
+							LOCTEXT("STALbl", "STAM"),
+							ChroniclesHUDPalette::BarStamina,
+							TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								return (Hero && Hero->MaxStamina > 0.f) ? FMath::Clamp(Hero->Stamina / Hero->MaxStamina, 0.f, 1.f) : 0.f;
+							}),
+							TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								return Hero ? FText::FromString(FString::Printf(TEXT("%.0f / %.0f"), Hero->Stamina, Hero->MaxStamina)) : LOCTEXT("ZeroVal", "0 / 0");
+							}))
+					]
 
-						// Invoked Spell Slots [4/X] D & [5/Z] F
-						+ SVerticalBox::Slot()
-						.AutoHeight()
+					// XP (Burnished Gold #D4A843)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+					[
+						BuildResourceBarRow(
+							LOCTEXT("XPLbl", "XP"),
+							ChroniclesHUDPalette::BarXP,
+							TAttribute<TOptional<float>>::CreateLambda([WeakPC = OwnerPC]() -> TOptional<float>
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
+								const int32 Need = Skills ? FMath::Max(1, Skills->GetXPForNextLevel()) : 120;
+								return Skills ? FMath::Clamp(static_cast<float>(Skills->CurrentXP) / static_cast<float>(Need), 0.f, 1.f) : 0.f;
+							}),
+							TAttribute<FText>::CreateLambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
+								return Skills ? FText::FromString(FString::Printf(TEXT("%d / %d"), Skills->CurrentXP, Skills->GetXPForNextLevel())) : LOCTEXT("ZeroVal", "0 / 120");
+							}))
+					]
+
+					// Sculpted Elemental Orb Sockets (1:Exort / 2:Wex / 3:Quas)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 7.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(0.f, 0.f, 4.f, 0.f))
+						[ BuildOrbBadgeWidget(EChronicleOrb::Exort, TEXT("[1] Exort")) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(2.f, 0.f, 2.f, 0.f))
+						[ BuildOrbBadgeWidget(EChronicleOrb::Wex, TEXT("[2] Wex")) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(4.f, 0.f, 0.f, 0.f))
+						[ BuildOrbBadgeWidget(EChronicleOrb::Quas, TEXT("[3] Quas")) ]
+					]
+
+					// Active 3-Orb FIFO Queue & Invoke Preview
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(10))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text_Lambda([WeakPC = OwnerPC]() -> FText
+						{
+							AChroniclesPlayerController* PC = WeakPC.Get();
+							const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+							const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
+							if (!Spells) return LOCTEXT("NoOrbs", "ORBS: [ - - - ]");
+
+							const FString OrbsStr = Spells->GetActiveOrbsString();
+							const EChronicleSpellId Preview = Spells->ResolveCurrentCombo();
+							if (Preview != EChronicleSpellId::None)
+							{
+								const FChronicleSpellDef Def = USpellSystemComponent::GetSpellDef(Preview);
+								return FText::FromString(FString::Printf(TEXT("ORBS: [ %s ]  ->  [R] %s"),
+									*OrbsStr, *Def.DisplayName.ToString()));
+							}
+							return FText::FromString(FString::Printf(TEXT("ORBS: [ %s ]  (%d/10 Spells Unlocked)"),
+								*OrbsStr, Spells->GetUnlockedSpellCount()));
+						})
+					]
+
+					// Invoked Spell Socket Cards ([4/X] D & [5/Z] F)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.Padding(FMargin(0.f, 0.f, 6.f, 0.f))
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
-							.Padding(FMargin(0.f, 0.f, 6.f, 0.f))
-							[
-								BuildSpellSlotWidget(false)
-							]
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
-							[
-								BuildSpellSlotWidget(true)
-							]
+							BuildSpellSlotWidget(false)
+						]
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						[
+							BuildSpellSlotWidget(true)
 						]
 					]
 				]
@@ -3590,63 +4650,52 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomCenterPromptsAndToast()
 {
 	return SNew(SVerticalBox)
 
-		// Toast Banner Notification
+		// Sculpted Obsidian & Antique Gold Toast Banner Notification
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.HAlign(HAlign_Center)
 		.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+			.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
 			.BorderBackgroundColor_Lambda([WeakPC = OwnerPC]() -> FSlateColor
 			{
 				AChroniclesPlayerController* PC = WeakPC.Get();
 				const float Alpha = PC ? PC->GetActiveToastAlpha() : 0.f;
-				return FSlateColor(FLinearColor(0.72f, 0.58f, 0.34f, 0.65f * Alpha));
+				return FSlateColor(FLinearColor(1.f, 1.f, 1.f, 0.94f * Alpha));
 			})
-			.Padding(FMargin(1.f))
+			.Padding(FMargin(24.f, 9.f))
 			.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 			{
 				AChroniclesPlayerController* PC = WeakPC.Get();
 				return (PC && PC->GetActiveToastAlpha() > 0.01f) ? EVisibility::HitTestInvisible : EVisibility::Collapsed;
 			})
 			[
-				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontBold(11))
+				.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
 				{
 					AChroniclesPlayerController* PC = WeakPC.Get();
 					const float Alpha = PC ? PC->GetActiveToastAlpha() : 0.f;
-					return FSlateColor(FLinearColor(0.03f, 0.035f, 0.055f, 0.92f * Alpha));
+					return FSlateColor(FLinearColor(0.98f, 0.85f, 0.48f, Alpha));
 				})
-				.Padding(FMargin(20.f, 8.f))
-				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontBold(11))
-					.ColorAndOpacity_Lambda([WeakPC = OwnerPC]() -> FSlateColor
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						const float Alpha = PC ? PC->GetActiveToastAlpha() : 0.f;
-						return FSlateColor(FLinearColor(0.98f, 0.88f, 0.58f, Alpha));
-					})
-					.Text_Lambda([WeakPC = OwnerPC]() -> FText
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						return PC ? FText::FromString(PC->GetActiveToastMessage()) : FText::GetEmpty();
-					})
-				]
+				.Text_Lambda([WeakPC = OwnerPC]() -> FText
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					return PC ? FText::FromString(PC->GetActiveToastMessage()) : FText::GetEmpty();
+				})
 			]
 		]
 
-		// Contextual Interaction Prompt ([E] Talk / [F] Mount Ignis / Click to Resume)
+		// Crisp Diegetic Interaction Prompt ([E] Поговорить: <NPC> / [F] Mount Ignis / Cursor Unlocked)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
 		.HAlign(HAlign_Center)
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::HairlineCyan)
-			.Padding(FMargin(1.f))
+			.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+			.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.95f))
+			.Padding(FMargin(20.f, 9.f))
 			.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
 			{
 				AChroniclesPlayerController* PC = WeakPC.Get();
@@ -3662,47 +4711,41 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildBottomCenterPromptsAndToast()
 				{
 					return EVisibility::Collapsed;
 				}
-				if (PC->FindNearestInteractableNPC(420.f) != nullptr || PC->FindNearestDragon(950.f) != nullptr)
+				if (PC->FindTalkableNPC(280.f) != nullptr || PC->FindNearestDragon(950.f) != nullptr)
 				{
 					return EVisibility::HitTestInvisible;
 				}
 				return EVisibility::Collapsed;
 			})
 			[
-				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-				.Padding(FMargin(16.f, 7.f))
-				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontBold(11))
-					.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
-					.Text_Lambda([WeakPC = OwnerPC]() -> FText
-					{
-						AChroniclesPlayerController* PC = WeakPC.Get();
-						if (!PC) return FText::GetEmpty();
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontBold(11))
+				.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+				.Text_Lambda([WeakPC = OwnerPC]() -> FText
+				{
+					AChroniclesPlayerController* PC = WeakPC.Get();
+					if (!PC) return FText::GetEmpty();
 
-						if (!PC->bMouseCaptured)
+					if (!PC->bMouseCaptured)
+					{
+						return LOCTEXT("CursorUnlockedPrompt", "Cursor Unlocked — Click Viewport or Press [Esc] to Resume Combat");
+					}
+					if (const AAetheriaNPCActor* NPC = PC->FindTalkableNPC(280.f))
+					{
+						return FText::FromString(FString::Printf(TEXT("[E] Поговорить: %s"),
+							*NPC->DisplayName.ToString()));
+					}
+					if (PC->FindNearestDragon(950.f) != nullptr)
+					{
+						const AAetheriaHeroCharacter* Hero = PC->GetActiveHero();
+						if (Hero && Hero->bDragonUnlocked)
 						{
-							return LOCTEXT("CursorUnlockedPrompt", "Cursor Unlocked — Click Viewport or Press [Esc] to Resume Combat");
+							return LOCTEXT("MountDragonPrompt", "[F] Mount Ignis the Red Dragon");
 						}
-						if (const AAetheriaNPCActor* NPC = PC->FindNearestInteractableNPC(420.f))
-						{
-							return FText::FromString(FString::Printf(TEXT("[E] Speak to %s (%s)"),
-								*NPC->DisplayName.ToString(), *NPC->RoleTitle.ToString()));
-						}
-						if (PC->FindNearestDragon(950.f) != nullptr)
-						{
-							const AAetheriaHeroCharacter* Hero = PC->GetActiveHero();
-							if (Hero && Hero->bDragonUnlocked)
-							{
-								return LOCTEXT("MountDragonPrompt", "[F] Mount Ignis the Red Dragon");
-							}
-							return LOCTEXT("DragonLockedPrompt", "Ignis the Red Dragon — Complete 'Taming the Crimson Wing' (Scholar Lyra) to Mount");
-						}
-						return FText::GetEmpty();
-					})
-				]
+						return LOCTEXT("DragonLockedPrompt", "Ignis the Red Dragon — Complete 'Taming the Crimson Wing' (Scholar Lyra) to Mount");
+					}
+					return FText::GetEmpty();
+				})
 			]
 		];
 }
@@ -3766,11 +4809,10 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildWorldMapOverlay()
 			.AutoHeight()
 			.Padding(FMargin(0.f, 3.f, 0.f, 8.f))
 			[
-				SNew(SBox).HeightOverride(6.f)
+				SNew(SBox).HeightOverride(7.f)
 				[
 					SNew(SProgressBar)
-					.BackgroundImage(ChroniclesHUDPalette::WhiteBrush())
-					.FillImage(ChroniclesHUDPalette::WhiteBrush())
+					.Style(&ChroniclesHUDPalette::RecessedBarBaseStyle())
 					.FillColorAndOpacity(SwatchColor)
 					.Percent_Lambda([WeakPC = OwnerPC, Biome]() -> TOptional<float>
 					{
@@ -3795,129 +4837,119 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildWorldMapOverlay()
 		})
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-			.Padding(FMargin(1.5f))
+			.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+			.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.96f))
+			.Padding(FMargin(24.f, 20.f))
 			[
-				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-				.Padding(FMargin(20.f))
-				[
-					SNew(SVerticalBox)
+				SNew(SVerticalBox)
 
-					// Header Row
-					+ SVerticalBox::Slot()
-					.AutoHeight()
-					.Padding(FMargin(0.f, 0.f, 0.f, 14.f))
+				// Header Row
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(FMargin(0.f, 0.f, 0.f, 14.f))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.f)
+					.VAlign(VAlign_Center)
 					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.FillWidth(1.f)
-						.VAlign(VAlign_Center)
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(16))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text_Lambda([WeakPC = OwnerPC]() -> FText
+						{
+							AChroniclesPlayerController* PC = WeakPC.Get();
+							UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+							const UFogOfWarMapSubsystem* MapSub = GI ? GI->GetSubsystem<UFogOfWarMapSubsystem>() : nullptr;
+							const float Total = MapSub ? MapSub->GetTotalExplorationPercent() : 0.f;
+							return FText::FromString(FString::Printf(
+								TEXT("ATLAS OF AETHERIA  ·  4km x 4km REALM CHART  (%.1f%% EXPLORED)"), Total));
+						})
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SButton)
+						.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+						.ContentPadding(FMargin(14.f, 5.f))
+						.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+						{
+							if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
+							return FReply::Handled();
+						})
 						[
 							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontBold(16))
-							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-							.Text_Lambda([WeakPC = OwnerPC]() -> FText
-							{
-								AChroniclesPlayerController* PC = WeakPC.Get();
-								UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
-								const UFogOfWarMapSubsystem* MapSub = GI ? GI->GetSubsystem<UFogOfWarMapSubsystem>() : nullptr;
-								const float Total = MapSub ? MapSub->GetTotalExplorationPercent() : 0.f;
-								return FText::FromString(FString::Printf(
-									TEXT("ATLAS OF AETHERIA  |  4km x 4km FOG OF WAR  (%.1f%% EXPLORED)"), Total));
-							})
-						]
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						[
-							SNew(SButton)
-							.ContentPadding(FMargin(12.f, 4.f))
-							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-							{
-								if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
-								return FReply::Handled();
-							})
-							[
-								SNew(STextBlock)
-								.Font(ChroniclesHUDPalette::FontBold(10))
-								.Text(LOCTEXT("CloseBtn", "Close [M / Esc]"))
-							]
+							.Font(ChroniclesHUDPalette::FontBold(10))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+							.Text(LOCTEXT("CloseBtn", "Close [M / Esc]"))
 						]
 					]
+				]
 
-					// Main Map + Side Breakdown
-					+ SVerticalBox::Slot()
-					.AutoHeight()
+				// Main Map + Side Breakdown
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(SHorizontalBox)
+
+					// 64x64 Live Cartographic Fog-of-War Slate Canvas
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(FMargin(0.f, 0.f, 18.f, 0.f))
 					[
-						SNew(SHorizontalBox)
+						SNew(SFogOfWarMapWidget)
+						.OwnerPC(OwnerPC)
+						.MapSize(526.f)
+					]
 
-						// 64x64 Live Fog-of-War Slate Canvas
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.Padding(FMargin(0.f, 0.f, 18.f, 0.f))
+					// Right Column: 5 Biomes % + Discovered Landmarks
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SBox)
+						.WidthOverride(336.f)
+						.HeightOverride(526.f)
 						[
-							SNew(SBorder)
-							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-							.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-							.Padding(FMargin(1.5f))
+							SNew(SVerticalBox)
+
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
 							[
-								SNew(SFogOfWarMapWidget)
-								.OwnerPC(OwnerPC)
-								.MapSize(520.f)
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(11))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+								.Text(LOCTEXT("BiomeBreakdownHdr", "BIOME EXPLORATION"))
 							]
-						]
 
-						// Right Column: 5 Biomes % + Discovered Landmarks
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						[
-							SNew(SBox)
-							.WidthOverride(330.f)
-							.HeightOverride(523.f)
+							+ SVerticalBox::Slot().AutoHeight()
+							[ BuildBiomePctRow(EChronicleBiome::OakhavenValley,  FLinearColor(0.56f, 0.62f, 0.30f, 1.f)) ]
+							+ SVerticalBox::Slot().AutoHeight()
+							[ BuildBiomePctRow(EChronicleBiome::BlueLeafWoods,   FLinearColor(0.24f, 0.56f, 0.72f, 1.f)) ]
+							+ SVerticalBox::Slot().AutoHeight()
+							[ BuildBiomePctRow(EChronicleBiome::HighkeepCitadel, FLinearColor(0.76f, 0.22f, 0.26f, 1.f)) ]
+							+ SVerticalBox::Slot().AutoHeight()
+							[ BuildBiomePctRow(EChronicleBiome::AshCalderaCrypt, FLinearColor(0.88f, 0.42f, 0.16f, 1.f)) ]
+							+ SVerticalBox::Slot().AutoHeight()
+							[ BuildBiomePctRow(EChronicleBiome::CrystalGlacier,  FLinearColor(0.48f, 0.76f, 0.92f, 1.f)) ]
+
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(FMargin(0.f, 10.f, 0.f, 6.f))
 							[
-								SNew(SVerticalBox)
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(11))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+								.Text(LOCTEXT("LandmarksHdr", "LANDMARKS & FAST TRAVEL"))
+							]
 
-								+ SVerticalBox::Slot()
-								.AutoHeight()
-								.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+							+ SVerticalBox::Slot()
+							.FillHeight(1.f)
+							[
+								SNew(SScrollBox)
+								+ SScrollBox::Slot()
 								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(11))
-									.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
-									.Text(LOCTEXT("BiomeBreakdownHdr", "BIOME EXPLORATION"))
-								]
-
-								+ SVerticalBox::Slot().AutoHeight()
-								[ BuildBiomePctRow(EChronicleBiome::OakhavenValley,  FLinearColor(0.45f, 0.65f, 0.30f, 1.f)) ]
-								+ SVerticalBox::Slot().AutoHeight()
-								[ BuildBiomePctRow(EChronicleBiome::BlueLeafWoods,   FLinearColor(0.24f, 0.56f, 0.92f, 1.f)) ]
-								+ SVerticalBox::Slot().AutoHeight()
-								[ BuildBiomePctRow(EChronicleBiome::HighkeepCitadel, FLinearColor(0.84f, 0.28f, 0.32f, 1.f)) ]
-								+ SVerticalBox::Slot().AutoHeight()
-								[ BuildBiomePctRow(EChronicleBiome::AshCalderaCrypt, FLinearColor(0.95f, 0.44f, 0.14f, 1.f)) ]
-								+ SVerticalBox::Slot().AutoHeight()
-								[ BuildBiomePctRow(EChronicleBiome::CrystalGlacier,  FLinearColor(0.54f, 0.86f, 0.98f, 1.f)) ]
-
-								+ SVerticalBox::Slot()
-								.AutoHeight()
-								.Padding(FMargin(0.f, 10.f, 0.f, 6.f))
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(11))
-									.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-									.Text(LOCTEXT("LandmarksHdr", "LANDMARKS & FAST TRAVEL"))
-								]
-
-								+ SVerticalBox::Slot()
-								.FillHeight(1.f)
-								[
-									SNew(SScrollBox)
-									+ SScrollBox::Slot()
-									[
-										SAssignNew(MapLandmarksBox, SVerticalBox)
-									]
+									SAssignNew(MapLandmarksBox, SVerticalBox)
 								]
 							]
 						]
@@ -3951,9 +4983,9 @@ void SAetheriaChroniclesHUD::RebuildMapLandmarksList()
 		.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(Pin.bDiscovered ? ChroniclesHUDPalette::CardBg : ChroniclesHUDPalette::CardBgLocked)
-			.Padding(FMargin(8.f, 5.f))
+			.BorderImage(Pin.bDiscovered ? ChroniclesHUDPalette::ObsidianCardBrush() : ChroniclesHUDPalette::ObsidianCardLockedBrush())
+			.BorderBackgroundColor(FLinearColor::White)
+			.Padding(FMargin(9.f, 5.f))
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -3972,8 +5004,9 @@ void SAetheriaChroniclesHUD::RebuildMapLandmarksList()
 				.VAlign(VAlign_Center)
 				[
 					SNew(SButton)
+					.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
 					.Visibility((Pin.bDiscovered && Pin.bFastTravel) ? EVisibility::Visible : EVisibility::Collapsed)
-					.ContentPadding(FMargin(6.f, 2.f))
+					.ContentPadding(FMargin(8.f, 3.f))
 					.OnClicked_Lambda([WeakPC = OwnerPC, PinId]() -> FReply
 					{
 						if (AChroniclesPlayerController* StrongPC = WeakPC.Get())
@@ -3985,6 +5018,7 @@ void SAetheriaChroniclesHUD::RebuildMapLandmarksList()
 					[
 						SNew(STextBlock)
 						.Font(ChroniclesHUDPalette::FontBold(8))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 						.Text(LOCTEXT("TravelBtn", "Travel"))
 					]
 				]
@@ -4017,7 +5051,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildSkillTreeOverlay()
 		[
 			SNew(SBorder)
 			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(FLinearColor(BranchColors[i].R, BranchColors[i].G, BranchColors[i].B, 0.45f))
+			.BorderBackgroundColor(FLinearColor(BranchColors[i].R, BranchColors[i].G, BranchColors[i].B, 0.55f))
 			.Padding(FMargin(1.f))
 			[
 				SNew(SBorder)
@@ -4062,69 +5096,65 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildSkillTreeOverlay()
 		})
 		[
 			SNew(SBox)
-			.WidthOverride(1120.f)
-			.HeightOverride(660.f)
+			.WidthOverride(1140.f)
+			.HeightOverride(670.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-				.Padding(FMargin(1.5f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.96f))
+				.Padding(FMargin(24.f, 20.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-					.Padding(FMargin(20.f))
-					[
-						SNew(SVerticalBox)
+					SNew(SVerticalBox)
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Center)
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
-							.VAlign(VAlign_Center)
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(16))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Text_Lambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
+								const int32 Lv = Skills ? Skills->Level : 1;
+								const int32 SP = Skills ? Skills->UnspentSkillPoints : 0;
+								const int32 Invested = Skills ? Skills->GetTotalInvestedRanks() : 0;
+								return FText::FromString(FString::Printf(
+									TEXT("ARCHMAGE SKILL TREE  ·  LEVEL %d  ·  UNSPENT SKILL POINTS: %d  (%d Invested)"),
+									Lv, SP, Invested));
+							})
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+							.ContentPadding(FMargin(14.f, 5.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
+								return FReply::Handled();
+							})
 							[
 								SNew(STextBlock)
-								.Font(ChroniclesHUDPalette::FontBold(16))
-								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-								.Text_Lambda([WeakPC = OwnerPC]() -> FText
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									const USkillTreeComponent* Skills = Hero ? Hero->SkillTree.Get() : nullptr;
-									const int32 Lv = Skills ? Skills->Level : 1;
-									const int32 SP = Skills ? Skills->UnspentSkillPoints : 0;
-									const int32 Invested = Skills ? Skills->GetTotalInvestedRanks() : 0;
-									return FText::FromString(FString::Printf(
-										TEXT("ARCHMAGE SKILL TREE  ·  LEVEL %d  ·  UNSPENT SKILL POINTS: %d  (%d Invested)"),
-										Lv, SP, Invested));
-								})
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							[
-								SNew(SButton)
-								.ContentPadding(FMargin(12.f, 4.f))
-								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-								{
-									if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
-									return FReply::Handled();
-								})
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(10))
-									.Text(LOCTEXT("CloseSkillsBtn", "Close [K / Esc]"))
-								]
+								.Font(ChroniclesHUDPalette::FontBold(10))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Text(LOCTEXT("CloseSkillsBtn", "Close [K / Esc]"))
 							]
 						]
+					]
 
-						+ SVerticalBox::Slot()
-						.FillHeight(1.f)
-						[
-							ColumnsBox
-						]
+					+ SVerticalBox::Slot()
+					.FillHeight(1.f)
+					[
+						ColumnsBox
 					]
 				]
 			]
@@ -4144,6 +5174,22 @@ void SAetheriaChroniclesHUD::RebuildSkillTreeColumns()
 		ESkillBranch::BladeAndDrake
 	};
 
+	auto FindPrereqTitle = [Skills](FName PrereqId) -> FString
+	{
+		if (!Skills || PrereqId.IsNone())
+		{
+			return FString();
+		}
+		for (const FSkillNodeDef& Candidate : Skills->Nodes)
+		{
+			if (Candidate.NodeId == PrereqId)
+			{
+				return Candidate.Title.ToString();
+			}
+		}
+		return PrereqId.ToString();
+	};
+
 	for (int32 b = 0; b < 4; ++b)
 	{
 		if (!SkillBranchBoxes[b].IsValid())
@@ -4161,6 +5207,8 @@ void SAetheriaChroniclesHUD::RebuildSkillTreeColumns()
 		for (const FSkillNodeDef& Node : BranchNodes)
 		{
 			const FName NodeId = Node.NodeId;
+			const FName PrereqId = Node.PrerequisiteNodeId;
+			const FString PrereqTitle = FindPrereqTitle(PrereqId);
 			const int32 MaxRank = Node.MaxRank;
 			const int32 Tier = Node.Tier;
 
@@ -4169,9 +5217,9 @@ void SAetheriaChroniclesHUD::RebuildSkillTreeColumns()
 			.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
-				.Padding(FMargin(8.f, 7.f))
+				.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+				.BorderBackgroundColor(FLinearColor::White)
+				.Padding(FMargin(9.f, 7.f))
 				[
 					SNew(SVerticalBox)
 
@@ -4207,7 +5255,7 @@ void SAetheriaChroniclesHUD::RebuildSkillTreeColumns()
 
 					+ SVerticalBox::Slot()
 					.AutoHeight()
-					.Padding(FMargin(0.f, 3.f, 0.f, 6.f))
+					.Padding(FMargin(0.f, 3.f, 0.f, 4.f))
 					[
 						SNew(STextBlock)
 						.Font(ChroniclesHUDPalette::FontRegular(8))
@@ -4216,12 +5264,36 @@ void SAetheriaChroniclesHUD::RebuildSkillTreeColumns()
 						.Text(Node.Description)
 					]
 
+					// Clear Prerequisite Node Lock Hint for Locked Tier 2-4 Nodes
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(8))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextAmber)
+						.AutoWrapText(true)
+						.Visibility_Lambda([WeakPC = OwnerPC, PrereqId]() -> EVisibility
+						{
+							if (PrereqId.IsNone())
+							{
+								return EVisibility::Collapsed;
+							}
+							AChroniclesPlayerController* StrongPC = WeakPC.Get();
+							const AAetheriaHeroCharacter* H = StrongPC ? StrongPC->GetActiveHero() : nullptr;
+							const bool bMissingPrereq = (!H || !H->SkillTree || H->SkillTree->GetNodeRank(PrereqId) <= 0);
+							return bMissingPrereq ? EVisibility::Visible : EVisibility::Collapsed;
+						})
+						.Text(FText::FromString(FString::Printf(TEXT("Requires: %s (Rank 1+)"), *PrereqTitle)))
+					]
+
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.HAlign(HAlign_Right)
 					[
 						SNew(SButton)
-						.ContentPadding(FMargin(8.f, 3.f))
+						.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+						.ContentPadding(FMargin(10.f, 3.f))
 						.IsEnabled_Lambda([WeakPC = OwnerPC, NodeId]() -> bool
 						{
 							AChroniclesPlayerController* StrongPC = WeakPC.Get();
@@ -4246,12 +5318,29 @@ void SAetheriaChroniclesHUD::RebuildSkillTreeColumns()
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(9))
-							.Text_Lambda([WeakPC = OwnerPC, NodeId, MaxRank]() -> FText
+							.ColorAndOpacity_Lambda([WeakPC = OwnerPC, NodeId, PrereqId, MaxRank]() -> FSlateColor
 							{
 								AChroniclesPlayerController* StrongPC = WeakPC.Get();
 								const AAetheriaHeroCharacter* H = StrongPC ? StrongPC->GetActiveHero() : nullptr;
 								const int32 Rank = (H && H->SkillTree) ? H->SkillTree->GetNodeRank(NodeId) : 0;
-								return (Rank >= MaxRank) ? LOCTEXT("SkillMaxed", "MAXED") : LOCTEXT("SkillUpgrade", "+ Upgrade");
+								if (Rank >= MaxRank) return FSlateColor(ChroniclesHUDPalette::TextEmerald);
+								if (!PrereqId.IsNone() && (!H || !H->SkillTree || H->SkillTree->GetNodeRank(PrereqId) <= 0))
+								{
+									return FSlateColor(ChroniclesHUDPalette::TextSecondary);
+								}
+								return FSlateColor(ChroniclesHUDPalette::TextGold);
+							})
+							.Text_Lambda([WeakPC = OwnerPC, NodeId, PrereqId, MaxRank]() -> FText
+							{
+								AChroniclesPlayerController* StrongPC = WeakPC.Get();
+								const AAetheriaHeroCharacter* H = StrongPC ? StrongPC->GetActiveHero() : nullptr;
+								const int32 Rank = (H && H->SkillTree) ? H->SkillTree->GetNodeRank(NodeId) : 0;
+								if (Rank >= MaxRank) return LOCTEXT("SkillMaxed", "MAXED");
+								if (!PrereqId.IsNone() && (!H || !H->SkillTree || H->SkillTree->GetNodeRank(PrereqId) <= 0))
+								{
+									return LOCTEXT("SkillLockedPrereq", "Locked");
+								}
+								return LOCTEXT("SkillUpgrade", "+ Upgrade");
 							})
 						]
 					]
@@ -4275,61 +5364,57 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildQuestLogOverlay()
 		})
 		[
 			SNew(SBox)
-			.WidthOverride(860.f)
-			.HeightOverride(620.f)
+			.WidthOverride(880.f)
+			.HeightOverride(630.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-				.Padding(FMargin(1.5f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.96f))
+				.Padding(FMargin(24.f, 20.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-					.Padding(FMargin(20.f))
-					[
-						SNew(SVerticalBox)
+					SNew(SVerticalBox)
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Center)
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
-							.VAlign(VAlign_Center)
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(16))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Text(LOCTEXT("QuestChronicleHdr", "CHRONICLE OF AETHERIA  ·  6 STORY QUESTS"))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+							.ContentPadding(FMargin(14.f, 5.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
+								return FReply::Handled();
+							})
 							[
 								SNew(STextBlock)
-								.Font(ChroniclesHUDPalette::FontBold(16))
-								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-								.Text(LOCTEXT("QuestChronicleHdr", "CHRONICLE OF AETHERIA  ·  6 STORY QUESTS"))
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							[
-								SNew(SButton)
-								.ContentPadding(FMargin(12.f, 4.f))
-								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-								{
-									if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
-									return FReply::Handled();
-								})
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(10))
-									.Text(LOCTEXT("CloseQuestsBtn", "Close [J / Esc]"))
-								]
+								.Font(ChroniclesHUDPalette::FontBold(10))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Text(LOCTEXT("CloseQuestsBtn", "Close [J / Esc]"))
 							]
 						]
+					]
 
-						+ SVerticalBox::Slot()
-						.FillHeight(1.f)
+					+ SVerticalBox::Slot()
+					.FillHeight(1.f)
+					[
+						SNew(SScrollBox)
+						+ SScrollBox::Slot()
 						[
-							SNew(SScrollBox)
-							+ SScrollBox::Slot()
-							[
-								SAssignNew(QuestListBox, SVerticalBox)
-							]
+							SAssignNew(QuestListBox, SVerticalBox)
 						]
 					]
 				]
@@ -4369,8 +5454,8 @@ void SAetheriaChroniclesHUD::RebuildQuestList()
 		.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
+			.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+			.BorderBackgroundColor(FLinearColor::White)
 			.Padding(FMargin(14.f, 10.f))
 			[
 				SNew(SVerticalBox)
@@ -4455,6 +5540,7 @@ void SAetheriaChroniclesHUD::RebuildQuestList()
 					.AutoWidth()
 					[
 						SNew(SButton)
+						.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
 						.ContentPadding(FMargin(10.f, 3.f))
 						.OnClicked_Lambda([WeakPC = OwnerPC, QId]() -> FReply
 						{
@@ -4474,6 +5560,14 @@ void SAetheriaChroniclesHUD::RebuildQuestList()
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(9))
+							.ColorAndOpacity_Lambda([WeakPC = OwnerPC, QId]() -> FSlateColor
+							{
+								AChroniclesPlayerController* StrongPC = WeakPC.Get();
+								UGameInstance* G = StrongPC ? StrongPC->GetGameInstance() : nullptr;
+								const UQuestSubsystem* QS = G ? G->GetSubsystem<UQuestSubsystem>() : nullptr;
+								const bool bTracked = (QS && QS->GetTrackedQuestId() == QId);
+								return bTracked ? FSlateColor(ChroniclesHUDPalette::TextGold) : FSlateColor(ChroniclesHUDPalette::TextPrimary);
+							})
 							.Text_Lambda([WeakPC = OwnerPC, QId]() -> FText
 							{
 								AChroniclesPlayerController* StrongPC = WeakPC.Get();
@@ -4504,111 +5598,109 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGrimoireOverlay()
 		})
 		[
 			SNew(SBox)
-			.WidthOverride(940.f)
-			.HeightOverride(630.f)
+			.WidthOverride(960.f)
+			.HeightOverride(640.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineCyan)
-				.Padding(FMargin(1.5f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.96f))
+				.Padding(FMargin(24.f, 20.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-					.Padding(FMargin(20.f))
-					[
-						SNew(SVerticalBox)
+					SNew(SVerticalBox)
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Center)
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontBold(16))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Text_Lambda([WeakPC = OwnerPC]() -> FText
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
+								const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
+								const int32 Unlocked = Spells ? Spells->GetUnlockedSpellCount() : 0;
+								return FText::FromString(FString::Printf(
+									TEXT("INVOKER GRIMOIRE  ·  %d / 10 ARCHAIC SPELLS UNLOCKED"), Unlocked));
+							})
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+							.ContentPadding(FMargin(12.f, 5.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get())
+								{
+									if (AAetheriaHeroCharacter* H = PC->GetActiveHero())
+									{
+										if (H->SpellSystem)
+										{
+											H->SpellSystem->ToggleCastMode();
+										}
+									}
+								}
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(9))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+								.Text_Lambda([WeakPC = OwnerPC]() -> FText
+								{
+									AChroniclesPlayerController* PC = WeakPC.Get();
+									const AAetheriaHeroCharacter* H = PC ? PC->GetActiveHero() : nullptr;
+									const bool bInstant = (H && H->SpellSystem && H->SpellSystem->CastMode == EChronicleCastMode::InstantCombo);
+									return bInstant ? LOCTEXT("ModeInstant", "Mode: Instant Combo") : LOCTEXT("ModeClassic", "Mode: Classic Invoker");
+								})
+							]
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+							.ContentPadding(FMargin(14.f, 5.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(10))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Text(LOCTEXT("CloseGrimoireBtn", "Close [Tab / Esc]"))
+							]
+						]
+					]
+
+					+ SVerticalBox::Slot()
+					.FillHeight(1.f)
+					[
+						SNew(SScrollBox)
+						+ SScrollBox::Slot()
 						[
 							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot()
 							.FillWidth(1.f)
-							.VAlign(VAlign_Center)
-							[
-								SNew(STextBlock)
-								.Font(ChroniclesHUDPalette::FontBold(16))
-								.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
-								.Text_Lambda([WeakPC = OwnerPC]() -> FText
-								{
-									AChroniclesPlayerController* PC = WeakPC.Get();
-									const AAetheriaHeroCharacter* Hero = PC ? PC->GetActiveHero() : nullptr;
-									const USpellSystemComponent* Spells = Hero ? Hero->SpellSystem.Get() : nullptr;
-									const int32 Unlocked = Spells ? Spells->GetUnlockedSpellCount() : 0;
-									return FText::FromString(FString::Printf(
-										TEXT("INVOKER GRIMOIRE  ·  %d / 10 ARCHAIC SPELLS UNLOCKED"), Unlocked));
-								})
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
 							.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
 							[
-								SNew(SButton)
-								.ContentPadding(FMargin(10.f, 4.f))
-								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-								{
-									if (AChroniclesPlayerController* PC = WeakPC.Get())
-									{
-										if (AAetheriaHeroCharacter* H = PC->GetActiveHero())
-										{
-											if (H->SpellSystem)
-											{
-												H->SpellSystem->ToggleCastMode();
-											}
-										}
-									}
-									return FReply::Handled();
-								})
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(9))
-									.Text_Lambda([WeakPC = OwnerPC]() -> FText
-									{
-										AChroniclesPlayerController* PC = WeakPC.Get();
-										const AAetheriaHeroCharacter* H = PC ? PC->GetActiveHero() : nullptr;
-										const bool bInstant = (H && H->SpellSystem && H->SpellSystem->CastMode == EChronicleCastMode::InstantCombo);
-										return bInstant ? LOCTEXT("ModeInstant", "Mode: Instant Combo") : LOCTEXT("ModeClassic", "Mode: Classic Invoker");
-									})
-								]
+								SAssignNew(GrimoireLeftCol, SVerticalBox)
 							]
 							+ SHorizontalBox::Slot()
-							.AutoWidth()
+							.FillWidth(1.f)
 							[
-								SNew(SButton)
-								.ContentPadding(FMargin(12.f, 4.f))
-								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-								{
-									if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
-									return FReply::Handled();
-								})
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(10))
-									.Text(LOCTEXT("CloseGrimoireBtn", "Close [Tab / Esc]"))
-								]
-							]
-						]
-
-						+ SVerticalBox::Slot()
-						.FillHeight(1.f)
-						[
-							SNew(SScrollBox)
-							+ SScrollBox::Slot()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.f)
-								.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
-								[
-									SAssignNew(GrimoireLeftCol, SVerticalBox)
-								]
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.f)
-								[
-									SAssignNew(GrimoireRightCol, SVerticalBox)
-								]
+								SAssignNew(GrimoireRightCol, SVerticalBox)
 							]
 						]
 					]
@@ -4758,160 +5850,158 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildDialogueOverlay()
 		})
 		[
 			SNew(SBox)
-			.WidthOverride(740.f)
+			.WidthOverride(760.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-				.Padding(FMargin(1.5f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.96f))
+				.Padding(FMargin(26.f, 20.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-					.Padding(FMargin(22.f, 18.f))
-					[
-						SNew(SVerticalBox)
+					SNew(SVerticalBox)
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(15))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text_Lambda([WeakPC = OwnerPC]() -> FText
+						{
+							AChroniclesPlayerController* PC = WeakPC.Get();
+							const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
+							if (!NPC) return FText::GetEmpty();
+							return FText::FromString(FString::Printf(TEXT("%s  —  %s"),
+								*NPC->DisplayName.ToString(), *NPC->RoleTitle.ToString()));
+						})
+					]
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 4.f, 0.f, 10.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(11))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
+						.Text_Lambda([WeakPC = OwnerPC]() -> FText
+						{
+							AChroniclesPlayerController* PC = WeakPC.Get();
+							const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
+							UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+							const UQuestSubsystem* QS = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
+							const FQuestDef* Q = ChroniclesHUDPalette::ResolveQuestForNPC(QS, NPC);
+							if (!Q) return FText::GetEmpty();
+							return FText::FromString(FString::Printf(TEXT("Quest: %s  [%s]"),
+								*Q->Title.ToString(), *GetQuestStateLabel(Q->State)));
+						})
+					]
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 14.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontRegular(11))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+						.AutoWrapText(true)
+						.Text_Lambda([WeakPC = OwnerPC]() -> FText
+						{
+							AChroniclesPlayerController* PC = WeakPC.Get();
+							const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
+							UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+							const UQuestSubsystem* QS = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
+							const FQuestDef* Q = ChroniclesHUDPalette::ResolveQuestForNPC(QS, NPC);
+							if (!Q) return LOCTEXT("DefaultGreeting", "May the embers light your road across Aetheria, traveler.");
+							if (Q->State == EQuestState::ReadyToTurnIn || Q->State == EQuestState::Completed)
+							{
+								return Q->TurnInDialogue;
+							}
+							return Q->OfferDialogue;
+						})
+					]
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Center)
 						[
 							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontBold(15))
+							.Font(ChroniclesHUDPalette::FontBold(10))
 							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 							.Text_Lambda([WeakPC = OwnerPC]() -> FText
 							{
 								AChroniclesPlayerController* PC = WeakPC.Get();
 								const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
-								if (!NPC) return FText::GetEmpty();
-								return FText::FromString(FString::Printf(TEXT("%s  —  %s"),
-									*NPC->DisplayName.ToString(), *NPC->RoleTitle.ToString()));
-							})
-						]
-
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 4.f, 0.f, 10.f))
-						[
-							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontBold(11))
-							.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
-							.Text_Lambda([WeakPC = OwnerPC]() -> FText
-							{
-								AChroniclesPlayerController* PC = WeakPC.Get();
-								const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
 								UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
 								const UQuestSubsystem* QS = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
-								const FQuestDef* Q = (NPC && QS) ? QS->FindQuest(NPC->QuestId) : nullptr;
+								const FQuestDef* Q = ChroniclesHUDPalette::ResolveQuestForNPC(QS, NPC);
 								if (!Q) return FText::GetEmpty();
-								return FText::FromString(FString::Printf(TEXT("Quest: %s  [%s]"),
-									*Q->Title.ToString(), *GetQuestStateLabel(Q->State)));
+
+								FString Extra;
+								if (Q->UnlockOrbReward == EChronicleOrb::Exort) Extra = TEXT("  ·  UNLOCKS EXORT");
+								else if (Q->UnlockOrbReward == EChronicleOrb::Wex) Extra = TEXT("  ·  UNLOCKS WEX");
+								else if (Q->UnlockOrbReward == EChronicleOrb::Quas) Extra = TEXT("  ·  UNLOCKS QUAS");
+								else if (Q->bUnlocksDragonMount) Extra = TEXT("  ·  UNLOCKS DRAGON MOUNT");
+
+								return FText::FromString(FString::Printf(TEXT("Reward: %d Gold  ·  %d XP%s"),
+									Q->RewardGold, Q->RewardXP, *Extra));
 							})
 						]
-
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 14.f))
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
 						[
-							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontRegular(11))
-							.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
-							.AutoWrapText(true)
-							.Text_Lambda([WeakPC = OwnerPC]() -> FText
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+							.ContentPadding(FMargin(16.f, 6.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
 							{
-								AChroniclesPlayerController* PC = WeakPC.Get();
-								const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
-								UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
-								const UQuestSubsystem* QS = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
-								const FQuestDef* Q = (NPC && QS) ? QS->FindQuest(NPC->QuestId) : nullptr;
-								if (!Q) return LOCTEXT("DefaultGreeting", "May the embers light your road across Aetheria, traveler.");
-								if (Q->State == EQuestState::ReadyToTurnIn || Q->State == EQuestState::Completed)
+								if (AChroniclesPlayerController* PC = WeakPC.Get())
 								{
-									return Q->TurnInDialogue;
+									PC->HandleDialoguePrimaryAction();
 								}
-								return Q->OfferDialogue;
+								return FReply::Handled();
 							})
-						]
-
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
-							.VAlign(VAlign_Center)
 							[
 								SNew(STextBlock)
 								.Font(ChroniclesHUDPalette::FontBold(10))
-								.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
 								.Text_Lambda([WeakPC = OwnerPC]() -> FText
 								{
 									AChroniclesPlayerController* PC = WeakPC.Get();
 									const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
 									UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
 									const UQuestSubsystem* QS = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
-									const FQuestDef* Q = (NPC && QS) ? QS->FindQuest(NPC->QuestId) : nullptr;
-									if (!Q) return FText::GetEmpty();
-
-									FString Extra;
-									if (Q->UnlockOrbReward == EChronicleOrb::Exort) Extra = TEXT("  ·  UNLOCKS EXORT");
-									else if (Q->UnlockOrbReward == EChronicleOrb::Wex) Extra = TEXT("  ·  UNLOCKS WEX");
-									else if (Q->UnlockOrbReward == EChronicleOrb::Quas) Extra = TEXT("  ·  UNLOCKS QUAS");
-									else if (Q->bUnlocksDragonMount) Extra = TEXT("  ·  UNLOCKS DRAGON MOUNT");
-
-									return FText::FromString(FString::Printf(TEXT("Reward: %d Gold  ·  %d XP%s"),
-										Q->RewardGold, Q->RewardXP, *Extra));
-								})
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
-							[
-								SNew(SButton)
-								.ContentPadding(FMargin(14.f, 6.f))
-								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-								{
-									if (AChroniclesPlayerController* PC = WeakPC.Get())
+									const FQuestDef* Q = ChroniclesHUDPalette::ResolveQuestForNPC(QS, NPC);
+									if (!Q) return LOCTEXT("FarewellBtn", "Farewell");
+									switch (Q->State)
 									{
-										PC->HandleDialoguePrimaryAction();
+									case EQuestState::Available:     return LOCTEXT("AcceptQuestBtn", "Accept Quest");
+									case EQuestState::ReadyToTurnIn: return LOCTEXT("ClaimRewardBtn", "Claim Reward & Complete");
+									case EQuestState::Active:        return LOCTEXT("TrackObjBtn", "Track Objective");
+									default:                         return LOCTEXT("DoneQuestBtn", "Farewell");
 									}
-									return FReply::Handled();
 								})
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(10))
-									.Text_Lambda([WeakPC = OwnerPC]() -> FText
-									{
-										AChroniclesPlayerController* PC = WeakPC.Get();
-										const AAetheriaNPCActor* NPC = PC ? PC->GetDialogueNPC() : nullptr;
-										UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
-										const UQuestSubsystem* QS = GI ? GI->GetSubsystem<UQuestSubsystem>() : nullptr;
-										const FQuestDef* Q = (NPC && QS) ? QS->FindQuest(NPC->QuestId) : nullptr;
-										if (!Q) return LOCTEXT("FarewellBtn", "Farewell");
-										switch (Q->State)
-										{
-										case EQuestState::Available:     return LOCTEXT("AcceptQuestBtn", "Accept Quest");
-										case EQuestState::ReadyToTurnIn: return LOCTEXT("ClaimRewardBtn", "Claim Reward & Complete");
-										case EQuestState::Active:        return LOCTEXT("TrackObjBtn", "Track Objective");
-										default:                         return LOCTEXT("DoneQuestBtn", "Farewell");
-										}
-									})
-								]
 							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+							.ContentPadding(FMargin(14.f, 6.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
+								return FReply::Handled();
+							})
 							[
-								SNew(SButton)
-								.ContentPadding(FMargin(12.f, 6.f))
-								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-								{
-									if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
-									return FReply::Handled();
-								})
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontRegular(10))
-									.Text(LOCTEXT("CloseDlgBtn", "Leave [Esc]"))
-								]
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontRegular(10))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Text(LOCTEXT("CloseDlgBtn", "Leave [Esc]"))
 							]
 						]
 					]
@@ -4922,6 +6012,116 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildDialogueOverlay()
 
 TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 {
+	auto MakeDLSSModeButton = [WeakPC = OwnerPC](int32 ModeIdx, const FText& LabelText) -> TSharedRef<SWidget>
+	{
+		return SNew(SBorder)
+			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+			.BorderBackgroundColor_Lambda([WeakPC, ModeIdx]() -> FSlateColor
+			{
+				AChroniclesPlayerController* PC = WeakPC.Get();
+				UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+				const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+				const bool bActive = (RTXSub && RTXSub->GetDLSSQualityMode() == ModeIdx);
+				return bActive ? FSlateColor(ChroniclesHUDPalette::HairlineGold) : FSlateColor(ChroniclesHUDPalette::HairlineBronze);
+			})
+			.Padding(FMargin(1.5f))
+			[
+				SNew(SButton)
+				.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+				.ContentPadding(FMargin(10.f, 6.f))
+				.HAlign(HAlign_Center)
+				.OnClicked_Lambda([WeakPC, ModeIdx]() -> FReply
+				{
+					if (AChroniclesPlayerController* PC = WeakPC.Get())
+					{
+						if (UGameInstance* GI = PC->GetGameInstance())
+						{
+							if (UGraphicsRTXSubsystem* RTXSub = GI->GetSubsystem<UGraphicsRTXSubsystem>())
+							{
+								RTXSub->SetDLSSQualityMode(ModeIdx);
+								PC->PushToastMessage(FString::Printf(TEXT("Upscaler Mode: %s"), *RTXSub->GetDLSSModeLabel()), 3.0f);
+							}
+						}
+					}
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontBold(9))
+					.ColorAndOpacity_Lambda([WeakPC, ModeIdx]() -> FSlateColor
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+						const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+						const bool bActive = (RTXSub && RTXSub->GetDLSSQualityMode() == ModeIdx);
+						return bActive ? FSlateColor(ChroniclesHUDPalette::TextGold) : FSlateColor(ChroniclesHUDPalette::TextPrimary);
+					})
+					.Text(LabelText)
+				]
+			];
+	};
+
+	auto MakeRTXFeatureToggle = [WeakPC = OwnerPC](
+		const FString& FeatureName,
+		TFunction<bool(const UGraphicsRTXSubsystem*)> GetterFn,
+		TFunction<void(UGraphicsRTXSubsystem*, bool)> SetterFn) -> TSharedRef<SWidget>
+	{
+		return SNew(SBorder)
+			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+			.BorderBackgroundColor_Lambda([WeakPC, GetterFn]() -> FSlateColor
+			{
+				AChroniclesPlayerController* PC = WeakPC.Get();
+				UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+				const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+				const bool bOn = (RTXSub && GetterFn(RTXSub));
+				return bOn ? FSlateColor(ChroniclesHUDPalette::TextEmerald) : FSlateColor(ChroniclesHUDPalette::HairlineBronze);
+			})
+			.Padding(FMargin(1.5f))
+			[
+				SNew(SButton)
+				.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+				.ContentPadding(FMargin(10.f, 7.f))
+				.HAlign(HAlign_Center)
+				.OnClicked_Lambda([WeakPC, FeatureName, GetterFn, SetterFn]() -> FReply
+				{
+					if (AChroniclesPlayerController* PC = WeakPC.Get())
+					{
+						if (UGameInstance* GI = PC->GetGameInstance())
+						{
+							if (UGraphicsRTXSubsystem* RTXSub = GI->GetSubsystem<UGraphicsRTXSubsystem>())
+							{
+								const bool bWantOn = !GetterFn(RTXSub);
+								SetterFn(RTXSub, bWantOn);
+								const bool bActualOn = GetterFn(RTXSub);
+								PC->PushToastMessage(FString::Printf(TEXT("%s: %s"), *FeatureName, bActualOn ? TEXT("ENABLED") : TEXT("DISABLED")), 3.0f);
+							}
+						}
+					}
+					return FReply::Handled();
+				})
+				[
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontBold(9))
+					.ColorAndOpacity_Lambda([WeakPC, GetterFn]() -> FSlateColor
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+						const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+						const bool bOn = (RTXSub && GetterFn(RTXSub));
+						return bOn ? FSlateColor(ChroniclesHUDPalette::TextEmerald) : FSlateColor(ChroniclesHUDPalette::TextSecondary);
+					})
+					.Text_Lambda([WeakPC, FeatureName, GetterFn]() -> FText
+					{
+						AChroniclesPlayerController* PC = WeakPC.Get();
+						UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+						const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+						const bool bOn = (RTXSub && GetterFn(RTXSub));
+						return FText::FromString(FString::Printf(TEXT("%s: %s"), *FeatureName, bOn ? TEXT("ON") : TEXT("OFF")));
+					})
+				]
+			];
+	};
+
 	return SNew(SBorder)
 		.BorderImage(ChroniclesHUDPalette::WhiteBrush())
 		.BorderBackgroundColor(ChroniclesHUDPalette::ModalScrim)
@@ -4934,58 +6134,62 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 		})
 		[
 			SNew(SBox)
-			.WidthOverride(640.f)
+			.WidthOverride(740.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineCyan)
-				.Padding(FMargin(1.5f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.97f))
+				.Padding(FMargin(26.f, 22.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-					.Padding(FMargin(22.f))
+					SNew(SVerticalBox)
+
+					// Header
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
 					[
-						SNew(SVerticalBox)
-
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
-							.VAlign(VAlign_Center)
-							[
-								SNew(STextBlock)
-								.Font(ChroniclesHUDPalette::FontBold(15))
-								.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
-								.Text(LOCTEXT("RTXPanelHdr", "RTX · DLSS · STREAMING TELEMETRY"))
-							]
-							+ SHorizontalBox::Slot()
-							.AutoWidth()
-							[
-								SNew(SButton)
-								.ContentPadding(FMargin(10.f, 4.f))
-								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
-								{
-									if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
-									return FReply::Handled();
-								})
-								[
-									SNew(STextBlock)
-									.Font(ChroniclesHUDPalette::FontBold(10))
-									.Text(LOCTEXT("CloseRTXBtn", "Close [F10 / Esc]"))
-								]
-							]
-						]
-
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 14.f))
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.VAlign(VAlign_Center)
 						[
 							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontRegular(11))
+							.Font(ChroniclesHUDPalette::FontBold(16))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+							.Text(LOCTEXT("RTXPanelHdr", "RTX HWRT  ·  NVIDIA DLSS 4.5  ·  TELEMETRY"))
+						]
+						+ SHorizontalBox::Slot()
+						.AutoWidth()
+						[
+							SNew(SButton)
+							.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+							.ContentPadding(FMargin(14.f, 5.f))
+							.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
+							{
+								if (AChroniclesPlayerController* PC = WeakPC.Get()) { PC->CloseAllOverlays(); }
+								return FReply::Handled();
+							})
+							[
+								SNew(STextBlock)
+								.Font(ChroniclesHUDPalette::FontBold(10))
+								.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+								.Text(LOCTEXT("CloseRTXBtn", "Close [F10 / Esc]"))
+							]
+						]
+					]
+
+					// Live Hardware & DLSS 4.5 Telemetry Card
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 14.f))
+					[
+						SNew(SBorder)
+						.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+						.BorderBackgroundColor(FLinearColor::White)
+						.Padding(FMargin(14.f, 10.f))
+						[
+							SNew(STextBlock)
+							.Font(ChroniclesHUDPalette::FontRegular(10))
 							.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
 							.AutoWrapText(true)
 							.Text_Lambda([WeakPC = OwnerPC]() -> FText
@@ -5001,28 +6205,56 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 									: TEXT("Classic Performance (Simplified Non-RTX Fallback)");
 
 								return FText::FromString(FString::Printf(
-									TEXT("GPU Adapter: %s\nActive Render Tier: %s\nHardware Ray Tracing Supported: %s  |  Active: %s\nNVIDIA DLSS Detected: %s  |  Active: %s  |  Reflex: %s\nTexture Streaming Pool: %d MB (Frustum & Proximity Priority)\nStatus: %s"),
+									TEXT("GPU Adapter: %s\nActive Render Tier: %s\nHardware Ray Tracing: Supported=%s  |  Active=%s\nNVIDIA DLSS 4.5: %s  (Plugin=%s, Active=%s)\nRay Reconstruction: %s  |  Frame Generation: %s  |  NVIDIA Reflex: %s\nTexture Streaming Pool: %d MB (Frustum & Proximity Priority)\nBanner: %s"),
 									*Tel.GPUAdapterName,
 									TierLabel,
 									Tel.bHardwareRTXSupported ? TEXT("YES") : TEXT("NO"),
-									Tel.bHardwareRTXActive ? TEXT("YES") : TEXT("NO"),
-									Tel.bDLSSPluginDetected ? TEXT("YES") : TEXT("NO (Using TSR)"),
+									Tel.bHardwareRTXActive ? TEXT("ON") : TEXT("OFF"),
+									*RTXSub->GetDLSSModeLabel(),
+									Tel.bDLSSPluginDetected ? TEXT("YES") : TEXT("TSR Fallback"),
 									Tel.bDLSSActive ? TEXT("ON") : TEXT("OFF"),
-									Tel.bReflexActive ? TEXT("ON") : TEXT("OFF"),
+									RTXSub->IsDLSSRayReconstructionEnabled() ? TEXT("ON") : TEXT("OFF"),
+									RTXSub->IsDLSSFrameGenEnabled() ? TEXT("ON") : TEXT("OFF"),
+									RTXSub->IsReflexEnabled() ? TEXT("ON") : TEXT("OFF"),
 									Tel.TexturePoolMB,
 									*Tel.SummaryBanner));
 							})
 						]
+					]
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
+					// Section 1: Render Tier
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 6.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(10))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text(LOCTEXT("RTXTierSecHdr", "RENDER TIER"))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						.Padding(FMargin(0.f, 0.f, 8.f, 0.f))
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
-							.Padding(FMargin(0.f, 0.f, 10.f, 0.f))
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+							.BorderBackgroundColor_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+								const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+								const bool bActive = (RTXSub && RTXSub->GetTelemetry().ActiveTier == EChronicleRenderTier::CrimsonRTXUltra);
+								return bActive ? FSlateColor(ChroniclesHUDPalette::HairlineGold) : FSlateColor(ChroniclesHUDPalette::HairlineBronze);
+							})
+							.Padding(FMargin(1.5f))
 							[
 								SNew(SButton)
+								.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
 								.ContentPadding(FMargin(12.f, 8.f))
 								.HAlign(HAlign_Center)
 								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
@@ -5034,7 +6266,15 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 											if (UGraphicsRTXSubsystem* RTXSub = GI->GetSubsystem<UGraphicsRTXSubsystem>())
 											{
 												RTXSub->ApplyRenderTier(EChronicleRenderTier::CrimsonRTXUltra);
-												PC->PushToastMessage(TEXT("Applied Render Tier: Crimson RTX Ultra"), 3.2f);
+												const EChronicleRenderTier ActualTier = RTXSub->GetTelemetry().ActiveTier;
+												if (ActualTier == EChronicleRenderTier::CrimsonRTXUltra)
+												{
+													PC->PushToastMessage(TEXT("Active Render Tier: Crimson RTX Ultra (HWRT + Lumen)"), 3.2f);
+												}
+												else
+												{
+													PC->PushToastMessage(TEXT("GPU lacks Hardware RTX — Remaining on Classic Performance Mode"), 3.6f);
+												}
 											}
 										}
 									}
@@ -5043,13 +6283,28 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 								[
 									SNew(STextBlock)
 									.Font(ChroniclesHUDPalette::FontBold(10))
-									.Text(LOCTEXT("ApplyRTXBtn", "Enable Crimson RTX Ultra"))
+									.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+									.Text(LOCTEXT("ApplyRTXBtn", "Crimson RTX Ultra"))
 								]
 							]
-							+ SHorizontalBox::Slot()
-							.FillWidth(1.f)
+						]
+						+ SHorizontalBox::Slot()
+						.FillWidth(1.f)
+						[
+							SNew(SBorder)
+							.BorderImage(ChroniclesHUDPalette::WhiteBrush())
+							.BorderBackgroundColor_Lambda([WeakPC = OwnerPC]() -> FSlateColor
+							{
+								AChroniclesPlayerController* PC = WeakPC.Get();
+								UGameInstance* GI = PC ? PC->GetGameInstance() : nullptr;
+								const UGraphicsRTXSubsystem* RTXSub = GI ? GI->GetSubsystem<UGraphicsRTXSubsystem>() : nullptr;
+								const bool bActive = (RTXSub && RTXSub->GetTelemetry().ActiveTier == EChronicleRenderTier::ClassicPerformance);
+								return bActive ? FSlateColor(ChroniclesHUDPalette::HairlineGold) : FSlateColor(ChroniclesHUDPalette::HairlineBronze);
+							})
+							.Padding(FMargin(1.5f))
 							[
 								SNew(SButton)
+								.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
 								.ContentPadding(FMargin(12.f, 8.f))
 								.HAlign(HAlign_Center)
 								.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
@@ -5061,7 +6316,12 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 											if (UGraphicsRTXSubsystem* RTXSub = GI->GetSubsystem<UGraphicsRTXSubsystem>())
 											{
 												RTXSub->ApplyRenderTier(EChronicleRenderTier::ClassicPerformance);
-												PC->PushToastMessage(TEXT("Applied Render Tier: Classic Performance Mode"), 3.2f);
+												const EChronicleRenderTier ActualTier = RTXSub->GetTelemetry().ActiveTier;
+												PC->PushToastMessage(
+													(ActualTier == EChronicleRenderTier::ClassicPerformance)
+														? TEXT("Active Render Tier: Classic Performance Mode")
+														: TEXT("Active Render Tier: Crimson RTX Ultra"),
+													3.2f);
 											}
 										}
 									}
@@ -5070,9 +6330,72 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 								[
 									SNew(STextBlock)
 									.Font(ChroniclesHUDPalette::FontBold(10))
-									.Text(LOCTEXT("ApplyClassicBtn", "Enable Classic Performance"))
+									.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+									.Text(LOCTEXT("ApplyClassicBtn", "Classic Performance"))
 								]
 							]
+						]
+					]
+
+					// Section 2: NVIDIA DLSS 4.5 Quality Mode
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 6.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(10))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text(LOCTEXT("DLSSModeSecHdr", "NVIDIA DLSS 4.5 SUPER RESOLUTION MODE"))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 12.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(0.f, 0.f, 6.f, 0.f))
+						[ MakeDLSSModeButton(0, LOCTEXT("DLSSPerfBtn", "Performance")) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(3.f, 0.f, 3.f, 0.f))
+						[ MakeDLSSModeButton(1, LOCTEXT("DLSSBalBtn", "Balanced")) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(3.f, 0.f, 3.f, 0.f))
+						[ MakeDLSSModeButton(2, LOCTEXT("DLSSQualBtn", "Quality")) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(6.f, 0.f, 0.f, 0.f))
+						[ MakeDLSSModeButton(3, LOCTEXT("DLSSDLAABtn", "DLAA")) ]
+					]
+
+					// Section 3: RTX Neural Features (Ray Reconstruction / Frame Gen / Reflex)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 6.f))
+					[
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(10))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
+						.Text(LOCTEXT("RTXFeaturesSecHdr", "RTX FEATURES & LOW LATENCY"))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(0.f, 0.f, 6.f, 0.f))
+						[
+							MakeRTXFeatureToggle(
+								TEXT("Ray Reconstruction"),
+								[](const UGraphicsRTXSubsystem* S) { return S->IsDLSSRayReconstructionEnabled(); },
+								[](UGraphicsRTXSubsystem* S, bool bOn) { S->SetDLSSRayReconstructionEnabled(bOn); })
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(3.f, 0.f, 3.f, 0.f))
+						[
+							MakeRTXFeatureToggle(
+								TEXT("Frame Generation"),
+								[](const UGraphicsRTXSubsystem* S) { return S->IsDLSSFrameGenEnabled(); },
+								[](UGraphicsRTXSubsystem* S, bool bOn) { S->SetDLSSFrameGenEnabled(bOn); })
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(6.f, 0.f, 0.f, 0.f))
+						[
+							MakeRTXFeatureToggle(
+								TEXT("NVIDIA Reflex"),
+								[](const UGraphicsRTXSubsystem* S) { return S->IsReflexEnabled(); },
+								[](UGraphicsRTXSubsystem* S, bool bOn) { S->SetReflexEnabled(bOn); })
 						]
 					]
 				]
@@ -5082,24 +6405,29 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGraphicsRTXOverlay()
 
 TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildHeroCustomizerOverlay()
 {
-	const FLinearColor StudioGlassBg(0.031f, 0.035f, 0.059f, 0.86f);
+	const FLinearColor StudioObsidianTint(1.f, 1.f, 1.f, 0.86f);
 	TWeakPtr<SAetheriaChroniclesHUD> WeakHUD = DoesSharedInstanceExist()
 		? TWeakPtr<SAetheriaChroniclesHUD>(SharedThis(this))
 		: TWeakPtr<SAetheriaChroniclesHUD>();
 
-	auto MakeStudioCamBtn = [WeakPC = OwnerPC](const FText& Label, TFunction<void(AChroniclesPlayerController*)> OnClick, TFunction<bool(const AChroniclesPlayerController*)> IsActive = nullptr) -> TSharedRef<SWidget>
+	auto MakeStudioCamBtn = [WeakPC = OwnerPC](const FText& Label, TFunction<void(AChroniclesPlayerController*)> OnClick, TFunction<bool(const AChroniclesPlayerController*)> IsActive = nullptr, bool bIsPrimaryCrimson = false) -> TSharedRef<SWidget>
 	{
 		return SNew(SBorder)
 			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor_Lambda([WeakPC, IsActive]() -> FSlateColor
+			.BorderBackgroundColor_Lambda([WeakPC, IsActive, bIsPrimaryCrimson]() -> FSlateColor
 			{
+				if (bIsPrimaryCrimson)
+				{
+					return FSlateColor(ChroniclesHUDPalette::HairlineGold);
+				}
 				const AChroniclesPlayerController* PC = WeakPC.Get();
 				const bool bHot = (PC && IsActive && IsActive(PC));
-				return bHot ? FSlateColor(ChroniclesHUDPalette::HairlineCyan) : FSlateColor(ChroniclesHUDPalette::HairlineGold);
+				return bHot ? FSlateColor(ChroniclesHUDPalette::HairlineGold) : FSlateColor(ChroniclesHUDPalette::HairlineBronze);
 			})
 			.Padding(FMargin(1.f))
 			[
 				SNew(SButton)
+				.ButtonStyle(bIsPrimaryCrimson ? &ChroniclesHUDPalette::CrimsonButtonStyle() : &ChroniclesHUDPalette::StoneButtonStyle())
 				.ContentPadding(FMargin(10.f, 4.f))
 				.OnClicked_Lambda([WeakPC, OnClick]() -> FReply
 				{
@@ -5112,11 +6440,15 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildHeroCustomizerOverlay()
 				[
 					SNew(STextBlock)
 					.Font(ChroniclesHUDPalette::FontBold(9))
-					.ColorAndOpacity_Lambda([WeakPC, IsActive]() -> FSlateColor
+					.ColorAndOpacity_Lambda([WeakPC, IsActive, bIsPrimaryCrimson]() -> FSlateColor
 					{
+						if (bIsPrimaryCrimson)
+						{
+							return FSlateColor(ChroniclesHUDPalette::TextPrimary);
+						}
 						const AChroniclesPlayerController* PC = WeakPC.Get();
 						const bool bHot = (PC && IsActive && IsActive(PC));
-						return bHot ? FSlateColor(ChroniclesHUDPalette::TextCyan) : FSlateColor(ChroniclesHUDPalette::TextPrimary);
+						return bHot ? FSlateColor(ChroniclesHUDPalette::TextGold) : FSlateColor(ChroniclesHUDPalette::TextPrimary);
 					})
 					.Text(Label)
 				]
@@ -5131,12 +6463,13 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildHeroCustomizerOverlay()
 			{
 				const TSharedPtr<SAetheriaChroniclesHUD> HUD = WeakHUD.Pin();
 				return (HUD && HUD->CreatorActiveTab == TabIndex)
-					? FSlateColor(ChroniclesHUDPalette::HairlineCyan)
-					: FSlateColor(ChroniclesHUDPalette::OrbLocked);
+					? FSlateColor(ChroniclesHUDPalette::HairlineGold)
+					: FSlateColor(ChroniclesHUDPalette::HairlineBronze);
 			})
-			.Padding(FMargin(1.f))
+			.Padding(FMargin(1.5f))
 			[
 				SNew(SButton)
+				.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
 				.ContentPadding(FMargin(8.f, 5.f))
 				.HAlign(HAlign_Center)
 				.OnClicked_Lambda([WeakHUD, TabIndex]() -> FReply
@@ -5155,7 +6488,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildHeroCustomizerOverlay()
 					{
 						const TSharedPtr<SAetheriaChroniclesHUD> HUD = WeakHUD.Pin();
 						return (HUD && HUD->CreatorActiveTab == TabIndex)
-							? FSlateColor(ChroniclesHUDPalette::TextCyan)
+							? FSlateColor(ChroniclesHUDPalette::TextGold)
 							: FSlateColor(ChroniclesHUDPalette::TextSecondary);
 					})
 					.Text(TabLabel)
@@ -5172,167 +6505,149 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildHeroCustomizerOverlay()
 				: EVisibility::Collapsed;
 		})
 
-		// --- Top-Center Sleek Studio Camera Control Bar (Center 42%+ stays open for 3D Hero!) ---
+		// --- Top-Center Carved Obsidian Studio Camera Control Bar (Center 42%+ stays open for 3D Hero!) ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Top)
 		.Padding(FMargin(0.f, 14.f, 0.f, 0.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-			.Padding(FMargin(1.5f))
+			.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+			.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.90f))
+			.Padding(FMargin(14.f, 8.f))
 			[
-				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(StudioGlassBg)
-				.Padding(FMargin(12.f, 7.f))
+				SNew(SHorizontalBox)
+
+				+ SHorizontalBox::Slot()
+				.AutoWidth()
+				.VAlign(VAlign_Center)
+				.Padding(FMargin(0.f, 0.f, 10.f, 0.f))
 				[
-					SNew(SHorizontalBox)
+					SNew(STextBlock)
+					.Font(ChroniclesHUDPalette::FontBold(11))
+					.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+					.Text(LOCTEXT("CreatorStudioTitle", "HERO CREATOR"))
+				]
 
-					+ SHorizontalBox::Slot()
-					.AutoWidth()
-					.VAlign(VAlign_Center)
-					.Padding(FMargin(0.f, 0.f, 10.f, 0.f))
-					[
-						SNew(STextBlock)
-						.Font(ChroniclesHUDPalette::FontBold(10))
-						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-						.Text(LOCTEXT("CreatorStudioTitle", "HERO CREATOR"))
-					]
-
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 5.f, 0.f))
-					[
-						MakeStudioCamBtn(LOCTEXT("CamRotLeft", "< Rotate -30°"), [](AChroniclesPlayerController* PC) { PC->AdjustCreatorCameraOrbit(-30.f); })
-					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 10.f, 0.f))
-					[
-						MakeStudioCamBtn(LOCTEXT("CamRotRight", "Rotate +30° >"), [](AChroniclesPlayerController* PC) { PC->AdjustCreatorCameraOrbit(30.f); })
-					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 5.f, 0.f))
-					[
-						MakeStudioCamBtn(LOCTEXT("CamZoomFull", "Full Body"),
-							[](AChroniclesPlayerController* PC) { PC->SetCreatorCameraZoom(0); },
-							[](const AChroniclesPlayerController* PC) { return PC->GetCreatorCameraZoom() == 0; })
-					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 5.f, 0.f))
-					[
-						MakeStudioCamBtn(LOCTEXT("CamZoomTorso", "Torso"),
-							[](AChroniclesPlayerController* PC) { PC->SetCreatorCameraZoom(1); },
-							[](const AChroniclesPlayerController* PC) { return PC->GetCreatorCameraZoom() == 1; })
-					]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 10.f, 0.f))
-					[
-						MakeStudioCamBtn(LOCTEXT("CamZoomFace", "Face"),
-							[](AChroniclesPlayerController* PC) { PC->SetCreatorCameraZoom(2); },
-							[](const AChroniclesPlayerController* PC) { return PC->GetCreatorCameraZoom() == 2; })
-					]
-					+ SHorizontalBox::Slot().AutoWidth()
-					[
-						MakeStudioCamBtn(LOCTEXT("CamCloseBtn", "Close [C/Esc]"), [](AChroniclesPlayerController* PC) { PC->CloseAllOverlays(); })
-					]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 5.f, 0.f))
+				[
+					MakeStudioCamBtn(LOCTEXT("CamRotLeft", "< Rotate -30°"), [](AChroniclesPlayerController* PC) { PC->AdjustCreatorCameraOrbit(-30.f); })
+				]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 10.f, 0.f))
+				[
+					MakeStudioCamBtn(LOCTEXT("CamRotRight", "Rotate +30° >"), [](AChroniclesPlayerController* PC) { PC->AdjustCreatorCameraOrbit(30.f); })
+				]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 5.f, 0.f))
+				[
+					MakeStudioCamBtn(LOCTEXT("CamZoomFull", "Full Body"),
+						[](AChroniclesPlayerController* PC) { PC->SetCreatorCameraZoom(0); },
+						[](const AChroniclesPlayerController* PC) { return PC->GetCreatorCameraZoom() == 0; })
+				]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 5.f, 0.f))
+				[
+					MakeStudioCamBtn(LOCTEXT("CamZoomTorso", "Torso"),
+						[](AChroniclesPlayerController* PC) { PC->SetCreatorCameraZoom(1); },
+						[](const AChroniclesPlayerController* PC) { return PC->GetCreatorCameraZoom() == 1; })
+				]
+				+ SHorizontalBox::Slot().AutoWidth().Padding(FMargin(0.f, 0.f, 10.f, 0.f))
+				[
+					MakeStudioCamBtn(LOCTEXT("CamZoomFace", "Face"),
+						[](AChroniclesPlayerController* PC) { PC->SetCreatorCameraZoom(2); },
+						[](const AChroniclesPlayerController* PC) { return PC->GetCreatorCameraZoom() == 2; })
+				]
+				+ SHorizontalBox::Slot().AutoWidth()
+				[
+					MakeStudioCamBtn(LOCTEXT("CamCloseBtn", "Close [C/Esc]"), [](AChroniclesPlayerController* PC) { PC->CloseAllOverlays(); }, nullptr, true)
 				]
 			]
 		]
 
-		// --- Left Edge-Docked Panel (Width 370px): Appearance, Race, Physique & Detail Quality ---
+		// --- Left Edge-Docked Translucent Obsidian Panel (Width 372px, Alpha 0.86): Appearance, Race, Physique ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Left)
 		.VAlign(VAlign_Fill)
 		.Padding(FMargin(16.f, 68.f, 0.f, 18.f))
 		[
 			SNew(SBox)
-			.WidthOverride(370.f)
+			.WidthOverride(372.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-				.Padding(FMargin(1.5f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(StudioObsidianTint)
+				.Padding(FMargin(16.f, 14.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(StudioGlassBg)
-					.Padding(FMargin(14.f, 12.f))
+					SNew(SVerticalBox)
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
 					[
-						SNew(SVerticalBox)
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(13))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text(LOCTEXT("CreatorLeftHdr", "HERO APPEARANCE & PHYSIQUE"))
+					]
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
-						[
-							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontBold(13))
-							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-							.Text(LOCTEXT("CreatorLeftHdr", "HERO APPEARANCE & PHYSIQUE"))
-						]
+					// 3 Clickable Tabs with Gold Selection Highlights
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(0.f, 0.f, 4.f, 0.f))
+						[ MakeTabBtn(0, LOCTEXT("TabRaceGender", "Race")) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(2.f, 0.f, 2.f, 0.f))
+						[ MakeTabBtn(1, LOCTEXT("TabFaceHair", "Face")) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(4.f, 0.f, 0.f, 0.f))
+						[ MakeTabBtn(2, LOCTEXT("TabBodyOutfit", "Body")) ]
+					]
 
-						// 3 Clickable Tabs
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+					+ SVerticalBox::Slot()
+					.FillHeight(1.f)
+					[
+						SNew(SScrollBox)
+						+ SScrollBox::Slot()
 						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(0.f, 0.f, 4.f, 0.f))
-							[ MakeTabBtn(0, LOCTEXT("TabRaceGender", "Race")) ]
-							+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(2.f, 0.f, 2.f, 0.f))
-							[ MakeTabBtn(1, LOCTEXT("TabFaceHair", "Face")) ]
-							+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(4.f, 0.f, 0.f, 0.f))
-							[ MakeTabBtn(2, LOCTEXT("TabBodyOutfit", "Body")) ]
-						]
-
-						+ SVerticalBox::Slot()
-						.FillHeight(1.f)
-						[
-							SNew(SScrollBox)
-							+ SScrollBox::Slot()
-							[
-								SAssignNew(CreatorLeftContentBox, SVerticalBox)
-							]
+							SAssignNew(CreatorLeftContentBox, SVerticalBox)
 						]
 					]
 				]
 			]
 		]
 
-		// --- Right Edge-Docked Panel (Width 360px): RPG Attributes & Live Combat Power ---
+		// --- Right Edge-Docked Translucent Obsidian Panel (Width 362px, Alpha 0.86): RPG Attributes & Live Combat Power ---
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Right)
 		.VAlign(VAlign_Fill)
 		.Padding(FMargin(0.f, 68.f, 16.f, 18.f))
 		[
 			SNew(SBox)
-			.WidthOverride(360.f)
+			.WidthOverride(362.f)
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::HairlineCyan)
-				.Padding(FMargin(1.5f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(StudioObsidianTint)
+				.Padding(FMargin(16.f, 14.f))
 				[
-					SNew(SBorder)
-					.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-					.BorderBackgroundColor(StudioGlassBg)
-					.Padding(FMargin(14.f, 12.f))
+					SNew(SVerticalBox)
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
 					[
-						SNew(SVerticalBox)
+						SNew(STextBlock)
+						.Font(ChroniclesHUDPalette::FontBold(13))
+						.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+						.Text(LOCTEXT("CreatorRightHdr", "RPG ATTRIBUTES & LIVE POWER"))
+					]
 
-						+ SVerticalBox::Slot()
-						.AutoHeight()
-						.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
+					+ SVerticalBox::Slot()
+					.FillHeight(1.f)
+					[
+						SNew(SScrollBox)
+						+ SScrollBox::Slot()
 						[
-							SNew(STextBlock)
-							.Font(ChroniclesHUDPalette::FontBold(13))
-							.ColorAndOpacity(ChroniclesHUDPalette::TextCyan)
-							.Text(LOCTEXT("CreatorRightHdr", "RPG ATTRIBUTES & LIVE POWER"))
-						]
-
-						+ SVerticalBox::Slot()
-						.FillHeight(1.f)
-						[
-							SNew(SScrollBox)
-							+ SScrollBox::Slot()
-							[
-								SAssignNew(CreatorRightStatsBox, SVerticalBox)
-							]
+							SAssignNew(CreatorRightStatsBox, SVerticalBox)
 						]
 					]
 				]
@@ -5376,7 +6691,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 	{
 		TargetBox->AddSlot()
 		.AutoHeight()
-		.Padding(FMargin(0.f, 6.f, 0.f, 5.f))
+		.Padding(FMargin(0.f, 7.f, 0.f, 5.f))
 		[
 			SNew(STextBlock)
 			.Font(ChroniclesHUDPalette::FontBold(10))
@@ -5387,38 +6702,33 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 
 	auto MakeSelectableChip = [WeakPC = OwnerPC, WeakHUD](const FString& Label, bool bSelected, TFunction<void(UHeroCustomizationComponent*)> Action) -> TSharedRef<SWidget>
 	{
-		return SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(bSelected ? ChroniclesHUDPalette::HairlineCyan : ChroniclesHUDPalette::OrbLocked)
-			.Padding(FMargin(1.f))
-			[
-				SNew(SButton)
-				.ContentPadding(FMargin(8.f, 5.f))
-				.HAlign(HAlign_Center)
-				.OnClicked_Lambda([WeakPC, WeakHUD, Action]() -> FReply
+		return SNew(SButton)
+			.ButtonStyle(bSelected ? &ChroniclesHUDPalette::ActiveGoldButtonStyle() : &ChroniclesHUDPalette::StoneButtonStyle())
+			.ContentPadding(FMargin(8.f, 5.f))
+			.HAlign(HAlign_Center)
+			.OnClicked_Lambda([WeakPC, WeakHUD, Action]() -> FReply
+			{
+				if (AChroniclesPlayerController* StrongPC = WeakPC.Get())
 				{
-					if (AChroniclesPlayerController* StrongPC = WeakPC.Get())
+					if (AAetheriaHeroCharacter* H = StrongPC->GetActiveHero())
 					{
-						if (AAetheriaHeroCharacter* H = StrongPC->GetActiveHero())
+						if (UHeroCustomizationComponent* C = H->Customization.Get())
 						{
-							if (UHeroCustomizationComponent* C = H->Customization.Get())
-							{
-								Action(C);
-							}
+							Action(C);
 						}
 					}
-					if (TSharedPtr<SAetheriaChroniclesHUD> HUD = WeakHUD.Pin())
-					{
-						HUD->RebuildHeroCustomizerPanels();
-					}
-					return FReply::Handled();
-				})
-				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontBold(9))
-					.ColorAndOpacity(bSelected ? ChroniclesHUDPalette::TextCyan : ChroniclesHUDPalette::TextPrimary)
-					.Text(FText::FromString(Label))
-				]
+				}
+				if (TSharedPtr<SAetheriaChroniclesHUD> HUD = WeakHUD.Pin())
+				{
+					HUD->RebuildHeroCustomizerPanels();
+				}
+				return FReply::Handled();
+			})
+			[
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontBold(9))
+				.ColorAndOpacity(bSelected ? ChroniclesHUDPalette::TextGold : ChroniclesHUDPalette::TextPrimary)
+				.Text(FText::FromString(Label))
 			];
 	};
 
@@ -5471,8 +6781,8 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 		.Padding(FMargin(0.f, 0.f, 0.f, 6.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
+			.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+			.BorderBackgroundColor(FLinearColor::White)
 			.Padding(FMargin(8.f, 6.f))
 			[
 				SNew(SVerticalBox)
@@ -5494,7 +6804,8 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 					+ SHorizontalBox::Slot().AutoWidth()
 					[
 						SNew(SButton)
-						.ContentPadding(FMargin(8.f, 3.f))
+						.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+						.ContentPadding(FMargin(9.f, 3.f))
 						.OnClicked_Lambda([WeakPC, WeakHUD, StepFn]() -> FReply
 						{
 							if (AChroniclesPlayerController* StrongPC = WeakPC.Get())
@@ -5516,6 +6827,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(9))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 							.Text(FText::FromString(PrevText))
 						]
 					]
@@ -5530,7 +6842,8 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 					+ SHorizontalBox::Slot().AutoWidth()
 					[
 						SNew(SButton)
-						.ContentPadding(FMargin(8.f, 3.f))
+						.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+						.ContentPadding(FMargin(9.f, 3.f))
 						.OnClicked_Lambda([WeakPC, WeakHUD, StepFn]() -> FReply
 						{
 							if (AChroniclesPlayerController* StrongPC = WeakPC.Get())
@@ -5552,6 +6865,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(9))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 							.Text(FText::FromString(NextText))
 						]
 					]
@@ -5623,25 +6937,19 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 		.Padding(FMargin(0.f, 4.f, 0.f, 10.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-			.Padding(FMargin(1.f))
+			.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+			.BorderBackgroundColor(FLinearColor::White)
+			.Padding(FMargin(10.f, 8.f))
 			[
-				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
-				.Padding(FMargin(10.f, 8.f))
-				[
-					SNew(STextBlock)
-					.Font(ChroniclesHUDPalette::FontRegular(9))
-					.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
-					.AutoWrapText(true)
-					.Text(FText::FromString(UHeroCustomizationComponent::GetRaceLoreAndPassives(Profile.Race)))
-				]
+				SNew(STextBlock)
+				.Font(ChroniclesHUDPalette::FontRegular(9))
+				.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
+				.AutoWrapText(true)
+				.Text(FText::FromString(UHeroCustomizationComponent::GetRaceLoreAndPassives(Profile.Race)))
 			]
 		];
 
-		AddSectionHeader(CreatorLeftContentBox, TEXT("HERO DETAIL QUALITY"), ChroniclesHUDPalette::TextCyan);
+		AddSectionHeader(CreatorLeftContentBox, TEXT("HERO DETAIL QUALITY"), ChroniclesHUDPalette::TextGold);
 		CreatorLeftContentBox->AddSlot()
 		.AutoHeight()
 		.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
@@ -5722,7 +7030,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 				C->SetBeardStyle(static_cast<EHeroBeardStyle>((Cur + Delta + 7) % 7));
 			});
 
-		AddSectionHeader(CreatorLeftContentBox, TEXT("EYES & WAR PAINT"), ChroniclesHUDPalette::TextCyan);
+		AddSectionHeader(CreatorLeftContentBox, TEXT("EYES & WAR PAINT"), ChroniclesHUDPalette::TextGold);
 
 		AddCyclerRow(CreatorLeftContentBox, TEXT("EYE STYLE"),
 			UHeroCustomizationComponent::GetEyeStyleLabel(Profile.EyeStyle),
@@ -5785,7 +7093,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 				C->SetArmorTintIndex((C->Profile.ArmorTintIndex + Delta + N) % N);
 			});
 
-		AddSectionHeader(CreatorLeftContentBox, TEXT("STATURE / HEIGHT (1.10m - 3.00m)"), ChroniclesHUDPalette::TextCyan);
+		AddSectionHeader(CreatorLeftContentBox, TEXT("STATURE / HEIGHT (1.10m - 3.00m)"), ChroniclesHUDPalette::TextGold);
 
 		AddCyclerRow(CreatorLeftContentBox, TEXT("HEIGHT / STATURE"),
 			FString::Printf(TEXT("%.2f m"), Profile.HeightMeters),
@@ -5882,21 +7190,15 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 	.Padding(FMargin(0.f, 0.f, 0.f, 8.f))
 	[
 		SNew(SBorder)
-		.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-		.BorderBackgroundColor(ChroniclesHUDPalette::HairlineGold)
-		.Padding(FMargin(1.f))
+		.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+		.BorderBackgroundColor(FLinearColor::White)
+		.Padding(FMargin(10.f, 7.f))
 		[
-			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
-			.Padding(FMargin(10.f, 7.f))
-			[
-				SNew(STextBlock)
-				.Font(ChroniclesHUDPalette::FontBold(11))
-				.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
-				.Justification(ETextJustify::Center)
-				.Text(FText::FromString(FString::Printf(TEXT("Unspent Attribute Points: %d"), Profile.Attributes.UnspentPoints)))
-			]
+			SNew(STextBlock)
+			.Font(ChroniclesHUDPalette::FontBold(11))
+			.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
+			.Justification(ETextJustify::Center)
+			.Text(FText::FromString(FString::Printf(TEXT("Unspent Attribute Points: %d"), Profile.Attributes.UnspentPoints)))
 		]
 	];
 
@@ -5929,9 +7231,9 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 		.Padding(FMargin(0.f, 0.f, 0.f, 5.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
-			.Padding(FMargin(8.f, 5.f))
+			.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+			.BorderBackgroundColor(FLinearColor::White)
+			.Padding(FMargin(9.f, 5.f))
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot()
@@ -5962,7 +7264,8 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 					.Padding(FMargin(0.f, 0.f, 3.f, 0.f))
 					[
 						SNew(SButton)
-						.ContentPadding(FMargin(7.f, 1.f))
+						.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+						.ContentPadding(FMargin(8.f, 1.f))
 						.OnClicked_Lambda([WeakPC = OwnerPC, WeakHUD, Attr]() -> FReply
 						{
 							if (AChroniclesPlayerController* StrongPC = WeakPC.Get())
@@ -5984,6 +7287,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(9))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 							.Text(LOCTEXT("AttrMinusBtn", "-"))
 						]
 					]
@@ -5991,7 +7295,8 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 					.AutoWidth()
 					[
 						SNew(SButton)
-						.ContentPadding(FMargin(7.f, 1.f))
+						.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+						.ContentPadding(FMargin(8.f, 1.f))
 						.OnClicked_Lambda([WeakPC = OwnerPC, WeakHUD, Attr]() -> FReply
 						{
 							if (AChroniclesPlayerController* StrongPC = WeakPC.Get())
@@ -6013,6 +7318,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(9))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextGold)
 							.Text(LOCTEXT("AttrPlusBtn", "+"))
 						]
 					]
@@ -6030,7 +7336,7 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 		];
 	}
 
-	// Reset Stats & Save Hero Buttons
+	// Reset Stats (Stone) & Save Hero (Forged Crimson CTA) Buttons
 	CreatorRightStatsBox->AddSlot()
 	.AutoHeight()
 	.Padding(FMargin(0.f, 4.f, 0.f, 8.f))
@@ -6039,7 +7345,8 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 		+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(0.f, 0.f, 4.f, 0.f))
 		[
 			SNew(SButton)
-			.ContentPadding(FMargin(8.f, 5.f))
+			.ButtonStyle(&ChroniclesHUDPalette::StoneButtonStyle())
+			.ContentPadding(FMargin(8.f, 6.f))
 			.HAlign(HAlign_Center)
 			.OnClicked_Lambda([WeakPC = OwnerPC, WeakHUD]() -> FReply
 			{
@@ -6063,13 +7370,15 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 			[
 				SNew(STextBlock)
 				.Font(ChroniclesHUDPalette::FontBold(9))
+				.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
 				.Text(LOCTEXT("ResetStatsBtn", "Reset Stats"))
 			]
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.f).Padding(FMargin(4.f, 0.f, 0.f, 0.f))
 		[
 			SNew(SButton)
-			.ContentPadding(FMargin(8.f, 5.f))
+			.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+			.ContentPadding(FMargin(8.f, 6.f))
 			.HAlign(HAlign_Center)
 			.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
 			{
@@ -6145,8 +7454,8 @@ void SAetheriaChroniclesHUD::RebuildHeroCustomizerPanels()
 		.Padding(FMargin(0.f, 6.f, 0.f, 0.f))
 		[
 			SNew(SBorder)
-			.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-			.BorderBackgroundColor(ChroniclesHUDPalette::CardBg)
+			.BorderImage(ChroniclesHUDPalette::ObsidianCardBrush())
+			.BorderBackgroundColor(FLinearColor::White)
 			.Padding(FMargin(8.f, 6.f))
 			[
 				SNew(STextBlock)
@@ -6163,7 +7472,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGameOverOverlay()
 {
 	return SNew(SBorder)
 		.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-		.BorderBackgroundColor(FLinearColor(0.06f, 0.01f, 0.01f, 0.78f))
+		.BorderBackgroundColor(FLinearColor(0.05f, 0.008f, 0.012f, 0.82f))
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
 		.Visibility_Lambda([WeakPC = OwnerPC]() -> EVisibility
@@ -6178,11 +7487,27 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGameOverOverlay()
 			.Padding(FMargin(2.f))
 			[
 				SNew(SBorder)
-				.BorderImage(ChroniclesHUDPalette::WhiteBrush())
-				.BorderBackgroundColor(ChroniclesHUDPalette::PanelBgDeep)
-				.Padding(FMargin(44.f, 32.f))
+				.BorderImage(ChroniclesHUDPalette::PanelObsidianBrush())
+				.BorderBackgroundColor(FLinearColor(1.f, 1.f, 1.f, 0.98f))
+				.Padding(FMargin(46.f, 34.f))
 				[
 					SNew(SVerticalBox)
+
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.HAlign(HAlign_Center)
+					.Padding(FMargin(0.f, 0.f, 0.f, 10.f))
+					[
+						SNew(SBox)
+						.WidthOverride(56.f)
+						.HeightOverride(56.f)
+						.Visibility(ChroniclesHUDPalette::SkullCrestBrush() ? EVisibility::Visible : EVisibility::Collapsed)
+						[
+							SNew(SImage)
+							.Image(ChroniclesHUDPalette::SkullCrestBrush())
+							.ColorAndOpacity(FLinearColor(0.98f, 0.36f, 0.30f, 0.96f))
+						]
+					]
 
 					+ SVerticalBox::Slot()
 					.AutoHeight()
@@ -6197,7 +7522,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGameOverOverlay()
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					.HAlign(HAlign_Center)
-					.Padding(FMargin(0.f, 8.f, 0.f, 20.f))
+					.Padding(FMargin(0.f, 8.f, 0.f, 22.f))
 					[
 						SNew(STextBlock)
 						.Font(ChroniclesHUDPalette::FontRegular(11))
@@ -6217,7 +7542,8 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGameOverOverlay()
 					.HAlign(HAlign_Center)
 					[
 						SNew(SButton)
-						.ContentPadding(FMargin(24.f, 10.f))
+						.ButtonStyle(&ChroniclesHUDPalette::CrimsonButtonStyle())
+						.ContentPadding(FMargin(26.f, 10.f))
 						.OnClicked_Lambda([WeakPC = OwnerPC]() -> FReply
 						{
 							if (AChroniclesPlayerController* PC = WeakPC.Get())
@@ -6229,6 +7555,7 @@ TSharedRef<SWidget> SAetheriaChroniclesHUD::BuildGameOverOverlay()
 						[
 							SNew(STextBlock)
 							.Font(ChroniclesHUDPalette::FontBold(12))
+							.ColorAndOpacity(ChroniclesHUDPalette::TextPrimary)
 							.Text(LOCTEXT("RespawnBtn", "Respawn at Oakhaven [R]"))
 						]
 					]

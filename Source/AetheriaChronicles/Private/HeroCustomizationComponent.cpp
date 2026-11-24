@@ -21,6 +21,7 @@
 #include "MaterialTypes.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameters.h"
 #include "Misc/PackageName.h"
 #include "Net/UnrealNetwork.h"
 
@@ -51,6 +52,7 @@ namespace HeroCustomizationUtil
 	static constexpr TCHAR PathGideonBase[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Meshes/Gideon.Gideon");
 	static constexpr TCHAR PathGideonInquisitor[] = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Skins/Inquisitor/Meshes/Gideon_Inquisitor.Gideon_Inquisitor");
 	static constexpr TCHAR PathGideonMephisto[]   = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Skins/Mephisto/Meshes/Gideon_Mephisto.Gideon_Mephisto");
+	static constexpr TCHAR PathGideonTough[]      = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Skins/Tough/Meshes/Gideon_Tough.Gideon_Tough");
 	static constexpr TCHAR PathGideonABP[]        = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Gideon_AnimBlueprint.Gideon_AnimBlueprint_C");
 	static constexpr TCHAR PathGideonAttackA[]    = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_A_Medium_Montage.Primary_Attack_A_Medium_Montage");
 	static constexpr TCHAR PathGideonAttackB[]    = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_B_Medium_Montage.Primary_Attack_B_Medium_Montage");
@@ -59,6 +61,7 @@ namespace HeroCustomizationUtil
 	static constexpr TCHAR PathGideonDeath[]      = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Death_Fwd.Death_Fwd");
 
 	static constexpr TCHAR PathKhaimeraBase[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Meshes/Khaimera.Khaimera");
+	static constexpr TCHAR PathKhaimeraGruxPelt[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Skins/Tier2/GruxPelt/Meshes/Khaimera_GruxPelt.Khaimera_GruxPelt");
 	static constexpr TCHAR PathKhaimeraABP[]      = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Khaimera_AnimBlueprint.Khaimera_AnimBlueprint_C");
 	static constexpr TCHAR PathKhaimeraAttackA[]  = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_A_Montage.Melee_A_Montage");
 	static constexpr TCHAR PathKhaimeraAttackB[]  = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_B_Montage.Melee_B_Montage");
@@ -66,7 +69,18 @@ namespace HeroCustomizationUtil
 	static constexpr TCHAR PathKhaimeraHitReact[] = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/HitReact_Front.HitReact_Front");
 	static constexpr TCHAR PathKhaimeraDeath[]    = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Death_A.Death_A");
 
-	// Female Paragon Rigs (Serath — Verified Staged Paths)
+	static constexpr TCHAR PathGruxBase[]         = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Meshes/Grux.Grux");
+	static constexpr TCHAR PathGruxWarchief[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Skins/Tier_1/War_Chief/Meshes/GruxWarchief.GruxWarchief");
+	static constexpr TCHAR PathGruxChestplate[]   = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Skins/Tier_1_5/Chestplate/Meshes/GruxChestplate.GruxChestplate");
+	static constexpr TCHAR PathGruxHalloween[]    = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Skins/Tier_1/Halloween/Meshes/GruxHalloween.GruxHalloween");
+	static constexpr TCHAR PathGruxABP[]          = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Grux_AnimBlueprint.Grux_AnimBlueprint_C");
+	static constexpr TCHAR PathGruxAttackA[]      = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_LA_Montage.PrimaryAttack_LA_Montage");
+	static constexpr TCHAR PathGruxAttackB[]      = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_RA_Montage.PrimaryAttack_RA_Montage");
+	static constexpr TCHAR PathGruxAttackC[]      = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_FourStrikes_Montage.PrimaryAttack_FourStrikes_Montage");
+	static constexpr TCHAR PathGruxHitReact[]     = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathGruxDeath[]        = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Death_A.Death_A");
+
+	// Female Paragon Rigs (Serath, Kallari, Aurora & Morigesh — Verified Staged Paths)
 	static constexpr TCHAR PathSerathBase[]       = TEXT("/Game/ParagonSerath/Characters/Heroes/Serath/Meshes/Serath.Serath");
 	static constexpr TCHAR PathSerathGold[]       = TEXT("/Game/ParagonSerath/Characters/Heroes/Serath/Skins/Tier1/Serath_Gold/Meshes/SerathGold.SerathGold");
 	static constexpr TCHAR PathSerathFrost[]      = TEXT("/Game/ParagonSerath/Characters/Heroes/Serath/Skins/Tier1/Serath_Frost/Meshes/SerathFrost.SerathFrost");
@@ -80,7 +94,6 @@ namespace HeroCustomizationUtil
 	static constexpr TCHAR PathSerathHitReact[]   = TEXT("/Game/ParagonSerath/Characters/Heroes/Serath/Animations/HitReact_Front.HitReact_Front");
 	static constexpr TCHAR PathSerathDeath[]      = TEXT("/Game/ParagonSerath/Characters/Heroes/Serath/Animations/Death_Fwd.Death_Fwd");
 
-	// Female Paragon Rigs (Kallari Shadow Assassin & Morigesh Highland Mystic — Verified Staged Paths)
 	static constexpr TCHAR PathKallariBase[]        = TEXT("/Game/ParagonKallari/Characters/Heroes/Kallari/Meshes/Kallari.Kallari");
 	static constexpr TCHAR PathKallariDeathLotus[]  = TEXT("/Game/ParagonKallari/Characters/Heroes/Kallari/Skins/DeathLotus/Meshes/Kallari_DeathLotus.Kallari_DeathLotus");
 	static constexpr TCHAR PathKallariRedDeath[]    = TEXT("/Game/ParagonKallari/Characters/Heroes/Kallari/Skins/RedDeath/Meshes/Kallari_RedDeath.Kallari_RedDeath");
@@ -90,11 +103,103 @@ namespace HeroCustomizationUtil
 	static constexpr TCHAR PathKallariAttackB[]     = TEXT("/Game/ParagonKallari/Characters/Heroes/Kallari/Animations/Attack_Melee_B_Montage.Attack_Melee_B_Montage");
 	static constexpr TCHAR PathKallariAttackC[]     = TEXT("/Game/ParagonKallari/Characters/Heroes/Kallari/Animations/Attack_Melee_C_Montage.Attack_Melee_C_Montage");
 
+	static constexpr TCHAR PathAuroraBase[]           = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Meshes/Aurora.Aurora");
+	static constexpr TCHAR PathAuroraFrozenHearth[]   = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Skins/FrozenHearth/Meshes/Aurora_FrozenHearth.Aurora_FrozenHearth");
+	static constexpr TCHAR PathAuroraGlacialEmpress[] = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Skins/GlacialEmpress/Meshes/Aurora_GlacialEmpress.Aurora_GlacialEmpress");
+	static constexpr TCHAR PathAuroraABP[]            = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Aurora_AnimBlueprint.Aurora_AnimBlueprint_C");
+	static constexpr TCHAR PathAuroraAttackA[]        = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_A_Montage.Primary_Attack_A_Montage");
+	static constexpr TCHAR PathAuroraAttackB[]        = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_B_Montage.Primary_Attack_B_Montage");
+	static constexpr TCHAR PathAuroraAttackC[]        = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_C_Montage.Primary_Attack_C_Montage");
+	static constexpr TCHAR PathAuroraHitReact[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathAuroraDeath[]          = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Death.Death");
+
 	static constexpr TCHAR PathMorigeshBase[]       = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Meshes/Morigesh.Morigesh");
 	static constexpr TCHAR PathMorigeshDarkHeart[]  = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Skins/DarkHeart/Meshes/Morigesh_DarkHeart.Morigesh_DarkHeart");
 	static constexpr TCHAR PathMorigeshMystic[]     = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Skins/NorthernMystic/Meshes/Morigesh_NorthernMystic.Morigesh_NorthernMystic");
 	static constexpr TCHAR PathMorigeshABP[]        = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Morigesh_AnimBlueprint.Morigesh_AnimBlueprint_C");
 	static constexpr TCHAR PathMorigeshAttackA[]    = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_A_Slow_Montage.PrimaryAttack_A_Slow_Montage");
+	static constexpr TCHAR PathMorigeshHitReact[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathMorigeshDeath[]      = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Death.Death");
+
+	static FLinearColor ClampGroundedTint(const FLinearColor& InColor, float MaxLuminance = 0.88f)
+	{
+		FLinearColor Clamped(
+			FMath::Clamp(InColor.R, 0.0f, MaxLuminance),
+			FMath::Clamp(InColor.G, 0.0f, MaxLuminance),
+			FMath::Clamp(InColor.B, 0.0f, MaxLuminance),
+			InColor.A);
+		const float Lum = Clamped.GetLuminance();
+		if (Lum > MaxLuminance && Lum > KINDA_SMALL_NUMBER)
+		{
+			const float Scale = MaxLuminance / Lum;
+			Clamped.R *= Scale;
+			Clamped.G *= Scale;
+			Clamped.B *= Scale;
+		}
+		return Clamped;
+	}
+
+	static void ResolveRigAnimationsForMeshPath(
+		const FString& MeshPath,
+		FString& OutABP,
+		TArray<FString>& OutAttacks,
+		FString& OutHitReact,
+		FString& OutDeath)
+	{
+		// Leave OutABP empty for Paragon rigs: UE 5.8 fails compiling legacy Paragon *_AnimBlueprint graphs,
+		// so AAetheriaHeroCharacter drives Paragon heroes cleanly via AnimationSingleNode (Idle + Jog_Fwd + combat clips).
+		OutABP.Reset();
+		OutAttacks.Reset();
+		OutHitReact.Reset();
+		OutDeath.Reset();
+
+		if (MeshPath.Contains(TEXT("ParagonKwang")))
+		{
+			OutAttacks = { FString(PathKwangAttackA), FString(PathKwangAttackB), FString(PathKwangAttackC), FString(PathKwangAttackD) };
+			OutHitReact = PathKwangHitReact;
+			OutDeath = PathKwangDeath;
+		}
+		else if (MeshPath.Contains(TEXT("ParagonGideon")))
+		{
+			OutAttacks = { FString(PathGideonAttackA), FString(PathGideonAttackB), FString(PathGideonAttackC) };
+			OutHitReact = PathGideonHitReact;
+			OutDeath = PathGideonDeath;
+		}
+		else if (MeshPath.Contains(TEXT("ParagonKhaimera")))
+		{
+			OutAttacks = { FString(PathKhaimeraAttackA), FString(PathKhaimeraAttackB), FString(PathKhaimeraAttackC) };
+			OutHitReact = PathKhaimeraHitReact;
+			OutDeath = PathKhaimeraDeath;
+		}
+		else if (MeshPath.Contains(TEXT("ParagonGrux")))
+		{
+			OutAttacks = { FString(PathGruxAttackA), FString(PathGruxAttackB), FString(PathGruxAttackC) };
+			OutHitReact = PathGruxHitReact;
+			OutDeath = PathGruxDeath;
+		}
+		else if (MeshPath.Contains(TEXT("ParagonSerath")))
+		{
+			OutAttacks = { FString(PathSerathAttackA), FString(PathSerathAttackB), FString(PathSerathAttackC), FString(PathSerathAttackD) };
+			OutHitReact = PathSerathHitReact;
+			OutDeath = PathSerathDeath;
+		}
+		else if (MeshPath.Contains(TEXT("ParagonKallari")))
+		{
+			OutAttacks = { FString(PathKallariAttackA), FString(PathKallariAttackB), FString(PathKallariAttackC) };
+		}
+		else if (MeshPath.Contains(TEXT("ParagonAurora")))
+		{
+			OutAttacks = { FString(PathAuroraAttackA), FString(PathAuroraAttackB), FString(PathAuroraAttackC) };
+			OutHitReact = PathAuroraHitReact;
+			OutDeath = PathAuroraDeath;
+		}
+		else if (MeshPath.Contains(TEXT("ParagonMorigesh")))
+		{
+			OutAttacks = { FString(PathMorigeshAttackA) };
+			OutHitReact = PathMorigeshHitReact;
+			OutDeath = PathMorigeshDeath;
+		}
+	}
 
 	static bool DoesObjectPackageExist(const FString& ObjectPath)
 	{
@@ -980,85 +1085,52 @@ void UHeroCustomizationComponent::UpdateHeroMeshForGenderAndOutfit(AAetheriaHero
 		switch (Profile.OutfitStyle)
 		{
 		case EHeroOutfitStyle::SovereignGilded:
-			DesiredMeshPath = PickFirstExistingPath({ PathSerathGold, PathSerathBase });
-			AnimBPPath = PathSerathABP;
-			AttackMontagePaths = { FString(PathSerathAttackA), FString(PathSerathAttackB), FString(PathSerathAttackC), FString(PathSerathAttackD) };
-			HitReactPath = PathSerathHitReact;
-			DeathPath    = PathSerathDeath;
+			DesiredMeshPath = PickFirstExistingPath({
+				PathSerathGold, PathSerathBase,
+				PathAuroraGlacialEmpress, PathAuroraFrozenHearth, PathAuroraBase,
+				PathMorigeshMystic, PathMorigeshBase
+			});
 			break;
 		case EHeroOutfitStyle::ArchmageRobes:
-			DesiredMeshPath = PickFirstExistingPath({ PathSerathFrost, PathSerathBase });
-			AnimBPPath = PathSerathABP;
-			AttackMontagePaths = { FString(PathSerathAttackA), FString(PathSerathAttackB), FString(PathSerathAttackC), FString(PathSerathAttackD) };
-			HitReactPath = PathSerathHitReact;
-			DeathPath    = PathSerathDeath;
+			DesiredMeshPath = PickFirstExistingPath({
+				PathSerathFrost, PathSerathBase,
+				PathAuroraGlacialEmpress, PathAuroraBase,
+				PathMorigeshMystic, PathMorigeshBase
+			});
 			break;
 		case EHeroOutfitStyle::DraconidWarlock:
-			DesiredMeshPath = PickFirstExistingPath({ PathKallariRedDeath, PathSerathValentine, PathSerathBase });
-			if (DesiredMeshPath.Contains(TEXT("ParagonKallari")))
-			{
-				AnimBPPath = PathKallariABP;
-				AttackMontagePaths = { FString(PathKallariAttackA), FString(PathKallariAttackB), FString(PathKallariAttackC) };
-			}
-			else
-			{
-				AnimBPPath = PathSerathABP;
-				AttackMontagePaths = { FString(PathSerathAttackA), FString(PathSerathAttackB), FString(PathSerathAttackC), FString(PathSerathAttackD) };
-				HitReactPath = PathSerathHitReact;
-				DeathPath    = PathSerathDeath;
-			}
+			DesiredMeshPath = PickFirstExistingPath({
+				PathKallariRedDeath, PathSerathValentine, PathSerathBase,
+				PathMorigeshDarkHeart, PathAuroraGlacialEmpress, PathAuroraBase, PathMorigeshBase
+			});
 			break;
 		case EHeroOutfitStyle::InquisitorCoat:
-			DesiredMeshPath = PickFirstExistingPath({ PathKallariDeathLotus, PathKallariRogue, PathKallariBase, PathSerathFuture, PathSerathBase });
-			if (DesiredMeshPath.Contains(TEXT("ParagonKallari")))
-			{
-				AnimBPPath = PathKallariABP;
-				AttackMontagePaths = { FString(PathKallariAttackA), FString(PathKallariAttackB), FString(PathKallariAttackC) };
-			}
-			else
-			{
-				AnimBPPath = PathSerathABP;
-				AttackMontagePaths = { FString(PathSerathAttackA), FString(PathSerathAttackB), FString(PathSerathAttackC), FString(PathSerathAttackD) };
-				HitReactPath = PathSerathHitReact;
-				DeathPath    = PathSerathDeath;
-			}
+			DesiredMeshPath = PickFirstExistingPath({
+				PathKallariDeathLotus, PathKallariRogue, PathKallariBase, PathSerathFuture, PathSerathBase,
+				PathAuroraFrozenHearth, PathAuroraBase, PathMorigeshDarkHeart, PathMorigeshBase
+			});
 			break;
 		case EHeroOutfitStyle::HighlandPelt:
-			DesiredMeshPath = PickFirstExistingPath({ PathMorigeshMystic, PathMorigeshDarkHeart, PathMorigeshBase, PathSerathFuture, PathSerathBase });
-			if (DesiredMeshPath.Contains(TEXT("ParagonMorigesh")))
-			{
-				AnimBPPath = PathMorigeshABP;
-				AttackMontagePaths = { FString(PathMorigeshAttackA) };
-			}
-			else
-			{
-				AnimBPPath = PathSerathABP;
-				AttackMontagePaths = { FString(PathSerathAttackA), FString(PathSerathAttackB), FString(PathSerathAttackC), FString(PathSerathAttackD) };
-				HitReactPath = PathSerathHitReact;
-				DeathPath    = PathSerathDeath;
-			}
+			DesiredMeshPath = PickFirstExistingPath({
+				PathMorigeshMystic, PathMorigeshDarkHeart, PathMorigeshBase,
+				PathSerathFuture, PathSerathBase, PathAuroraFrozenHearth, PathAuroraBase
+			});
 			break;
 		case EHeroOutfitStyle::VanguardPlate:
 		default:
 			if (Profile.Race == EHeroRace::ShadowKin)
 			{
-				DesiredMeshPath = PickFirstExistingPath({ PathKallariBase, PathSerathBase });
+				DesiredMeshPath = PickFirstExistingPath({
+					PathKallariBase, PathSerathBase,
+					PathMorigeshDarkHeart, PathAuroraBase, PathMorigeshBase
+				});
 			}
 			else
 			{
-				DesiredMeshPath = PickFirstExistingPath({ PathSerathBase });
-			}
-			if (DesiredMeshPath.Contains(TEXT("ParagonKallari")))
-			{
-				AnimBPPath = PathKallariABP;
-				AttackMontagePaths = { FString(PathKallariAttackA), FString(PathKallariAttackB), FString(PathKallariAttackC) };
-			}
-			else
-			{
-				AnimBPPath = PathSerathABP;
-				AttackMontagePaths = { FString(PathSerathAttackA), FString(PathSerathAttackB), FString(PathSerathAttackC), FString(PathSerathAttackD) };
-				HitReactPath = PathSerathHitReact;
-				DeathPath    = PathSerathDeath;
+				DesiredMeshPath = PickFirstExistingPath({
+					PathSerathBase, PathAuroraBase, PathAuroraFrozenHearth,
+					PathAuroraGlacialEmpress, PathMorigeshBase
+				});
 			}
 			break;
 		}
@@ -1068,67 +1140,71 @@ void UHeroCustomizationComponent::UpdateHeroMeshForGenderAndOutfit(AAetheriaHero
 		switch (Profile.OutfitStyle)
 		{
 		case EHeroOutfitStyle::ArchmageRobes:
-			DesiredMeshPath = PickFirstExistingPath({ PathGideonBase });
-			AnimBPPath = PathGideonABP;
-			AttackMontagePaths = { FString(PathGideonAttackA), FString(PathGideonAttackB), FString(PathGideonAttackC) };
-			HitReactPath = PathGideonHitReact;
-			DeathPath    = PathGideonDeath;
+			DesiredMeshPath = PickFirstExistingPath({
+				PathGideonBase, PathGideonInquisitor, PathGideonTough,
+				PathKhaimeraBase, PathGruxBase
+			});
 			break;
 
 		case EHeroOutfitStyle::InquisitorCoat:
-			DesiredMeshPath = PickFirstExistingPath({ PathGideonInquisitor, PathGideonBase });
-			AnimBPPath = PathGideonABP;
-			AttackMontagePaths = { FString(PathGideonAttackA), FString(PathGideonAttackB), FString(PathGideonAttackC) };
-			HitReactPath = PathGideonHitReact;
-			DeathPath    = PathGideonDeath;
+			DesiredMeshPath = PickFirstExistingPath({
+				PathGideonInquisitor, PathGideonTough, PathGideonBase,
+				PathKhaimeraBase, PathGruxChestplate
+			});
 			break;
 
 		case EHeroOutfitStyle::DraconidWarlock:
-			DesiredMeshPath = PickFirstExistingPath({ PathGideonMephisto, PathGideonBase });
-			AnimBPPath = PathGideonABP;
-			AttackMontagePaths = { FString(PathGideonAttackA), FString(PathGideonAttackB), FString(PathGideonAttackC) };
-			HitReactPath = PathGideonHitReact;
-			DeathPath    = PathGideonDeath;
+			DesiredMeshPath = PickFirstExistingPath({
+				PathGideonMephisto, PathGruxWarchief, PathGideonBase,
+				PathKhaimeraGruxPelt, PathGruxBase
+			});
 			break;
 
 		case EHeroOutfitStyle::HighlandPelt:
-			DesiredMeshPath = PickFirstExistingPath({ PathKhaimeraBase });
-			AnimBPPath = PathKhaimeraABP;
-			AttackMontagePaths = { FString(PathKhaimeraAttackA), FString(PathKhaimeraAttackB), FString(PathKhaimeraAttackC) };
-			HitReactPath = PathKhaimeraHitReact;
-			DeathPath    = PathKhaimeraDeath;
+			DesiredMeshPath = PickFirstExistingPath({
+				PathKhaimeraGruxPelt, PathKhaimeraBase, PathGruxWarchief,
+				PathGruxBase, PathGideonTough, PathGideonBase
+			});
 			break;
 
 		case EHeroOutfitStyle::SovereignGilded:
-			DesiredMeshPath = PickFirstExistingPath({ PathKwangSunrise, PathKwangRosewood, PathKwangGDC });
-			AnimBPPath = PathKwangABP;
-			AttackMontagePaths = { FString(PathKwangAttackA), FString(PathKwangAttackB), FString(PathKwangAttackC), FString(PathKwangAttackD) };
-			HitReactPath = PathKwangHitReact;
-			DeathPath    = PathKwangDeath;
+			DesiredMeshPath = PickFirstExistingPath({
+				PathKwangSunrise, PathKwangRosewood, PathKwangGDC,
+				PathGruxChestplate, PathGideonTough, PathGideonInquisitor,
+				PathGruxWarchief, PathGideonBase
+			});
 			break;
 
 		case EHeroOutfitStyle::VanguardPlate:
 		default:
 			if (Profile.HairStyle == EHeroHairStyle::SamuraiManbun)
 			{
-				DesiredMeshPath = PickFirstExistingPath({ PathKwangManbun, PathKwangGDC });
+				DesiredMeshPath = PickFirstExistingPath({
+					PathKwangManbun, PathKwangGDC,
+					PathGideonTough, PathGideonBase, PathKhaimeraBase, PathGruxChestplate
+				});
 			}
 			else if (Profile.Race == EHeroRace::HighElf)
 			{
-				DesiredMeshPath = PickFirstExistingPath({ PathKwangAlbino, PathKwangGDC });
+				DesiredMeshPath = PickFirstExistingPath({
+					PathKwangAlbino, PathKwangGDC,
+					PathGideonInquisitor, PathGideonBase, PathKhaimeraBase, PathGruxBase
+				});
 			}
 			else if (Profile.Race == EHeroRace::AshDraconid)
 			{
-				DesiredMeshPath = PickFirstExistingPath({ PathKwangFrostwalker, PathKwangGDC });
+				DesiredMeshPath = PickFirstExistingPath({
+					PathKwangFrostwalker, PathKwangGDC,
+					PathGideonMephisto, PathGruxWarchief, PathGideonBase, PathKhaimeraBase
+				});
 			}
 			else
 			{
-				DesiredMeshPath = PickFirstExistingPath({ PathKwangGDC });
+				DesiredMeshPath = PickFirstExistingPath({
+					PathKwangGDC, PathGideonTough, PathGideonBase,
+					PathKhaimeraBase, PathGruxChestplate, PathGruxBase
+				});
 			}
-			AnimBPPath = PathKwangABP;
-			AttackMontagePaths = { FString(PathKwangAttackA), FString(PathKwangAttackB), FString(PathKwangAttackC), FString(PathKwangAttackD) };
-			HitReactPath = PathKwangHitReact;
-			DeathPath    = PathKwangDeath;
 			break;
 		}
 	}
@@ -1142,6 +1218,8 @@ void UHeroCustomizationComponent::UpdateHeroMeshForGenderAndOutfit(AAetheriaHero
 	{
 		return;
 	}
+
+	ResolveRigAnimationsForMeshPath(DesiredMeshPath, AnimBPPath, AttackMontagePaths, HitReactPath, DeathPath);
 
 	if (Hero->ApplyCustomSkeletalRig(
 		DesiredMeshPath,
@@ -1593,9 +1671,16 @@ void UHeroCustomizationComponent::UpdateTattooAndMaterialTints(AAetheriaHeroChar
 	ConfigureAttachment(TattooChestMesh, MeshComp, ChestBone, ChestShape, TattooMID,
 		ChestLoc, ChestRot, ChestScale, bShowTattoo);
 
-	// Subtle armor tint & race skin tint application onto exposed Paragon material parameters
-	const FLinearColor ArmorTint = GetArmorTintColor(Profile.ArmorTintIndex);
-	const FLinearColor SkinTint  = GetRaceSkinTint(Profile.Race);
+	// Only override skin/armor/tattoo material parameters when the player actually picked a NON-default tint.
+	// Preserves crisp hand-painted Paragon PBR skin, metal, and leather detail without pure-white washout!
+	const bool bHasCustomSkinTint   = (Profile.Race != EHeroRace::Human);
+	const bool bHasCustomArmorTint  = (Profile.ArmorTintIndex != 0);
+	const bool bHasCustomTattooTint = (Profile.TattooStyle != EHeroTattooStyle::None) || (Profile.TattooColorIndex != 0);
+	const bool bAnyCustomTint       = bHasCustomSkinTint || bHasCustomArmorTint || bHasCustomTattooTint;
+
+	const FLinearColor ArmorTint  = ClampGroundedTint(GetArmorTintColor(Profile.ArmorTintIndex), 0.88f);
+	const FLinearColor SkinTint   = ClampGroundedTint(GetRaceSkinTint(Profile.Race), 0.88f);
+	const FLinearColor TattooTint = ClampGroundedTint(GetTattooColor(Profile.TattooColorIndex), 0.88f);
 
 	const int32 NumMats = MeshComp->GetNumMaterials();
 	for (int32 SlotIdx = 0; SlotIdx < NumMats; ++SlotIdx)
@@ -1606,48 +1691,116 @@ void UHeroCustomizationComponent::UpdateTattooAndMaterialTints(AAetheriaHeroChar
 			continue;
 		}
 
+		UMaterialInstanceDynamic* ExistingMID = Cast<UMaterialInstanceDynamic>(Mat);
+		// Fast path: untouched default Paragon material with no custom tints requested -> preserve authored PBR as-is!
+		if (!bAnyCustomTint && !ExistingMID)
+		{
+			continue;
+		}
+
 		TArray<FMaterialParameterInfo> VecInfos;
 		TArray<FGuid> VecGuids;
 		Mat->GetAllVectorParameterInfo(VecInfos, VecGuids);
 
-		bool bHasTintParam = false;
-		bool bHasSkinParam = false;
+		bool bNeedsSkinOverride   = false;
+		bool bNeedsArmorOverride  = false;
+		bool bNeedsTattooOverride = false;
+		bool bHasAnyTargetParam   = false;
 		for (const FMaterialParameterInfo& Info : VecInfos)
 		{
 			const FString ParamStr = Info.Name.ToString();
+			if (ParamStr.Contains(TEXT("Emissive"), ESearchCase::IgnoreCase))
+			{
+				continue;
+			}
 			if (ParamStr.Contains(TEXT("Skin"), ESearchCase::IgnoreCase))
 			{
-				bHasSkinParam = true;
+				bHasAnyTargetParam = true;
+				if (bHasCustomSkinTint) { bNeedsSkinOverride = true; }
+			}
+			else if (ParamStr.Contains(TEXT("Tattoo"), ESearchCase::IgnoreCase)
+				|| ParamStr.Contains(TEXT("Warpaint"), ESearchCase::IgnoreCase))
+			{
+				bHasAnyTargetParam = true;
+				if (bHasCustomTattooTint) { bNeedsTattooOverride = true; }
 			}
 			else if (ParamStr.Contains(TEXT("Tint"), ESearchCase::IgnoreCase)
 				|| ParamStr.Contains(TEXT("Armor"), ESearchCase::IgnoreCase))
 			{
-				bHasTintParam = true;
+				bHasAnyTargetParam = true;
+				if (bHasCustomArmorTint) { bNeedsArmorOverride = true; }
 			}
 		}
 
-		if (bHasTintParam || bHasSkinParam)
+		if (!bHasAnyTargetParam)
 		{
-			UMaterialInstanceDynamic* SlotMID = Cast<UMaterialInstanceDynamic>(Mat);
-			if (!SlotMID)
+			continue;
+		}
+
+		// Create MID only if we actually need to apply a non-default tint; otherwise restore parent defaults if MID exists
+		UMaterialInstanceDynamic* SlotMID = ExistingMID;
+		if (!SlotMID && (bNeedsSkinOverride || bNeedsArmorOverride || bNeedsTattooOverride))
+		{
+			SlotMID = MeshComp->CreateAndSetMaterialInstanceDynamic(SlotIdx);
+		}
+		if (!SlotMID)
+		{
+			continue;
+		}
+
+		for (const FMaterialParameterInfo& Info : VecInfos)
+		{
+			const FString ParamStr = Info.Name.ToString();
+			if (ParamStr.Contains(TEXT("Emissive"), ESearchCase::IgnoreCase))
 			{
-				SlotMID = MeshComp->CreateAndSetMaterialInstanceDynamic(SlotIdx);
+				continue;
 			}
-			if (SlotMID)
+
+			auto RestoreParentVector = [SlotMID, &Info]()
 			{
-				for (const FMaterialParameterInfo& Info : VecInfos)
+				if (SlotMID->Parent)
 				{
-					const FString ParamStr = Info.Name.ToString();
-					if (ParamStr.Contains(TEXT("Skin"), ESearchCase::IgnoreCase))
+					FLinearColor ParentVal = FLinearColor(0.82f, 0.82f, 0.82f, 1.0f);
+					if (SlotMID->Parent->GetVectorParameterValue(FHashedMaterialParameterInfo(Info), ParentVal))
 					{
-						SlotMID->SetVectorParameterValue(Info.Name, SkinTint);
+						SlotMID->SetVectorParameterValue(Info.Name, ParentVal);
 					}
-					else if (!ParamStr.Contains(TEXT("Emissive"), ESearchCase::IgnoreCase)
-						&& (ParamStr.Contains(TEXT("Tint"), ESearchCase::IgnoreCase)
-							|| ParamStr.Contains(TEXT("Armor"), ESearchCase::IgnoreCase)))
-					{
-						SlotMID->SetVectorParameterValue(Info.Name, ArmorTint);
-					}
+				}
+			};
+
+			if (ParamStr.Contains(TEXT("Skin"), ESearchCase::IgnoreCase))
+			{
+				if (bHasCustomSkinTint)
+				{
+					SlotMID->SetVectorParameterValue(Info.Name, SkinTint);
+				}
+				else
+				{
+					RestoreParentVector();
+				}
+			}
+			else if (ParamStr.Contains(TEXT("Tattoo"), ESearchCase::IgnoreCase)
+				|| ParamStr.Contains(TEXT("Warpaint"), ESearchCase::IgnoreCase))
+			{
+				if (bHasCustomTattooTint)
+				{
+					SlotMID->SetVectorParameterValue(Info.Name, TattooTint);
+				}
+				else
+				{
+					RestoreParentVector();
+				}
+			}
+			else if (ParamStr.Contains(TEXT("Tint"), ESearchCase::IgnoreCase)
+				|| ParamStr.Contains(TEXT("Armor"), ESearchCase::IgnoreCase))
+			{
+				if (bHasCustomArmorTint)
+				{
+					SlotMID->SetVectorParameterValue(Info.Name, ArmorTint);
+				}
+				else
+				{
+					RestoreParentVector();
 				}
 			}
 		}
@@ -1958,13 +2111,14 @@ FString UHeroCustomizationComponent::GetTattooColorName(int32 Index)
 
 FLinearColor UHeroCustomizationComponent::GetArmorTintColor(int32 Index)
 {
+	// Grounded PBR tint palette (luminance <= 0.88, never pure 1.0 white blasting over albedo)
 	static const FLinearColor Palette[NUM_ARMOR_TINTS] = {
-		FLinearColor(1.00f, 1.00f, 1.00f, 1.0f), // Sovereign Natural
-		FLinearColor(0.76f, 0.18f, 0.14f, 1.0f), // Crimson Legion
-		FLinearColor(0.18f, 0.42f, 0.84f, 1.0f), // Aetherian Cobalt
-		FLinearColor(0.88f, 0.72f, 0.28f, 1.0f), // Gilded Sunsteel
-		FLinearColor(0.22f, 0.24f, 0.28f, 1.0f), // Obsidian Steel
-		FLinearColor(0.22f, 0.54f, 0.36f, 1.0f)  // Emerald Warden
+		FLinearColor(0.84f, 0.84f, 0.84f, 1.0f), // Sovereign Natural
+		FLinearColor(0.72f, 0.16f, 0.12f, 1.0f), // Crimson Legion
+		FLinearColor(0.16f, 0.38f, 0.78f, 1.0f), // Aetherian Cobalt
+		FLinearColor(0.82f, 0.66f, 0.25f, 1.0f), // Gilded Sunsteel
+		FLinearColor(0.20f, 0.22f, 0.26f, 1.0f), // Obsidian Steel
+		FLinearColor(0.20f, 0.50f, 0.34f, 1.0f)  // Emerald Warden
 	};
 	const int32 SafeIdx = ((Index % NUM_ARMOR_TINTS) + NUM_ARMOR_TINTS) % NUM_ARMOR_TINTS;
 	return Palette[SafeIdx];
@@ -1986,14 +2140,15 @@ FString UHeroCustomizationComponent::GetArmorTintName(int32 Index)
 
 FLinearColor UHeroCustomizationComponent::GetRaceSkinTint(EHeroRace Race)
 {
+	// Grounded race skin tints (luminance <= 0.88, preserving hand-painted PBR pore/subsurface detail)
 	switch (Race)
 	{
-	case EHeroRace::Human:        return FLinearColor(1.00f, 0.96f, 0.92f, 1.0f);
-	case EHeroRace::HighElf:      return FLinearColor(0.95f, 0.97f, 1.04f, 1.0f);
-	case EHeroRace::HighlandNord: return FLinearColor(1.02f, 0.94f, 0.90f, 1.0f);
-	case EHeroRace::AshDraconid:  return FLinearColor(0.82f, 0.72f, 0.68f, 1.0f);
-	case EHeroRace::ShadowKin:    return FLinearColor(0.68f, 0.70f, 0.82f, 1.0f);
-	case EHeroRace::Ironborn:     return FLinearColor(0.88f, 0.84f, 0.80f, 1.0f);
-	default:                      return FLinearColor(1.00f, 1.00f, 1.00f, 1.0f);
+	case EHeroRace::Human:        return FLinearColor(0.86f, 0.82f, 0.78f, 1.0f);
+	case EHeroRace::HighElf:      return FLinearColor(0.80f, 0.83f, 0.88f, 1.0f);
+	case EHeroRace::HighlandNord: return FLinearColor(0.86f, 0.79f, 0.75f, 1.0f);
+	case EHeroRace::AshDraconid:  return FLinearColor(0.74f, 0.63f, 0.59f, 1.0f);
+	case EHeroRace::ShadowKin:    return FLinearColor(0.62f, 0.64f, 0.76f, 1.0f);
+	case EHeroRace::Ironborn:     return FLinearColor(0.80f, 0.76f, 0.72f, 1.0f);
+	default:                      return FLinearColor(0.84f, 0.84f, 0.84f, 1.0f);
 	}
 }

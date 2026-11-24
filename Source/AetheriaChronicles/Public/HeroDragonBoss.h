@@ -402,6 +402,7 @@ protected:
 
 private:
 	void SetupHeroSkeletalMeshAndAnims();
+	bool BindParagonHeroSingleNodeAnims(USkeletalMesh* SkelMesh);
 	void SetupOrbitingOrbs();
 	void ExecuteMeleeAttack_Internal();
 	void ExecuteDodgeRoll_Internal(const FVector& WorldMoveDir);
@@ -427,6 +428,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UPointLightComponent> CreatorStudioFillLight;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UPointLightComponent> CreatorStudioRimLight;
+
 	bool bCreatorStudioCameraActive = false;
 	float CreatorStudioOrbitYaw = 165.f;
 	int32 CreatorStudioZoomMode = 0;
@@ -434,6 +438,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> OrbitingOrbMIDs[3];
+
+	int32 OrbitingOrbMatMode = 0;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimSequence> AnimAttack[3];
@@ -452,6 +458,16 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAnimSequence> AnimCast;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> ActiveIdleAnimSeq;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> ActiveRunAnimSeq;
+
+	float CombatAnimLockUntilTime = 0.f;
+	bool bPlayingRunAnim = false;
+	bool bPlayingCombatOneShot = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UParticleSystem> KwangPrimaryImpactFX;

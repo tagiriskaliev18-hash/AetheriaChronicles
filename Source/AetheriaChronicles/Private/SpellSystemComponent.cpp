@@ -206,13 +206,14 @@ AChronicleSpellActor::AChronicleSpellActor()
 	SecondaryMesh->SetGenerateOverlapEvents(false);
 	SecondaryMesh->SetCastShadow(false);
 
-	// Physical AgX Lumen light — balanced transient spell flash (3,200 - 5,500 lm) so VFX read cleanly under EV100 exposure
+	// Physical AgX Lumen light — balanced transient spell flash (3,200 - 5,500 lm) with restrained specular so stone never gets white hot-spots
 	SpellLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("SpellLight"));
 	SpellLight->SetupAttachment(RootScene);
 	SpellLight->SetIntensityUnits(ELightUnits::Lumens);
 	SpellLight->SetIntensity(3600.f);
 	SpellLight->SetAttenuationRadius(1400.f);
 	SpellLight->SetCastShadows(false);
+	SpellLight->SetSpecularScale(0.15f);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereFinder(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (SphereFinder.Succeeded())
@@ -417,11 +418,13 @@ void AChronicleSpellActor::UpdateEmissiveIntensity(float EmissiveScale)
 	{
 		PrimaryMID->SetVectorParameterValue(TEXT("Color"), PrimaryHDR);
 		PrimaryMID->SetVectorParameterValue(TEXT("EmissiveColor"), PrimaryHDR);
+		PrimaryMID->SetVectorParameterValue(TEXT("Tint"), CachedDef.PrimaryColor);
 	}
 	if (SecondaryMID)
 	{
 		SecondaryMID->SetVectorParameterValue(TEXT("Color"), SecondaryTint);
 		SecondaryMID->SetVectorParameterValue(TEXT("EmissiveColor"), SecondaryTint);
+		SecondaryMID->SetVectorParameterValue(TEXT("Tint"), CachedDef.PrimaryColor);
 	}
 }
 
@@ -492,10 +495,10 @@ void AChronicleSpellActor::ConfigureSpellVisualsAndBehavior()
 		}
 	}
 
-	// Default physical AgX Lumen configuration (clamped to 3,200 - 5,500 lm for crisp EV100 VFX readability)
+	// Default physical AgX Lumen configuration (clamped to 3,200 - 5,500 lm; restrained emissive 2.4..3.8 preserves rich elemental saturation)
 	BaseLightLumens = FMath::Clamp(3200.f + 1000.f * ChargeT01, 3200.f, 5500.f);
 	PeakLightLumens = FMath::Clamp(4600.f + 900.f * ChargeT01, 3500.f, 5500.f);
-	BaseEmissiveStrength = 6.5f + 2.5f * ChargeT01;
+	BaseEmissiveStrength = 2.4f + 1.4f * ChargeT01;
 
 	PrimaryMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SecondaryMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -666,12 +669,27 @@ void AChronicleSpellActor::ConfigureSpellVisualsAndBehavior()
 		SetActorLocation(GroundLoc);
 		SetActorRotation(FlatDir.Rotation());
 
+		// Prefer the translucent crystalline ice-void shader over opaque EmissiveMeshMaterial so the prism barrier never reads as a raw white block
+		if (UMaterialInterface* PrismWallMat = LoadGuardedAsset<UMaterialInterface>(TEXT("/Game/Materials/M_AetheriaPrismWall.M_AetheriaPrismWall")))
+		{
+			PrimaryMID = UMaterialInstanceDynamic::Create(PrismWallMat, this);
+			SecondaryMID = UMaterialInstanceDynamic::Create(PrismWallMat, this);
+			if (PrimaryMesh && PrimaryMID)
+			{
+				PrimaryMesh->SetMaterial(0, PrimaryMID);
+			}
+			if (SecondaryMesh && SecondaryMID)
+			{
+				SecondaryMesh->SetMaterial(0, SecondaryMID);
+			}
+		}
+
 		PrimaryMesh->SetStaticMesh(CubeMeshAsset);
 		SecondaryMesh->SetStaticMesh(CubeMeshAsset);
-		PrimaryMesh->SetRelativeScale3D(FVector(0.85f, 5.8f * ChargeScale, 2.75f * ChargeScale));
+		PrimaryMesh->SetRelativeScale3D(FVector(0.55f, 5.6f * ChargeScale, 2.65f * ChargeScale));
 		PrimaryMesh->SetRelativeLocation(FVector(0.f, 0.f, -140.f)); // Rises up during initial 0.25s
-		SecondaryMesh->SetRelativeScale3D(FVector(2.5f, 6.2f * ChargeScale, 0.14f));
-		SecondaryMesh->SetRelativeLocation(FVector(0.f, 0.f, 7.f));
+		SecondaryMesh->SetRelativeScale3D(FVector(1.8f, 6.0f * ChargeScale, 0.08f));
+		SecondaryMesh->SetRelativeLocation(FVector(0.f, 0.f, 5.f));
 
 		// Solid crystalline barrier that blocks enemies & projectiles while letting camera pass
 		PrimaryMesh->bDisallowNanite = true;
@@ -681,6 +699,7 @@ void AChronicleSpellActor::ConfigureSpellVisualsAndBehavior()
 		PrimaryMesh->SetCollisionResponseToAllChannels(ECR_Block);
 		PrimaryMesh->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 
+		BaseEmissiveStrength = 2.2f + 1.0f * ChargeT01;
 		BaseLightLumens = FMath::Clamp(3300.f + 800.f * ChargeT01, 3200.f, 5500.f);
 		TotalDuration = 4.8f * FMath::Clamp(ControlScale, 0.7f, 2.0f);
 
@@ -759,6 +778,7 @@ void AChronicleSpellActor::ConfigureSpellVisualsAndBehavior()
 		SpellLight->SetIntensity(CurrentLightLumens);
 		SpellLight->SetAttenuationRadius(FMath::Max(1400.f, EffectiveRadius * 2.8f));
 		SpellLight->SetLightColor(CachedDef.PrimaryColor, true);
+		SpellLight->SetSpecularScale(0.15f);
 	}
 
 	UpdateEmissiveIntensity(BaseEmissiveStrength);
@@ -823,12 +843,12 @@ void AChronicleSpellActor::SpawnRealSpellVFXAndCastSFX(float ChargeScale)
 		UGameplayStatics::PlaySoundAtLocation(this, CastSFX, GetActorLocation());
 	}
 
-	// Hide ugly BasicShapes fallback meshes whenever real Niagara or Cascade loaded cleanly,
-	// except IcePrismWall which relies on its solid crystalline barrier mesh (with bDisallowNanite=true).
+	// Hide BasicShapes fallback meshes whenever real Niagara or Cascade loaded cleanly,
+	// except IcePrismWall's translucent crystalline PrimaryMesh (hiding the flat ground SecondaryMesh).
 	const bool bHasRealVFX = (ActiveNiagaraVFX != nullptr) || (ActiveCascadeVFX != nullptr);
-	if (bHasRealVFX && SpellId != EChronicleSpellId::IcePrismWall)
+	if (bHasRealVFX)
 	{
-		if (PrimaryMesh)
+		if (SpellId != EChronicleSpellId::IcePrismWall && PrimaryMesh)
 		{
 			PrimaryMesh->SetVisibility(false);
 		}
@@ -1243,9 +1263,16 @@ void AChronicleSpellActor::Tick(float DeltaSeconds)
 								GetInstigatorController(),
 								this,
 								UDamageType::StaticClass());
-							ColdSnapTarget = StruckActor;
-							ColdSnapRemainingProcs = 2;
-							PulseTimer = 0.f;
+
+							// Strictly lock repeating Cold Snap frost ticks ONLY onto an enemy ACharacter —
+							// NEVER onto static world geometry or AAetheriaWorldBuilder (whose pivot is 0,0,0)!
+							ACharacter* StruckChar = Cast<ACharacter>(StruckActor);
+							if (StruckChar && StruckChar != GetInstigator() && StruckChar != GetOwner())
+							{
+								ColdSnapTarget = StruckChar;
+								ColdSnapRemainingProcs = 2;
+								PulseTimer = 0.f;
+							}
 						}
 						ApplySpellBlastAndDestruction(ImpactHit.ImpactPoint, EffectiveRadius, EffectiveDamage * 0.55f, EffectiveImpulse, false, 110.f);
 					}
@@ -1265,21 +1292,28 @@ void AChronicleSpellActor::Tick(float DeltaSeconds)
 		}
 		else
 		{
-			// Follow-up signature Cold Snap frost ticks on struck target
-			if (AActor* Target = ColdSnapTarget.Get())
+			// Follow-up signature Cold Snap frost ticks on struck enemy character only
+			if (ACharacter* TargetChar = Cast<ACharacter>(ColdSnapTarget.Get()))
 			{
-				SetActorLocation(Target->GetActorLocation() + FVector(0.f, 0.f, 60.f));
-				if (HasAuthority() && ColdSnapRemainingProcs > 0 && PulseTimer >= 0.42f)
+				if (IsValid(TargetChar) && !TargetChar->IsActorBeingDestroyed())
 				{
-					PulseTimer = 0.f;
-					--ColdSnapRemainingProcs;
-					TriggerFlashBoost(4200.f);
-					UGameplayStatics::ApplyDamage(
-						Target,
-						EffectiveDamage * 0.35f,
-						GetInstigatorController(),
-						this,
-						UDamageType::StaticClass());
+					SetActorLocation(TargetChar->GetActorLocation() + FVector(0.f, 0.f, 60.f));
+					if (HasAuthority() && ColdSnapRemainingProcs > 0 && PulseTimer >= 0.42f)
+					{
+						PulseTimer = 0.f;
+						--ColdSnapRemainingProcs;
+						TriggerFlashBoost(4200.f);
+						UGameplayStatics::ApplyDamage(
+							TargetChar,
+							EffectiveDamage * 0.35f,
+							GetInstigatorController(),
+							this,
+							UDamageType::StaticClass());
+					}
+				}
+				else
+				{
+					ColdSnapTarget.Reset();
 				}
 			}
 			const float ShatterScale = FMath::Max(0.4f, PrimaryMesh->GetRelativeScale3D().X - DeltaSeconds * 1.4f);

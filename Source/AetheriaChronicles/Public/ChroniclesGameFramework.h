@@ -184,6 +184,7 @@ public:
 	bool IsHeroDead() const;
 
 	AAetheriaNPCActor* FindNearestInteractableNPC(float MaxDistance = 420.f) const;
+	AAetheriaNPCActor* FindTalkableNPC(float MaxDistance = 280.f) const;
 	AAetheriaDragonActor* FindNearestDragon(float MaxDistance = 1400.f) const;
 	AAetheriaBossCharacter* FindWorldBoss() const;
 	AAetheriaWorldBuilder* FindWorldBuilder() const;

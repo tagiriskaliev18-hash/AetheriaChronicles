@@ -19,6 +19,8 @@ class AVolumetricCloud;
 class UInstancedStaticMeshComponent;
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
+class UParticleSystem;
+class UParticleSystemComponent;
 class UPointLightComponent;
 class USceneComponent;
 class UStaticMesh;
@@ -102,6 +104,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UPointLightComponent> ShatterFlashLight;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UStaticMeshComponent> RuneAccentMesh;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UPointLightComponent> RuneAccentLight;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> PropMID;
@@ -217,6 +225,7 @@ protected:
 private:
 	void SetupAtmosphereAndLighting();
 	void UpdateAtmosphereForTimeOfDay(float NormalizedTime);
+	void PatchOpenWorldLandscapeMaterials();
 
 	void BuildAllBiomes();
 	void BuildOakhavenVillage();
@@ -229,7 +238,10 @@ private:
 	void BuildSkyRuneRings();
 
 	UStaticMesh* LoadMeshSafe(const TCHAR* AssetPath, const TCHAR* FallbackPath = TEXT("/Engine/BasicShapes/Cube.Cube"));
+	UMaterialInterface* LoadPBRMaterial(const TArray<const TCHAR*>& Candidates);
+	UParticleSystem* LoadParticleSafe(const TCHAR* AssetPath);
 	UMaterialInstanceDynamic* CreateColorMID(const FLinearColor& Color, bool bEmissive = false);
+	static bool IsGreyboxOrMissingMaterial(const UMaterialInterface* Mat);
 
 	UStaticMeshComponent* AddWorldMesh(
 		const FString& CompName,
@@ -242,6 +254,28 @@ private:
 		bool bEnableCollision = true,
 		USceneComponent* AttachParent = nullptr);
 
+	UParticleSystemComponent* SpawnFireParticle(
+		const FString& CompName,
+		const TCHAR* ParticlePath,
+		const FVector& WorldLoc,
+		const FVector& WorldScale,
+		const FRotator& WorldRot = FRotator::ZeroRotator);
+
+	void BuildTiledStoneFloor(
+		const FString& Prefix,
+		float CenterX,
+		float CenterY,
+		float HalfExtentX,
+		float HalfExtentY,
+		float TileStep,
+		float LiftCm,
+		const TCHAR* FloorMeshPath,
+		UMaterialInterface* PrimaryMat,
+		UMaterialInterface* AccentMat = nullptr,
+		float AccentHalfWidthX = 0.f,
+		bool bFollowTerrain = true,
+		float FixedBaseZ = 0.f);
+
 	UPointLightComponent* AddAmbientFireLight(
 		const FString& CompName,
 		const FVector& WorldLoc,
@@ -251,7 +285,8 @@ private:
 		const FLinearColor& LightColor,
 		float FlickerAmplitude = 0.14f,
 		float PhaseOffset = 0.f,
-		bool bNightBoost = true);
+		bool bNightBoost = true,
+		float SpecularScale = 0.14f);
 
 	ADestructiblePropActor* SpawnDestructibleProp(
 		const FVector& WorldLoc,
@@ -269,7 +304,7 @@ private:
 		const FVector& GroundLoc,
 		float Lumens,
 		float AttenuationRadius,
-		const TCHAR* BrazierMeshPath = TEXT("/Game/Meshes/SM_IronBrazier.SM_IronBrazier"),
+		const TCHAR* BrazierMeshPath = TEXT("/Game/MedievalDungeon/Meshes/Architecture/Dungeon/SM_Fire_Pit.SM_Fire_Pit"),
 		float ScaleFactor = 1.0f,
 		float PhaseOffset = 0.f);
 
@@ -277,7 +312,16 @@ private:
 	TMap<FString, TObjectPtr<UStaticMesh>> MeshCache;
 
 	UPROPERTY(Transient)
+	TMap<FString, TObjectPtr<UMaterialInterface>> MaterialCache;
+
+	UPROPERTY(Transient)
+	TMap<FString, TObjectPtr<UParticleSystem>> ParticleCache;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UStaticMeshComponent>> SpawnedMeshes;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UParticleSystemComponent>> SpawnedParticles;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> DynamicMaterials;
@@ -299,6 +343,7 @@ private:
 
 	float FallbackGroundZ = 0.f;
 	float ElapsedAnimTime = 0.f;
+	float LandscapePatchTimer = 0.f;
 	int32 ActivePresetIndex = 0;
 	bool bWorldBuilt = false;
 	bool bRTXActiveCached = false;
