@@ -1,31 +1,45 @@
-# Unreal Engine 5.8 build artifacts & local caches
-Binaries/
-Build/
-DerivedDataCache/
-Intermediate/
-Saved/
-.vs/
-.idea/
-.vscode/
+# Unity generated caches and build artifacts
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+/[Cc]aptures/
+/[Rr]aw[Aa][Aa][Aa][Ee]xport/
+/Tools/PacksInspect/
+
+# IDE & compiler generated files
+/.vs/
+/.vscode/
+/.idea/
+*.csproj
+*.unityproj
 *.sln
+*.slnx
 *.suo
-*.opensdf
-*.sdf
-*.VC.db
-*.VC.opendb
-*.log
 *.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.apk
+*.aab
+*.unitypackage
+*.log
+sysinfo.txt
+crashlytics-build.properties
 
-# Multi-GB third-party Fab / Paragon / Megascans binary asset packs
-# (Install locally via Epic Games Launcher VaultCache into Content/)
-Content/
-!Content/.gitkeep
-
-# OS & backup noise
+# OS noise
 Thumbs.db
 Desktop.ini
 .DS_Store
 *.bak
-
-RawAssets/
-Plugins/

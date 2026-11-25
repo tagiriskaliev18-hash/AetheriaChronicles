@@ -1,0 +1,114 @@
+### Heroes/Kwang/Meshes/Kwang_GDC.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Cloth     tris= 17412 offset=0,106  bones=hip_plate_bott_l:0,12,calf_r:0,12,calf_l:0,12
+   slot  1: Skin      tris=  7935 offset=0,142  bones=head:0,47,upperarm_twist_01_r:0,15,spine_03:0,15
+   slot  2: Skin      tris=  4205 offset=0,144  bones=head:0,47,spine_03:0,17,pelvis:0,07
+   slot  3: Metal     tris=   910 offset=0,131  bones=pelvis:1,00,root:0,00,hip_cloth_bk_l:0,00
+   slot  4: Cloth     tris= 11884 offset=0,094  bones=pelvis:0,22,lowerarm_twist_01_l:0,10,lowerarm_twist_01_r:0,10
+   slot  5: Skin      tris=  4466 offset=0,133  bones=upperarm_twist_02_l:0,07,upperarm_twist_01_l:0,06,index_03_l:0,04
+   slot  6: Eye       tris=  2144 offset=0,095  bones=L_eye:0,50,R_eye:0,50,root:0,00
+   slot  7: Eye       tris=   938 offset=0,100  bones=L_eye_lid_upper_mid:0,21,R_eye_lid_upper_mid:0,21,head:0,17
+   slot  8: Eye       tris=   226 offset=0,097  bones=R_eye_lid_lower_mid:0,23,L_eye_lid_lower_mid:0,23,head:0,20
+   slot  9: Cloth     tris=  6268 offset=0,123  bones=clavicle_r:0,36,clavicle_l:0,33,spine_03:0,31
+   slot 10: Skin      tris=  7050 offset=0,150  bones=head:0,87,spine_03:0,09,neck_02:0,01
+   slot 11: Skin      tris=  9821 offset=0,097  bones=head:0,52,C_jaw:0,07,C_nose_bridge:0,07
+   slot 12: Skin      tris=   970 offset=0,173  bones=head:1,00,root:0,00,pelvis:0,00
+   slot 13: Mouth     tris=   818 offset=0,079  bones=teeth_lower:0,40,teeth_upper:0,39,tongue:0,20
+   slot 14: Metal     tris=  2258 offset=0,103  bones=shoulder_plate_bott_l:0,76,shoulder_plate_top_l:0,24,root:0,00
+   slot 15: Eye       tris=   636 offset=0,096  bones=head:0,21,L_eye_lid_lower_mid:0,20,R_eye_lid_lower_mid:0,20
+   slot 16: Metal     tris=  2226 offset=0,169  bones=pelvis:0,72,thigh_r:0,28,root:0,00
+   slot 17: Weapon    tris=  5306 offset=0,756  bones=weapon_r:1,00,root:0,00,pelvis:0,00
+   baked bounds center=(0.00, 0.98, 0.59) size=(1.40, 1.96, 1.95)
+### Heroes/Gideon/Meshes/Gideon.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Skin      tris=  8818 offset=0,098  bones=head:0,54,C_jaw:0,08,C_nose_bridge:0,05
+   slot  1: Unknown   tris= 21798 offset=0,126  bones=spine_03:0,24,spine_02:0,13,head:0,09
+   slot  2: Unknown   tris= 17586 offset=0,105  bones=pelvis:0,26,calf_r:0,08,calf_l:0,08
+   slot  3: Cloth     tris=  2672 offset=0,148  bones=pelvis:0,25,loin_cloth_bk_03:0,16,loin_cloth_bk_02:0,13
+   slot  4: Unknown   tris=  9104 offset=0,288  bones=outer_ring_A_l:0,27,outer_ring_A_r:0,27,portal_ring:0,18
+   slot  5: Unknown   tris=   100 offset=0,282  bones=portal:1,00,root:0,00,outer_ring_base_ik:0,00
+   slot  6: Cloth     tris=  2630 offset=0,076  bones=upperarm_twist_01_r:0,17,upperarm_twist_01_l:0,17,spine_03:0,15
+   slot  7: Mouth     tris=  1908 offset=0,089  bones=C_jaw:0,47,head:0,38,R_lip_upper_outer:0,02
+   slot  8: Mouth     tris=   818 offset=0,080  bones=teeth_lower:0,40,teeth_upper:0,39,tongue:0,20
+   slot  9: Eye       tris=  1718 offset=0,108  bones=head:0,41,L_eye_lid_lower_mid:0,16,R_eye_lid_lower_mid:0,15
+   slot 10: Eye       tris=   132 offset=0,106  bones=head:0,34,R_eye_lid_lower_mid:0,17,L_eye_lid_lower_mid:0,17
+   slot 11: Eye       tris=   588 offset=0,105  bones=head:0,44,R_eye_lid_upper_mid:0,15,L_eye_lid_upper_mid:0,15
+   slot 12: Eye       tris=   168 offset=0,102  bones=head:0,50,R_eye_lid_lower_mid:0,17,L_eye_lid_lower_mid:0,17
+   slot 13: Eye       tris=  3072 offset=0,101  bones=R_eye:0,50,L_eye:0,50,root:0,00
+   baked bounds center=(0.00, 0.93, -0.01) size=(1.46, 1.87, 0.57)
+### Heroes/Serath/Meshes/Serath.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Skin      tris= 21284 offset=0,094  bones=upperarm_twist_01_l:0,04,upperarm_twist_01_r:0,04,upperarm_twist_03_r:0,03
+   slot  1: Weapon    tris= 17616 offset=0,223  bones=weapon_l:0,31,spine_03:0,11,evil_weapon_blades:0,05
+   slot  2: Unknown   tris= 15165 offset=0,103  bones=pelvis:0,20,foot_r:0,06,foot_l:0,06
+   slot  3: Skin      tris=  9436 offset=0,092  bones=head:0,56,C_jaw:0,07,C_nose_bridge:0,04
+   slot  4: Leather   tris=   426 offset=0,069  bones=foot_r:0,24,foot_l:0,24,calf_twist_01_l:0,19
+   slot  5: Eye       tris=  3072 offset=0,092  bones=R_eye:0,50,L_eye:0,50,root:0,00
+   slot  6: Hair      tris=  7793 offset=0,122  bones=head:0,27,hair_fr_r_02:0,14,hair_fr_l_02:0,12
+   slot  7: Cloth     tris=  4138 offset=0,099  bones=cloth_front_l_01:0,18,cloth_front_r_01:0,18,holy_shoulder_mid_r:0,15
+   slot  8: Mouth     tris=   818 offset=0,075  bones=teeth_lower:0,40,teeth_upper:0,39,tongue:0,13
+   slot  9: Eye       tris=   216 offset=0,098  bones=head:0,47,R_eye_lid_upper_mid:0,14,L_eye_lid_upper_mid:0,14
+   slot 10: Eye       tris=  1110 offset=0,101  bones=head:0,44,L_eye_lid_upper_mid:0,18,R_eye_lid_upper_mid:0,18
+   slot 11: Eye       tris=   556 offset=0,096  bones=head:0,47,L_eye_lid_upper_mid:0,15,R_eye_lid_upper_mid:0,15
+   slot 12: Unknown   tris=  1120 offset=0,869  bones=wing_l_04:0,07,wing_r_04:0,07,wing_finger_b_l_03:0,06
+   slot 13: Unknown   tris=   252 offset=0,740  bones=wing_finger_b_l_03:0,06,wing_finger_b_r_03:0,06,wing_l_01:0,06
+   slot 14: Cloth     tris=  2212 offset=0,120  bones=pelvis:0,35,rear_loincloth_03:0,18,front_lioncloth_03:0,14
+   baked bounds center=(0.00, 1.14, 0.23) size=(6.77, 2.29, 1.12)
+### Heroes/Kallari/Meshes/Kallari.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Skin      tris=   520 offset=0,096  bones=head:1,00,root:0,00,pelvis:0,00
+   slot  1: Cloth     tris= 20524 offset=0,094  bones=spine_03:0,32,pelvis:0,15,spine_02:0,09
+   slot  2: Unknown   tris=  6564 offset=0,644  bones=tentacle_r_09:0,09,tentacle_l_09:0,09,tentacle_r_01:0,06
+   slot  3: Unknown   tris=  2004 offset=0,143  bones=thruster_casing_l:0,27,thruster_casing_r:0,27,thruster_a_l:0,08
+   slot  4: Skin      tris= 32594 offset=0,075  bones=lowerarm_l:0,12,lowerarm_r:0,12,hand_l:0,06
+   slot  5: Weapon    tris=  5252 offset=0,033  bones=sword_handle_l:0,19,sword_handle_r:0,19,dagger_a_l:0,07
+   slot  6: Cloth     tris=  9384 offset=0,083  bones=pelvis:0,17,calf_r:0,12,calf_l:0,12
+   slot  7: Skin      tris=  7520 offset=0,097  bones=head:0,87,spine_03:0,05,neck_01:0,04
+   baked bounds center=(0.00, 0.90, -0.50) size=(1.83, 1.83, 1.35)
+### Heroes/Khaimera/Meshes/Khaimera.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Skin      tris= 16682 offset=0,158  bones=head:0,36,spine_03:0,21,necklace_center_02:0,11
+   slot  1: Cloth     tris=  5114 offset=0,080  bones=calf_l:0,22,calf_r:0,22,lowerarm_twist_01_r:0,08
+   slot  2: Weapon    tris= 18322 offset=0,310  bones=weapon_l:0,16,weapon_r:0,16,upperarm_twist_01_l:0,10
+   slot  3: Unknown   tris=  9008 offset=0,193  bones=head:0,13,spine_03:0,10,upperarm_twist_01_l:0,08
+   slot  4: Mouth     tris=   646 offset=0,070  bones=jaw:0,63,head:0,37,root:0,00
+   slot  5: Unknown   tris= 18394 offset=0,159  bones=GhostBeast_head:0,12,GhostBeast_pelvis:0,08,GhostBeast_spine_03:0,07
+   slot  6: Skin      tris=  9684 offset=0,124  bones=spine_03:0,06,upperarm_twist_01_r:0,06,upperarm_twist_01_l:0,06
+   slot  7: Unknown   tris=  2461 offset=0,114  bones=head:0,29,jaw:0,23,spine_03:0,13
+   baked bounds center=(0.00, 1.09, 0.24) size=(1.81, 2.21, 1.91)
+### Heroes/Morigesh/Meshes/Morigesh.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Skin      tris= 15275 offset=0,142  bones=head:0,40,C_jaw:0,03,calf_r:0,03
+   slot  1: Skin      tris=  4420 offset=0,045  bones=upperarm_twist_01_l:0,28,upperarm_twist_01_r:0,28,lowerarm_twist_01_r:0,11
+   slot  2: Skin      tris=   577 offset=0,139  bones=head:0,49,spine_03:0,08,breast_l:0,07
+   slot  3: Unknown   tris= 17561 offset=0,112  bones=weapon_r:0,19,calf_l:0,11,calf_r:0,11
+   slot  4: Cloth     tris=  1722 offset=0,085  bones=spine_03:0,25,clavicle_l:0,11,clavicle_r:0,11
+   slot  5: Unknown   tris=  4572 offset=0,101  bones=spine_03:0,19,neck_01:0,19,spine_02:0,18
+   slot  6: Cloth     tris= 19365 offset=0,118  bones=spine_03:0,24,spine_02:0,21,spine_01:0,12
+   slot  7: Eye       tris=  1072 offset=0,113  bones=R_eye:0,50,L_eye:0,50,root:0,00
+   slot  8: Eye       tris=   113 offset=0,114  bones=head:0,28,R_eye_lid_upper_mid:0,20,L_eye_lid_upper_mid:0,20
+   slot  9: Hair      tris= 15051 offset=0,133  bones=head:0,49,hair_top_l:0,08,hair_mid_r:0,06
+   slot 10: Hair      tris=  1431 offset=0,127  bones=head:0,18,hair_dangle_front_r_02:0,13,hair_dangle_front_l_02:0,13
+   slot 11: Unknown   tris=  1520 offset=0,214  bones=binding_scale:0,95,doll_holder:0,05,root:0,00
+   slot 12: Unknown   tris=   482 offset=0,142  bones=doll_holder:1,00,root:0,00,pelvis:0,00
+   slot 13: Hair      tris=   348 offset=0,095  bones=ankle_feather2_l:0,17,ankle_feather2_r:0,17,ankle_feather1_l:0,13
+   slot 14: Mouth     tris=   580 offset=0,089  bones=teeth_lower:0,63,teeth_upper:0,38,root:0,00
+   slot 15: Unknown   tris=   562 offset=0,221  bones=doll_new_head:1,00,root:0,00,pelvis:0,00
+   slot 16: Unknown   tris=  1653 offset=0,241  bones=doll_r_arm:0,29,doll_l_arm:0,29,bound_character:0,13
+   slot 17: Eye       tris=   126 offset=0,110  bones=head:0,37,L_eye_lid_upper_mid:0,20,R_eye_lid_upper_mid:0,19
+   slot 18: Eye       tris=   540 offset=0,113  bones=head:0,29,L_eye_lid_upper_mid:0,21,R_eye_lid_upper_mid:0,19
+   baked bounds center=(0.00, 0.96, 0.10) size=(1.01, 1.98, 0.84)
+### Boss_Sevarog/Meshes/SevarogBloodred.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Metal     tris= 15056 offset=0,233  bones=spine_03:0,31,pelvis:0,25,head:0,07
+   slot  1: Metal     tris= 26386 offset=0,410  bones=shoulderB_01_l:0,22,shoulderB_01_r:0,22,shoulderC_01_l:0,17
+   slot  2: Unknown   tris= 27664 offset=0,230  bones=forearm_armor_01_l:0,08,forearm_armor_01_r:0,08,spine_03:0,07
+   slot  3: Cloth     tris= 11670 offset=0,155  bones=pelvis:0,28,pelvis_cloth_bk_01:0,10,spine_cloth_r_02:0,09
+   slot  4: Weapon    tris=  4092 offset=0,911  bones=weapon_r:1,00,root:0,00,pelvis:0,00
+   slot  5: Unknown   tris=   295 offset=0,173  bones=spine_03:0,39,neck_01:0,20,head:0,20
+   baked bounds center=(0.00, 2.13, 0.19) size=(3.04, 3.97, 3.07)
+### Enemies/Rampage/Meshes/Rampage.glb  scale-of-instance=(1.00, 1.00, 1.00)
+   slot  0: Unknown   tris= 19816 offset=0,226  bones=head:0,12,calf_r:0,04,calf_l:0,04
+   slot  1: Unknown   tris=  7742 offset=0,396  bones=spine_03:0,18,pelvis:0,10,spine_01:0,08
+   slot  2: Skin      tris=  7950 offset=0,374  bones=upperarm_twist_02_l:0,05,upperarm_twist_02_r:0,05,lowerarm_l:0,04
+   slot  3: Unknown   tris=  8940 offset=0,255  bones=pelvis:0,27,lowerarm_twist_01_l:0,10,thigh_twist_01_r:0,07
+   slot  4: Metal     tris=  1260 offset=0,255  bones=pelvis:1,00,root:0,00,spine_01:0,00
+   slot  5: Mouth     tris=  2530 offset=0,168  bones=teeth_lower:0,54,teeth_upper:0,46,root:0,00
+   slot  6: Eye       tris=   508 offset=0,147  bones=head:0,36,L_eye_lid_lower_mid:0,20,R_eye_lid_lower_mid:0,20
+   slot  7: Skin      tris=   194 offset=0,149  bones=head:1,00,root:0,00,pelvis:0,00
+   slot  8: Eye       tris=   162 offset=0,148  bones=head:0,52,L_eye_lid_lower_mid:0,13,R_eye_lid_lower_mid:0,13
+   slot  9: Eye       tris=  3072 offset=0,131  bones=R_eye:0,50,L_eye:0,50,root:0,00
+   baked bounds center=(-0.31, 1.09, -0.05) size=(3.61, 2.30, 2.01)

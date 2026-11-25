@@ -1,0 +1,282 @@
+
+################ Altar_Ruins_Free-baaa2696
+root: Assets/Altar_Ruins_FREE   assets: 370
+by ext: .prefab:123 .fbx:122 .png:54 (folder):31 .exr:13 .mat:13 .asset:6 .unity:3 .terrainlayer:3 .lighting:2
+folders: Assets/Altar_Ruins_FREE:368 | Assets/Scenes:2
+material shaders: Built-in Diffuse x13
+prefabs: 123
+   Prefabs (41): Stone_post_3, Rubble_4, Platform_circle, Arch_2, Rubble_1, Wall_broken_1, Tree, Flag_beam, Stone_slab_1, Column, Wall_round_5, Altar_2, Stone_post_5, Rubble_3, Arch_5, Wall_round_2 …
+   Prefabs/Old/Separated (37): Wall_round_5, Altar_2, Rubble_8, Rubble_2, Platform_circle, Rubble_1, Broken_column, Rubble_4, Stone_slab_2, Stone_post_1, Stone_slab_1, Rubble_6, Stone_post_2, Column_broken_small, Wall_broken_2, Arch_2 …
+   Prefabs/Old/Meshes_with_the_bottom_faces (38): Rubble_8, Arch_4, Tree, Arch_2, Flag_beam, Stone_slab_1, Rubble_7, Arch_3, Wall_round_4, Wall_round_3, Rubble_3, Altar_2, Stone_post_3, Stone_post_5, Rubble_4, Rubble_1 …
+   Prefabs/Old (6): Tree, Flag, Platform, Entrance, Altar, Arches
+   Prefabs/Particles (1): Stars
+
+################ Blacksmith-0b0d73ab
+root: Assets/3DForge   assets: 140
+by ext: (folder):64 .fbx
+00:37 .prefab
+00:22 .png
+00:9 .mat
+00:3 .tga
+00:2 .unity
+00:1 .rtf
+00:1 .asset
+00:1
+folders: Assets/3DForge:140
+material shaders: (no materials)
+prefabs: 0
+
+################ Blacksmith_s_Forge-a7e5dcd4
+root: Assets/3DForge   assets: 250
+by ext: .fbx
+00:75 .prefab
+00:73 (folder):54 .png
+00:28 .mat
+00:13 .tga
+00:3 .tif
+00:2 .unity
+00:1 .rtf
+00:1
+folders: Assets/3DForge:250
+material shaders: (no materials)
+prefabs: 0
+
+################ Church_Alters___Monument_Pack-f0af25f3
+root: Assets/Alter Pack   assets: 119
+by ext: .png:67 .mat:26 .prefab:10 .fbx:10 (folder):5 .unity:1
+folders: Assets/Alter Pack:119
+material shaders: Built-in Diffuse x26
+prefabs: 10
+   Prefab (10): Corinthian_Round, Ionic_Ultimate, Corinthian_Attic, Composite_Ultimate, Ionic_Basic, Corinthian_Baroque, Corinthian_Portal, Corinthian_Segment, Corinthian_Triangle, Composite_Apse
+
+################ Cursed_Cozy_Village___Stylized_Gothic_Environment_Pack-a798684b
+root: Assets/SerwusStudio   assets: 161
+by ext: .png:72 .mat:26 .fbx:23 .prefab:23 (folder):8 .md:3 .bmp:2 .shader:2 .unity:1 .asset:1
+folders: Assets/SerwusStudio:161
+material shaders: CCA_PropLite.shader x15 ; CCA_WallLite.shader x6 ; URP Lit (also Built-in Standard) x3 ; Built-in Diffuse x1 ; UNKNOWN 012e4d5ca98d57b4ea0513db1d22e697 x1
+materials with shaders NOT in package & not known: MI_Paper_2.mat, MI_pot.mat, MI_stone_wall.mat, MI_roof.mat, MI_wall 4.mat, MI_Paper_2 1.mat (20 mats)
+shaders (2): CCA_PropLite.shader, CCA_WallLite.shader
+prefabs: 23
+   Cursed Cozy Village/Free Starter Pack/Prefabs (23): Plank_v3, Irionbound_2, Paper, barrel, window, Ironbound, Roof_half, Plank_v2, Wall_roof, mailbox, door, Well, ground_plate, pot, wall_stone, Roof_full …
+
+################ Free_Hill_Rock_Mountain_Terrain_-_3d_environment_game_asset-ce35c108
+root: Assets/Hill Rock Mountain Terrain   assets: 58
+by ext: (folder):19 .png:13 .fbx:11 .prefab:6 .mat:5 .unitypackage:1 .pdf:1 .unity:1 .cs:1
+folders: Assets/Hill Rock Mountain Terrain:58
+material shaders: Built-in Diffuse x5
+SCRIPTS (1): Script/Camera/FlyCameraControl.cs
+prefabs: 6
+   Prefab (6): rock_set_02, rock_set_04, rock_set_03, tree_02, rock_set_01, mountain_terrain_02
+
+################ Free_Pack_-_Tree-97b20cea
+root: Assets/PolyOne   assets: 27
+by ext: .fbx:8 .prefab:8 (folder):6 .mat:2 .png:1 .unity:1 .asset:1
+folders: Assets/PolyOne:27
+material shaders: URP Lit (also Built-in Standard) x2
+prefabs: 8
+   Free Tree/Prefabs (8): SM_FreeTree_06, SM_FreeTree_05, SM_FreeTree_07, SM_FreeTree_04, SM_FreeTree_02, SM_FreeTree_03, SM_FreeTree_01, SM_FreeTree_08
+
+################ Free_Vampiric_PolyVania__Massive_Cartoon_Low_Poly_Town_Pack-03f8c3e5
+root: Assets/EmaceArt   assets: 1002
+by ext: .prefab:430 .fbx:389 .png:70 (folder):65 .mat:25 .asset:6 .psd:6 .playable:3 .unity:2 .txt:2 .exr:2 .hdr:1 .pdf:1
+folders: Assets/EmaceArt:1002
+material shaders: Built-in Diffuse x12 ; URP Lit (also Built-in Standard) x10 ; UNKNOWN 650dd9526735d5b46b79224bc6e94025 x1 ; UNKNOWN b7839dad95683814aa64166edc107ae2 x1 ; UNKNOWN 0406db5a14f94604a8c57ccfbc9f3b46 x1
+materials with shaders NOT in package & not known: Transylvania_Glass_Mat.mat, FX_Lightray.mat, FX_Base.mat (3 mats)
+prefabs: 430
+   PolyVania/Prefabs/Environment/Wall (28): EA_Tr_Prop_Wall_Right_4a_PRE, EA_Tr_Prop_Wall_Right_3a_PRE, EA_Tr_Prop_Wall_Right_2a_PRE, EA_Tr_Prop_Wall_Main_3a_PRE, EA_Tr_Prop_Wall_Main_4a_PRE, EA_Tr_Prop_Wall_Main_2a_PRE, EA_Tr_Prop_Wall_Corner_4a_PRE, EA_Tr_Prop_Wall_Left_4a_PRE, EA_Tr_Prop_Wall_Right_1a_PRE, EA_Tr_Prop_Wall_Left_1a_PRE, EA_Tr_Prop_Wall_Main_3d_PRE, EA_Tr_Prop_Wall_Main_4b_PRE, EA_Tr_Prop_Wall_Main_3c_PRE, EA_Tr_Prop_Wall_Main_1c_PRE, EA_Tr_Prop_Wall_Main_2b_PRE, EA_Tr_Prop_Wall_Corner_3a_PRE …
+   PolyVania/Prefabs/Electric (22): EA_Tr_Prop_Cable_01a_PRE, EA_Tr_Electricity_Box_01a_PRE, EA_Tr_Electricity_Box_01b_PRE, EA_Tr_Telegraph_01b_PRE, EA_Tr_Electric_Box_02a_PRE, EA_Tr_AirCon_01a_PRE, EA_Tr_AirCon_01d_PRE, EA_Tr_Electric_Box_01c_PRE, EA_Tr_AirCon_01b_PRE, EA_Tr_camera_01a, EA_Tr_AirCon_01c_PRE, EA_Tr_Prop_Cable_02a_PRE, EA_Tr_Doing_01a_PRE, EA_Tr_Prop_Cable_01b_PRE, EA_Tr_Domofon_01a_PRE, EA_Tr_Electric_Box_01b_PRE …
+   PolyVania/Prefabs/Environment/Ledges (25): EA_Tr_Prop_Wall_Cokul_4e_PRE, EA_Tr_Prop_Wall_Cokul_3b_PRE, EA_Tr_Prop_Wall_Cokul_4b_PRE, EA_Tr_Prop_Wall_Cokul_5d_PRE, EA_Tr_Prop_Wall_Cokul_5e_PRE, EA_Tr_Prop_Wall_Cokul_5a_PRE, EA_Tr_Prop_Wall_Cokul_2c_PRE, EA_Tr_Prop_Wall_Cokul_3c_PRE, EA_Tr_Prop_Wall_Cokul_2b_PRE, EA_Tr_Prop_Wall_Cokul_4c_PRE, EA_Tr_Prop_Wall_Cokul_3a_PRE, EA_Tr_Prop_Wall_Cokul_3d_PRE, EA_Tr_Prop_Wall_Cokul_1b_PRE, EA_Tr_Prop_Wall_Cokul_1a_PRE, EA_Tr_Prop_Wall_Cokul_5c_PRE, EA_Tr_Prop_Wall_Cokul_4a_PRE …
+   PolyVania/Prefabs/Buildings/Pipe (16): EA_Tr_pipe_5_04b_PRE, EA_Tr_pipe_2.5_02c_PRE, EA_Tr_Element_Gutter_Corner_01b_PRE, EA_Tr_valve_01b_PRE, EA_Tr_pipe_2.5_04c_PRE, EA_Tr_pipe_5_03b_PRE, EA_Tr_pipe_10_01a_PRE, EA_Tr_Element_Gutter_Corner_01a_PRE, EA_Tr_valve_01a_PRE, EA_Tr_pipe_2.5_03c_PRE, EA_Tr_pipe_10_02a_PRE, EA_Tr_pipe_10_04a_PRE, EA_Tr_pipe_5_02b_PRE, EA_Tr_pipe_10_03a_PRE, EA_Tr_pipe_2.5_01c_PRE, EA_Tr_pipe_5_01b_PRE
+   PolyVania/Prefabs/Buildings/Dummy (11): EA_Tr_House_Dummy_03c_PRE, EA_Tr_House_Dummy_02e_PRE, EA_Tr_House_Dummy_02c_PRE, EA_Tr_House_Dummy_03d_PRE, EA_Tr_House_03b.001_PRE, EA_Tr_GrassRoad_Dummy_01b_PRE, EA_Tr_House_Dummy_03a_PRE, EA_Tr_House_Dummy_02d_PRE, EA_Tr_street_01_Cross_02a.001_PRE, EA_Tr_House_Dummy_02b_PRE, EA_Tr_House_Dummy_03b_PRE
+   PolyVania/Prefabs/Buildings/House (23): EA_Tr_House_02c_PRE, EA_Tr_House_02e_PRE, EA_Tr_House_01c_PRE, Untitled_PRE, EA_Tr_House_04c_PRE, EA_Tr_House_03a_PRE, EA_Tr_House_02b_PRE, EA_Tr_House_01d_PRE, EA_Tr_House_05a_PRE, EA_Tr_House_04b_PRE, EA_Tr_Bld_House_05b_PRE, EA_Tr_House_05b_PRE, EA_Tr_Tower_Clock_02a_PRE, EA_Tr_House_03c_PRE, EA_Tr_House_01a_PRE, EA_Tr_House_02a_PRE …
+   PolyVania/Prefabs/Buildings/External_Window (11): EA_Tr_External_Window_02d_PRE, EA_Tr_External_Window_01a_PRE, EA_Tr_External_Window_02b_PRE, EA_Tr_External_Window_01b_PRE, EA_Tr_External_Window_01d_PRE, EA_Tr_External_Window_02a_PRE, EA_Tr_External_Window_PRE, EA_Tr_External_Window_02c_PRE, EA_Tr_External_Window.002_PRE, EA_Tr_External_Window_01c_PRE, EA_Tr_External_Window.006_PRE
+   PolyVania/Prefabs/Environment/Flagstone (8): EA_Tr_Prop_Pavement_Plate_1b_PRE, EA_Tr_Prop_RockPlate_2a_PRE, EA_Tr_Prop_RockPlate_2b_PRE, EA_Tr_Prop_RockPlate_1b_PRE, EA_Tr_Prop_RockPlate_1a_PRE, EA_Tr_Prop_Pavement_Plate_1a_PRE, EA_Tr_Prop_Pavement_Plate_Comp_01_aPRE, EA_Tr_Prop_Pavement_Plate_1c_PRE
+   PolyVania/Prefabs/Road (45): EA_Tr_street_01_Cross_01b_PRE, EA_Tr_street_01d_PRE, EA_Tr_street_01c_PRE, EA_Tr_street_01_Cross_Narrow_01a_PRE, EA_Tr_Grass_01c_PRE, EA_Tr_street_01_Narrow_01b_PRE, EA_Tr_GrassRoad_Dummy_01a_PRE, EA_Tr_cross_light_01d_PRE, EA_Tr_street_01_corner_Left_02a_PRE, EA_Tr_street_01_Narrow_01c_PRE, EA_Tr_Hills_Grass_02a_PRE, EA_Tr_cross_light_02e_PRE, EA_Tr_street_01_Cross_01c_PRE, EA_Tr_Canal_Plate_02_PRE, EA_Tr_street_01ax2_PRE, EA_Tr_Grass_02d_PRE …
+   PolyVania/Prefabs/Sign (28): EA_Tr_Lamp_nameplate_02a_PRE, EA_Tr_Lamp_nameplate_01a_PRE, EA_Tr_Shop_Banner_02b_PRE, EA_Tr_Road_Sign_01b_PRE, EA_Tr_Road_Sign_01a_PRE, EA_Tr_wall_nameplate_01i_PRE, EA_Tr_wall_nameplate_01a_PRE, EA_Tr_wall_nameplate_01f_PRE, EA_Tr_neon_sign_01b_PRE, EA_Tr_wall_nameplate_01c_PRE, EA_Tr_Banner_01b_PRE, EA_Tr_wall_nameplate_01e_PRE, EA_Tr_Shop_Banner_02a_PRE, EA_Tr_neon_sign_01c_PRE, EA_Tr_wall_nameplate_01b_PRE, EA_Tr_Lamp_nameplate_01b_PRE …
+   PolyVania/Prefabs/Buildings/WindowOnTheWorld (5): GateOnTheWorld ToExplore_Comp_PRE, WindowOnTheWorld (DummiesForest)_Comp_PRE, WindowOnTheWorld 2 (Dummies City)_Comp_PRE, WindowOnTheWorld (Dummies City)_Comp_PRE, WindowOnTheWorld (Dummies Street)_Comp_PRE
+   PolyVania/Prefabs/Environment/Wall_Bottom (22): EA_Tr_Prop_Wall_Half_3a_PRE, EA_Tr_Prop_Wall_Half_5c_PRE, EA_Tr_Prop_Wall_Small_1a_PRE, EA_Tr_Prop_Wall_1c_PRE, EA_Tr_Prop_Wall_Small_1b_PRE, EA_Tr_Prop_Wall_Half_6b_PRE, EA_Tr_Prop_Wall_Half_2a_PRE, EA_Tr_Prop_Wall_1b_PRE, EA_Tr_Prop_Wall_Half_4a_PRE, EA_Tr_Prop_Wall_Half_2b_PRE, EA_Tr_Prop_Wall_Half_6a_PRE, EA_Tr_Prop_Wall_Half_2c_PRE, EA_Tr_Prop_Wall_Half_3c_PRE, EA_Tr_Prop_Wall_1a_PRE, EA_Tr_Prop_Wall_Half_3b_PRE, EA_Tr_Prop_Wall_Half_5b_PRE …
+   PolyVania/Prefabs/Cemetery (17): EA_Tr_Chain_02a_PRE, EA_Tr_Grave_03b_PRE, EA_Tr_Chain_01a_PRE, EA_Tr_Door_Grill_01a_PRE, EA_Tr_Grave_01a_PRE, EA_Tr_Chain_02b_PRE, EA_Tr_coffin_Lid_01a_PRE, EA_Tr_Grave_01b_PRE, EA_Tr_Cross_01b_PRE, EA_Tr_coffin_01a_PRE, EA_Tr_Cross_01a_PRE, EA_Tr_coffin_01b_PRE, EA_Tr_Grave_02b_PRE, EA_Tr_coffin_01c_PRE, EA_Tr_Grave_03a_PRE, EA_Tr_Chain_02c_PRE …
+   PolyVania/Prefabs/Buildings/Gutter (19): EA_Tr_Element_Gutter_2.5_02d_PRE, EA_Tr_Gutter_2.5_01c_PRE, EA_Tr_Element_Gutter_2.5_01a_PRE, EA_Tr_Element_Gutter_5_02a_PRE, EA_Tr_Element_Gutter_2.5_02a_PRE, EA_Tr_Gutter_Comp_03_PRE, EA_Tr_Element_Gutter_5_01a_PRE, EA_Tr_Gutter_10_01a_PRE, EA_Tr_Gutter_5_01b_PRE, EA_Tr_Element_Gutter_5_01b_PRE, EA_Tr_Element_Gutter_2.5_02b_PRE, EA_Tr_Gutter_Start_01a_PRE, EA_Tr_Gutter_End_01a_PRE, Gutter_Comp_01_PRE, EA_Tr_Gutter_Comp_01_PRE, EA_Tr_Gutter_Comp_02_PRE …
+   PolyVania/Prefabs/Buildings/Chimneys (13): EA_Tr_chimney_01a_PRE, EA_Tr_chimney_02e_PRE, EA_Tr_chimney_02f_PRE, EA_Tr_chimney_02a_PRE, EA_Tr_chimney_02b_PRE, EA_Tr_chimney_02c_PRE, EA_Tr_chimney_01b_PRE, EA_Tr_chimney_03a_PRE, EA_Tr_chimney_02d_PRE, EA_Tr_chimney_01e_PRE, EA_Tr_chimney_01c_PRE, EA_Tr_chimney_03b_PRE, EA_Tr_chimney_01d_PRE
+   PolyVania/Prefabs/Buildings/Set (22): EA_Tr_Building_03a_PRE, EA_Tr_Building_04d_PRE, EA_Tr_Building_01a_PRE, EA_Tr_House_03b_PRE, EA_Tr_Building_05a_PRE, EA_Tr_Building_04b_PRE, EA_Tr_Building_02b_PRE, EA_Tr_Building_06a_PRE, EA_Tr_Building_05c_PRE, EA_Tr_Building_04c_PRE, EA_Tr_House_04c_PRE, EA_Tr_Building_04a_PRE, EA_Tr_Building_06b_PRE, EA_Tr_Building_06c_PRE, EA_Tr_Building_05b_PRE, EA_Tr_Building_05d_PRE …
+   PolyVania/Prefabs/Nature/Rocks (6): EA_Tr_Nature_Rock_1c_PRE, EA_Tr_Nature_Rock_1a_PRE, EA_Tr_Nature_Rock_2b_PRE, EA_Tr_Nature_Rock_2a_PRE, EA_Tr_Nature_Rock_1d_PRE, EA_Tr_Nature_Rock_1b_PRE
+   PolyVania/Prefabs/Shop (15): EA_Tr_Window_Grill_01a_PRE, EA_Tr_Window_Grill_02a_PRE, EA_Tr_Door_Blind_01a_PRE, EA_Tr_Prop_zombie_mannequin_01a_PRE, EA_Tr_Roof_Wooden_01a_PRE, EA_Tr_Window_Grill_01c_PRE, EA_Tr_Roof_Shop_01c_PRE, EA_Tr_Roof_Shop_01a_PRE, EA_Tr_Window_Grill_01b_PRE, EA_Tr_Roof_Blind_01a_PRE, EA_Tr_Roof_Cloth_01a_PRE, EA_Tr_Roof_Shop_01b_PRE, EA_Tr_Roof_Blind_01b_PRE, EA_Tr_Stall_01a_PRE, EA_Tr_Roof_Shop_01d_PRE
+   PolyVania/Prefabs/Props (19): EA_Tr_Bench_01b_PRE, EA_Tr_Prop_Dustbin_02a_PRE, EA_Tr_Bench_01a_PRE, EA_Tr_sewer_01a_PRE, EA_Tr_aerial_01a_PRE, EA_Tr_hang_PRE, EA_Tr_Tree_Basket_01a_PRE, EA_Tr_satelite_01a_PRE, EA_Tr_Desk_01a_PRE, EA_Tr_sewer_01b_PRE, EA_Tr_aerial_01b_PRE, EA_Tr_satelite_01b_PRE, EA_Tr_Prop_Dustbin_01a_PRE, EA_Tr_aerial_01c_PRE, EA_Tr_metal_ladder_01a_PRE, EA_Tr_Cable_Lantern_01a …
+   PolyVania/Prefabs/Curiozum (6): EA_Tr_Post_01a_PRE, EA_Tr_Bank_01a_PRE, EA_Tr_Info_Board_01a_PRE, EA_Tr_Stall_Concrete_01a_PRE, EA_Tr_Dump_01a_PRE, EA_Tr_Phone_01a_PRE
+   PolyVania/Prefabs/Paint (14): EA_Tr_Scaffolding_01a_PRE, EA_Tr_House_Wall_Paint_02_PRE, EA_Tr_PaintRoller_01b_PRE, EA_Tr_Scaffolding_01c_PRE, EA_Tr_Bucket_01a_PRE, EA_Tr_wooden_ladder_Small_01a_PRE, EA_Tr_wooden_ladder_01b_PRE, EA_Tr_Scaffolding_01b_PRE, EA_Tr_Bucket_01b_PRE, EA_Tr_PaintRoller_01c_PRE, EA_Tr_House_Wall_Paint_01a_PRE, EA_Tr_PaintRoller_01a_PRE, EA_Tr_wooden_ladder_01a_PRE, EA_Tr_Bucket_01c_PRE
+   PolyVania/Prefabs/Buildings/Balcon (9): EA_Tr_window_fence_03a_PRE, EA_Tr_Roof_Fence_01a_PRE, EA_Tr_Roof_Fence_01b_PRE, EA_Tr_window_fence_03b_PRE, EA_Tr_Balcon_01a_PRE, EA_Tr_window_fence_01a_PRE, EA_Tr_window_fence_03c_PRE, EA_Tr_window_fence_03d_PRE, EA_Tr_Balcon_01b_PRE
+   PolyVania/Prefabs/Buildings/External_Annex (6): EA_Tr_External_Annex_01b_PRE, EA_Tr_External_Annex_02b_PRE, EA_Tr_External_Annex_02c_PRE, EA_Tr_External_Annex_02a_PRE, EA_Tr_External_Annex_02b.001_PRE, EA_Tr_External_Annex_01a_PRE
+   PolyVania/Prefabs/Nature/Trees (4): EA_Tr_Nature_Tree_13a_PRE, EA_Tr_Nature_Tree_14a_PRE, EA_Tr_Nature_Tree_13b_PRE, EA_Tr_Nature_Tree_13c_PRE
+   PolyVania/Prefabs/Nature/Plants (2): EA_Tr_Env_Grass_01b_PRE, EA_Tr_Env_Grass_01a_PRE
+   PolyVania/Prefabs/Buildings/Doors (7): EA_Tr_Gate_Door_01c_PRE, EA_Tr_Gate_Door_01b_PRE, EA_Tr_Gate_BIG_02a_PRE, EA_Tr_Door_01a_PRE, EA_Tr_Door_01b_PRE, EA_Tr_Gate_Door_01b.001_PRE, EA_Tr_Gate_Door_01a_PRE
+
+################ Inferno_World_Free_-_Low_Poly_3D_Models-de629205
+root: Assets/ithappy   assets: 235
+by ext: .prefab:83 .fbx:76 (folder):37 .png:15 .mat:9 .unity:6 .asset:3 .unitypackage:3 .shadergraph:1 .txt:1 .bmp:1
+folders: Assets/ithappy:235
+material shaders: URP Lit (also Built-in Standard) x5 ; Built-in Diffuse x2 ; Lava.shadergraph x1 ; UNKNOWN 0406db5a14f94604a8c57ccfbc9f3b46 x1
+materials with shaders NOT in package & not known: Lava.mat, FX_Sunrays.mat (2 mats)
+shaders (1): Lava.shadergraph
+shader graph targets: Lava.shadergraph [n/a]
+prefabs: 83
+   Inferno_World_Free/Prefabs/Rocks (23): RockMid_001, RockBig_003, StoneSmall_001, Crag_003, Stone_004, RockMid_002, Stone_005, Stone_001, Crag_001, StoneSmall_004, Stone_002, Stone_003, RockSmall_002, RockSmall_003, Stone_006, StoneSmall_005 …
+   Inferno_World_Free/Prefabs/Props (25): Gem_001, Grass_002, Gear_002, Gem_004, Brazier_004, Spike_001, Lid_002, Grass_001, GoldPileSmall_001, Vase_001, GoldPile_002, Gem_003, GoldPileBig_001, Cup_002, Coal_002, Gem_002 …
+   Inferno_World_Free/Prefabs/Decorations (16): CirclePlatformSmall_001, Mound_008, Mound_005, PedestalBig_001, ChestBig_001, WellSmall_001, Bone_004, PlatformStair_001, ColumnBigBroken_001, Bone_006, Bone_003, BaseSmall_001, ColumnBig_001, Pedestal_001, StairsMiddle_001, ColumnBigBroken_002
+   Inferno_World_Free/VFX/FX_Prefabs (7): FX_Dust, FX_Smoke_Big, FX_Sunrays, FX_Fog, FX_Smoke_Small, FX_Smoke_Medium, FX_Water_Vapor
+   Inferno_World_Free/Prefabs/Platforms (5): PlatformSmall_001, Platform_003, PlatformSmall_002, PlatformSmall_004, PlatformSmall_003
+   Inferno_World_Free/Prefabs/Mountains (3): Cliff_004, Cliff_005, Cliff_003
+   Inferno_World_Free/Prefabs/Buildings (2): PlatformStar_001, TowerBig_001
+   Inferno_World_Free/Prefabs/Statues (2): Axe_001, StatueKnight_002
+
+################ Low_Poly_Nature_Pack_Lite-d2c038a0
+root: Assets/Low Poly Nature Pack Lite   assets: 74
+by ext: .prefab:31 .fbx:31 (folder):6 .unity:2 .mat:2 .png:1 .unitypackage:1
+folders: Assets/Low Poly Nature Pack Lite:74
+material shaders: Built-in Diffuse x2
+prefabs: 31
+   Prefabs (31): rock_big, hills02, bush_berries_blue, branch, mushroom02_brown, tree_dead02, tree01, mountain, tile_flat, fence, pine, stone, tree_dead01, plant, tent_red, bush_berries_empty …
+
+################ Low_Poly_Nature__Essentials-a607441d
+root: Assets/VertexRageStudio   assets: 292
+by ext: (folder):121 .prefab:62 .fbx:62 .asset:36 .mat:4 .unity:3 .unitypackage:2 .md:1 .png:1
+folders: Assets/VertexRageStudio:292
+material shaders: Built-in Diffuse x4
+prefabs: 62
+   LowPolyNatureEssentials/Prefabs/Env/Rocks (5): RockSmallE, RockSmallA, RockBlueD, RockNormD, RockBigC
+   LowPolyNatureEssentials/Prefabs/Env/Ground/Mounds (3): GrassMoundA, GrassMoundD, DirtMoundD
+   LowPolyNatureEssentials/Prefabs/Env/Trees/TreeStump (2): TreeStumpNormalC, TreeStumpShortD
+   LowPolyNatureEssentials/Prefabs/Props/Planks (2): PlankStackB, PlankMed
+   LowPolyNatureEssentials/Prefabs/Env/Grass/GrassLumps (3): GrassLumpLargeFTall, MixedGrassLumpLargeB, GrassLumpD
+   LowPolyNatureEssentials/Prefabs/Env/Mushrooms/ShaggyInkCap (2): ShaggyInkCapDMeltingVariantB, ShaggyInkCapCMatureVariantB
+   LowPolyNatureEssentials/Prefabs/Env/Plants (1): PlantSaplingG
+   LowPolyNatureEssentials/Prefabs/Env/Ground/BackgroundMountains (1): BackgroundMountainA
+   LowPolyNatureEssentials/Prefabs/Env/Plants/Ferns (2): FernDClusterVariantB, FernBClusterVariantA
+   LowPolyNatureEssentials/Prefabs/Arch/Fence/SimWoodFnc/SWFModules (2): SWFModShortA, SWFModA
+   LowPolyNatureEssentials/Prefabs/Env/Ground/SmallPiles (2): DirtPileG, GrassPileG
+   LowPolyNatureEssentials/Prefabs/Env/Plants/WildGarlic (1): WildGarlicBLeaves
+   LowPolyNatureEssentials/Prefabs/Env/Plants/Daisies (1): DaisyB
+   LowPolyNatureEssentials/Prefabs/Env/Trees/Willows (1): WillowTreeAdultA
+   LowPolyNatureEssentials/Prefabs/Env/Plants/Ivy/IvySimple (2): IvybranchCSparse, IvybranchCDense
+   LowPolyNatureEssentials/Prefabs/Env/Plants/Bluebells (1): BluebellBLeaves
+   LowPolyNatureEssentials/Prefabs/Arch/Ruins/RuinedWalls (2): RuinedWallRubbleA, RuinedWallA
+   LowPolyNatureEssentials/Prefabs/Env/Plants/Dandelions (2): DandelionBLeaves, DandelionsClusterB
+   LowPolyNatureEssentials/Prefabs/Env/Bushes (2): BushA, Bush8
+   LowPolyNatureEssentials/Prefabs/Env/Trees/WitheredTrees (2): SmallWitheredTreeB, WitheredTreeB
+   LowPolyNatureEssentials/Prefabs/Env/Trees/TreeBranches (1): TreeBranchBLeafless
+   LowPolyNatureEssentials/Prefabs/Env/Trees/GenericTrees (2): GenericTreeB, GenericTreeD
+   LowPolyNatureEssentials/Prefabs/Env/Mushrooms/Girolle (1): GirolleAVariantA
+   LowPolyNatureEssentials/Prefabs/Props/Campfires (2): CampfireASmall, FirewoodPileA
+   LowPolyNatureEssentials/Prefabs/Env/Mushrooms/Porcini (1): PorcinigBAdultVariantD
+   LowPolyNatureEssentials/Prefabs/Env/Mushrooms/DeathCap (1): DeathCapBAdultVariantC
+
+################ Mushrooms-17a8192f
+root: Assets/Mushrooms   assets: 53
+by ext: .fbx:12 .prefab:12 .mat:9 .tga:9 (folder):8 .lighting:1 .shader:1 .unity:1
+folders: Assets/Mushrooms:53
+material shaders: Built-in Diffuse x8 ; Matte Shadow Mask.shader x1
+materials with shaders NOT in package & not known: matte_shadow_material.mat (1 mats)
+shaders (1): Matte Shadow Mask.shader
+prefabs: 12
+   Prefabs (12): Amanitaceae_2_, Armillaria1, Ground 1, Boletus_edulis_2_, Macrolepiota_procera_1_, Lepista_nuda_2_, Armillaria2, Amanitaceae_1_, Lactarius_1_, Boletus_edulis_1_, Lepista_nuda_1_, Boletus_edulis_3_
+
+################ NatureForge_FREE__Stylized_Meadow___Farm_Kit-799b5927
+root: Assets/EmaceArt   assets: 322
+by ext: .prefab:127 .fbx:124 (folder):33 .png:13 .asset:10 .mat:4 .terrainlayer:3 .unity:3 .pdf:2 .lighting:2 .obj:1
+folders: Assets/EmaceArt:322
+material shaders: Built-in Diffuse x2 ; UNKNOWN 69c1f799e772cb6438f56c23efccb782 x1 ; URP Lit (also Built-in Standard) x1
+materials with shaders NOT in package & not known: TerrainLit.mat (1 mats)
+prefabs: 127
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Shrubs (6): EA_M_Env_Dry_Shrub_01b_PRE, EA_M_Env_Shrub_01a_PRE, EA_M_Env_Dry_Shrub_01c_PRE, EA_M_Env_Shrub_01c_PRE, EA_M_Env_Dry_Shrub_01a_PRE, EA_M_Env_Shrub_01b_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Grass (17): EA_M_Env_Grass_02a_PRE, EA_M_Env_Grass_06a_PRE, EA_M_Env_TallGrass_02a_PRE, EA_M_Env_DryTallGrass_01e_PRE, EA_M_Env_TallGrass_01a_PRE, EA_M_Env_TallGrass_04a_PRE, EA_M_Env_Grass_03a_PRE, EA_M_Env_Grass_05a_PRE, EA_M_Env_Grass_04a_PRE, EA_M_Env_TallGrass_03a_PRE, EA_M_Env_Dry_Grass_01a_PRE, EA_M_Env_TallGrass_05a_PRE, EA_M_Env_DryTallGrass_01b_PRE, EA_M_Env_DryTallGrass_01d_PRE, EA_M_Env_Grass_01a_PRE, EA_M_Env_DryTallGrass_01c_PRE …
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Terrain (14): EA_M_Env_Sand_01b_PRE, EA_M_Env_Mud_01c_PRE, EA_M_Env_Sand_01c_PRE, EA_M_Env_Road_Mud_01c_PRE, EA_M_Env_Mud_01b_PRE, EA_M_Env_Road_Mud_01b_PRE, EA_M_Env_Road_Mud_01a_PRE, EA_M_Env_Mud_01a_PRE, EA_M_Env_Field_Mud_01b_PRE, EA_M_Env_Field_Mud_01a_PRE, EA_M_Env_Patch_Sand_01a_PRE, EA_M_Env_Patch_Sand_01b_PRE, EA_M_Env_Patch_Sand_01c_PRE, EA_M_Env_Sand_01a_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Root (7): EM_Branch01a_PRE, EA_Env_Root_02a_PRE, EA_Env_Root_02b_PRE, EA_Env_Root_04b_PRE, EA_Env_Root_03a_PRE, EA_Env_Root_03b_PRE, EA_Env_Root_04a_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Flower (7): EA_M_Env_Flower_01b_PRE, EA_M_Env_Flower_Claster_01b_PRE, EA_M_Env_Flower_Claster_01c_PRE, EA_M_Env_Flower_01a_PRE, EA_M_Env_Flower_02b_PRE, EA_M_Env_Flower_02a_PRE, EA_M_Env_Flower_Claster_01a_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Farm/HayBale/Square (11): EA_M_HayBale_Square_Dry_01b_PRE, EA_M_HayBale_Square_Dry_01a_PRE, EA_M_HayBale_Square_Green_01d_PRE, EA_M_HayBale_Square_Yellow_01b_PRE, EA_M_HayBale_Square_Yellow_01e_PRE, EA_M_HayBale_Square_Green_01b_PRE, EA_M_HayBale_Square_Yellow_01c_PRE, EA_M_HayBale_Square_Yellow_01d_PRE, EA_M_HayBale_Square_Green_01c_PRE, EA_M_HayBale_Square_Dry_01d_PRE, EA_M_HayBale_Square_Dry_01c_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Branch/PRE (5): EA_Env_Branch_03b_PRE, EA_Env_Branch_04a_PRE, EA_Env_Branch_05b_PRE, EA_Env_Branch_05a_PRE, EA_Env_Branch_03a_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Leafs (7): EA_M_Env_Leaf_07a_PRE, EA_M_Env_Leaf_03a_PRE, EA_M_Env_Leaf_01a_PRE, EA_M_Env_Leaf_06a_PRE, EA_M_Env_Leaf_04a_PRE, EA_M_Env_Leaf_02a_PRE, EA_M_Env_Leaf_05a_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Trees (8): EM_Tree2a_PRE, EM_Tree3b_PRE, EM_Tree2b_PRE, EA01_Env_Tree_01c_PRE, EM_Tree3a_PRE, EM_Tree1b_PRE, EM_Tree1a_PRE, EM_Tree9a_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Farm/HayBale/Green (3): EA_M_HayBale_Green_01b_PRE, EA_M_HayBale_Green_01a_PRE, EA_M_HayBale_Green_01c_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Fences (7): EA_Env_rock_fence_06_PRE, EA_Env_rock_fence_07_PRE, EA_Env_rock_fence_04_PRE, EA_Env_wood_fence_03b_PRE, EA_Env_wood_fence_03_PRE, EA_Env_rock_fence_05_PRE, EA_Env_wood_fence_03c_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Rock (12): EA_Env_Rock_02a_PRE, EA_Env_rock_fenceBrick_01_PRE, EA_Env_Rock_19_PRE, EA_Env_Rock_37_PRE, EA_Env_Rock_02b_PRE, EA_Env_rock_fence_03_PRE, EA_Env_rock_fence_02_PRE, EA_Env_Rock_02d_PRE, EA_Env_Rock_02c_PRE, EA_Env_Rock_01b_PRE, EA_Env_Rock_01c_PRE, EA_Env_Rock_01a_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Farm/HayBale/Yellow (3): EA_M_HayBale_Yellow_01a_PRE, EA_M_HayBale_Yellow_01c_PRE, EA_M_HayBale_Yellow_01b_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Prop (3): EA_Prop_Vegetable_Pumpkin_01a_PRE, EA_Furniture_HayBaleSeat_01a_PRE, EA_M_Prop_Barrel_Small_01_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs (6): Composition_06, Composition_05, Composition_04, Composition_03, Composition_02, Composition_01
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Farm/Furniture (3): EA_M_Furniture_Bench_Wooden_01_PRE, EA_M_Furniture_Chair_Wooden_01_PRE, EA_M_Furniture_Table_Wooden_01_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Farm/HayBale/Dry (3): EA_M_HayBale_Dry_01a_PRE, EA_M_HayBale_Dry_01c_PRE, EA_M_HayBale_Dry_01b_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Stone (3): EA_Env_Stone_08_PRE, EA_Env_Stone_09_PRE, EA_Env_Stone_01_PRE
+   NatureForge LITE Stylized Meadow & Farm/Prefabs/Bush (2): EA_M_Env_Bush_LeafClusterLarge_01ax_PRE, EA_M_Env_Bush_BerryDome_01a_PRE
+
+################ PB_Frontier_Settlement-657c2d27
+root: Assets/3DForge   assets: 12
+by ext: (folder):7 .prefab
+00:4 .rtf
+00:1
+folders: Assets/3DForge:12
+material shaders: (no materials)
+prefabs: 0
+
+################ RPG_Poly_Pack_-_Lite-ea7f5167
+root: Assets/RPGPP_LT   assets: 227
+by ext: .prefab:90 .fbx:90 (folder):36 .mat:3 .tga:2 .exr:1 .preset:1 .asset:1 .lighting:1 .unity:1 .0:1
+folders: Assets/RPGPP_LT:227
+material shaders: Built-in Diffuse x3
+prefabs: 90
+   Prefabs/Props/Banners (2): rpgpp_lt_banner_01b, rpgpp_lt_banner_01a
+   Prefabs/Nature/Vegetation/Grass (2): rpgpp_lt_grass_small_01a, rpgpp_lt_grass_small_01b
+   Prefabs/Props/Containers (21): rpgpp_lt_basket_02, rpgpp_lt_bucket_01, rpgpp_lt_barrel_01, rpgpp_lt_box_wood_01, rpgpp_lt_vase_01, rpgpp_lt_vase_03, rpgpp_lt_package_01, rpgpp_lt_sack_02, rpgpp_lt_sack_open_01, rpgpp_lt_vase_02, rpgpp_lt_crate_01, rpgpp_lt_crate_02, rpgpp_lt_trough_01, rpgpp_lt_jug_01, rpgpp_lt_barrel_02, rpgpp_lt_crate_03 …
+   Prefabs/Exterior/Wood_path (12): rpgpp_lt_shed_wood_01, rpgpp_lt_wood_path_01b, rpgpp_lt_awning_standing_01a, rpgpp_lt_fence_wood_02b, rpgpp_lt_shed_wood_02, rpgpp_lt_fence_wood_01a, rpgpp_lt_awning_standing_01b, rpgpp_lt_fence_wood_02c, rpgpp_lt_wood_path_01a, rpgpp_lt_fence_wood_02a, rpgpp_lt_fence_wood_01b, rpgpp_lt_fence_wood_01_corner_a
+   Prefabs/Props/Shields (2): rpgpp_lt_shield_wall_01b, rpgpp_lt_shield_wall_01a
+   Prefabs/Props/Benches (3): rpgpp_lt_bench_wood_02, rpgpp_lt_bench_wood_01, rpgpp_lt_bench_wood_03
+   Prefabs/Nature/Rocks (6): rpgpp_lt_rock_03, rpgpp_lt_rock_02, rpgpp_lt_rock_01, rpgpp_lt_rock_small_02, rpgpp_lt_rock_small_01, rpgpp_lt_rocks_tiny_01
+   Prefabs/Nature/Vegetation/Flowers (3): rpgpp_lt_flower_02, rpgpp_lt_flower_01, rpgpp_lt_flower_03
+   Prefabs/Nature/Vegetation/Trees (3): rpgpp_lt_tree_pine_01, rpgpp_lt_tree_02, rpgpp_lt_tree_01
+   Prefabs/Buildings/Bld_closed (5): rpgpp_lt_building_02, rpgpp_lt_building_03, rpgpp_lt_building_05, rpgpp_lt_building_04, rpgpp_lt_building_01
+   Prefabs/Props/Misc (4): rpgpp_lt_well_01, rpgpp_lt_stones_01, rpgpp_lt_bird_house_01, rpgpp_lt_wagon_01
+   Prefabs/Props/Tables (1): rpgpp_lt_table_01
+   Prefabs/Nature/Vegetation/Plants (2): rpgpp_lt_plant_01, rpgpp_lt_plant_02
+   Prefabs/Props/Wood (3): rpgpp_lt_log_wood_02a, rpgpp_lt_log_wood_02b, rpgpp_lt_log_wood_01
+   Prefabs/Nature/Terrain (8): rpgpp_lt_hill_small_01, rpgpp_lt_terrain_path_01b, rpgpp_lt_terrain_grass_02, rpgpp_lt_hill_small_02, rpgpp_lt_mountain_01, rpgpp_lt_terrain_path_01a, rpgpp_lt_terrain_grass_01, rpgpp_lt_terrain_sand_01
+   Prefabs/Props/Hangers (3): rpgpp_lt_hanger_wood_02, rpgpp_lt_hanger_wood_01, rpgpp_lt_hanger_clothes_01
+   Prefabs/Nature/Sky (3): rpgpp_lt_cloud_01, rpgpp_lt_sky_01, rpgpp_lt_cloud_02
+   Prefabs/Props/Items (3): rpgpp_lt_ladder_01, rpgpp_lt_broom_01, rpgpp_lt_rake_01
+   Prefabs/Props/Chairs (2): rpgpp_lt_chair_01b, rpgpp_lt_chair_01a
+   Prefabs/Nature/Vegetation/Bushes (2): rpgpp_lt_bush_01, rpgpp_lt_bush_02
+
+################ Realistic_Ruins_-_Free_Sample__archway_pillar_-de667eaa
+root: Assets/Symphonie   assets: 29
+by ext: (folder):16 .png:4 .prefab:3 .mat:3 .fbx:1 .shadergraph:1 .unity:1
+folders: Assets/Symphonie:29
+material shaders: Ruins_URP.shadergraph x1 ; Built-in Diffuse x1 ; HDRP Lit x1
+materials with shaders NOT in package & not known: MT_archway_pillar02_URP.mat (1 mats)
+shaders (1): Ruins_URP.shadergraph
+shader graph targets: Ruins_URP.shadergraph [n/a]
+prefabs: 3
+   Ruins/URP/Prefabs (1): archway_pillar02
+   Ruins/Build_IN/Prefabs (1): archway_pillar02
+   Ruins/HDRP/Prefabs (1): archway_pillar02
+
+################ _free_20--25____Chinese_Mixed_Skysphere_Sample___1k-8K_Unlit_Sky_Sphere-5bac5749
+root: Assets/DreamyStudio_LDR_1K2K4K8K_Skybox   assets: 35
+by ext: .jpg:18 .png:10 (folder):7
+folders: Assets/DreamyStudio_LDR_1K2K4K8K_Skybox:35
+material shaders: (no materials)
+prefabs: 0
+
+################ SUMMARY TABLE
+Altar_Ruins_Free-baaa2696                      prefabs= 123 mats= 13 scripts=0 shaders=0 | Built-in Diffuse x13
+Blacksmith-0b0d73ab                            prefabs=   0 mats=  0 scripts=0 shaders=0 | 
+Blacksmith_s_Forge-a7e5dcd4                    prefabs=   0 mats=  0 scripts=0 shaders=0 | 
+Church_Alters___Monument_Pack-f0af25f3         prefabs=  10 mats= 26 scripts=0 shaders=0 | Built-in Diffuse x26
+Cursed_Cozy_Village___Stylized_Gothic_Environm prefabs=  23 mats= 26 scripts=0 shaders=2 | CCA_PropLite.shader x15 ; CCA_WallLite.shader x6 ; URP Lit (also Built-in Standard) x3
+Free_Hill_Rock_Mountain_Terrain_-_3d_environme prefabs=   6 mats=  5 scripts=1 shaders=0 | Built-in Diffuse x5
+Free_Pack_-_Tree-97b20cea                      prefabs=   8 mats=  2 scripts=0 shaders=0 | URP Lit (also Built-in Standard) x2
+Free_Vampiric_PolyVania__Massive_Cartoon_Low_P prefabs= 430 mats= 25 scripts=0 shaders=0 | Built-in Diffuse x12 ; URP Lit (also Built-in Standard) x10 ; UNKNOWN 650dd9526735d5b46b79224bc6e94025 x1
+Inferno_World_Free_-_Low_Poly_3D_Models-de6292 prefabs=  83 mats=  9 scripts=0 shaders=1 | URP Lit (also Built-in Standard) x5 ; Built-in Diffuse x2 ; Lava.shadergraph x1
+Low_Poly_Nature_Pack_Lite-d2c038a0             prefabs=  31 mats=  2 scripts=0 shaders=0 | Built-in Diffuse x2
+Low_Poly_Nature__Essentials-a607441d           prefabs=  62 mats=  4 scripts=0 shaders=0 | Built-in Diffuse x4
+Mushrooms-17a8192f                             prefabs=  12 mats=  9 scripts=0 shaders=1 | Built-in Diffuse x8 ; Matte Shadow Mask.shader x1
+NatureForge_FREE__Stylized_Meadow___Farm_Kit-7 prefabs= 127 mats=  4 scripts=0 shaders=0 | Built-in Diffuse x2 ; UNKNOWN 69c1f799e772cb6438f56c23efccb782 x1 ; URP Lit (also Built-in Standard) x1
+PB_Frontier_Settlement-657c2d27                prefabs=   0 mats=  0 scripts=0 shaders=0 | 
+RPG_Poly_Pack_-_Lite-ea7f5167                  prefabs=  90 mats=  3 scripts=0 shaders=0 | Built-in Diffuse x3
+Realistic_Ruins_-_Free_Sample__archway_pillar_ prefabs=   3 mats=  3 scripts=0 shaders=1 | Ruins_URP.shadergraph x1 ; Built-in Diffuse x1 ; HDRP Lit x1
+_free_20--25____Chinese_Mixed_Skysphere_Sample prefabs=   0 mats=  0 scripts=0 shaders=0 | 

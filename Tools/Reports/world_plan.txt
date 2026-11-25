@@ -1,0 +1,52 @@
+MapColor 512x512: 2989 ms (11,40 us/px)
+OakhavenVillage    (     0,    20) h=   8,2  biome=OakhavenValley
+Shrine_Oakhaven    (   -24,    36) h=   8,7  biome=OakhavenValley
+MirrorLake         (  -130,   -60) h=  -5,5  biome=AetherianSea
+PrologueCliff      (  -235,   -60) h=  27,0  biome=MirrorLake
+Shrine_Lake        (   -70,   -14) h=  10,4  biome=OakhavenValley
+DragonAerie        (  -300,    60) h=  31,0  biome=DragonAerie
+Shrine_Aerie       (  -262,    86) h=  10,7  biome=DragonAerie
+GreenhollowFarm    (    60,   230) h=   9,6  biome=Greenhollow
+Shrine_Greenhollow (   112,   196) h=  10,2  biome=Greenhollow
+SapphireWoods      (   270,    60) h=  13,3  biome=SapphireWoods
+Shrine_Woods       (   322,    96) h=  12,7  biome=SapphireWoods
+HighkeepCitadel    (     0,   440) h=  48,0  biome=HighkeepCitadel
+Shrine_Highkeep    (    26,   352) h=  41,7  biome=HighkeepCitadel
+EmberCrypt         (   360,   300) h=   4,5  biome=AshCaldera
+Shrine_Caldera     (   292,   226) h=  11,2  biome=AshCaldera
+CrystalGlacier     (  -360,   300) h=  73,8  biome=CrystalGlacier
+Shrine_Glacier     (  -300,   244) h=  62,3  biome=CrystalGlacier
+GlimmercapGrove    (  -230,  -250) h=   9,5  biome=GlimmercapGrove
+Shrine_Grove       (  -186,  -284) h=   9,6  biome=GlimmercapGrove
+NocturneHollow     (   240,  -290) h=   7,5  biome=NocturneHollow
+Shrine_Hollow      (   276,  -246) h=   8,3  biome=NocturneHollow
+SunblightWastes    (    40,  -440) h=   6,6  biome=SunblightWastes
+Shrine_Wastes      (    84,  -404) h=   6,1  biome=SunblightWastes
+MurkfenMarsh       (  -380,  -300) h=   0,2  biome=MurkfenMarsh
+Shrine_Marsh       (  -336,  -266) h=   0,9  biome=GlimmercapGrove
+EchoIsle           (  -598,  -142) h=  14,1  biome=MurkfenMarsh
+GullIsle           (   556,  -296) h=   8,7  biome=NocturneHollow
+StarIsle           (   148,   612) h=  15,4  biome=HighkeepCitadel
+--- samples (x,z,h) ---
+  (    0,    0) h=   8,2
+  (    0, -640) h= -13,7
+  (    0,  640) h= -13,1
+  (  640,    0) h= -13,3
+  ( -640,    0) h= -13,5
+  ( -130,  -60) h=  -5,5
+  ( -190,  -60) h=  10,0
+  (  -70,  -60) h=   8,5
+  (    0,  300) h=  28,0
+  (    0,  360) h=  47,7
+  (    0,  440) h=  48,0
+  (  360,  300) h=   4,5
+  (  360,  242) h=  34,4
+  ( -360,  300) h=  73,8
+  (   40, -480) h=   5,7
+  ( -380, -300) h=   0,2
+  (  240, -290) h=   7,5
+  (   70, -338) h=   8,1
+  (  270,   60) h=  13,3
+  (   60,  230) h=   9,6
+  ( -120,  520) h= -13,2
+range h=[-14,4..95,8]  land fraction of world square=53%
