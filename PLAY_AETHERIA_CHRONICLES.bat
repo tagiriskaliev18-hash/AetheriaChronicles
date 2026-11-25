@@ -21,5 +21,5 @@ set "UE-LocalDataCachePath=C:\UE5_Cache\DDC"
 if not exist "C:\UE5_Cache\DDC" mkdir "C:\UE5_Cache\DDC"
 if not exist "C:\UE5_Cache\Zen\Data" mkdir "C:\UE5_Cache\Zen\Data"
 echo Launching Aetheria: Chronicles of the Drake (UE 5.8.4 — D3D12 SM6 RTX + NVIDIA DLSS 4.5)...
-start "" "%UE_ROOT%\Engine\Binaries\Win64\UnrealEditor.exe" "%UPROJECT%" -game -d3d12 -sm6 -WindowedFullscreen
+start "" "%UE_ROOT%\Engine\Binaries\Win64\UnrealEditor.exe" "%UPROJECT%" -game -d3d12 -sm6 -WindowedFullscreen -NoVerifyGC -nowrite
 exit /b 0
