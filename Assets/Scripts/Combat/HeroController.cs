@@ -26,6 +26,7 @@ namespace Aetheria
         public bool IsBlocking = false;
         public bool DragonUnlocked = false;
         public bool GodMode = false;
+        public float MouseSensitivity = 1.0f;
         public int EnemiesSlain = 0;
 
         /// <summary>0=InCaveTalkToTutor, 1=WalkOutToOverlook, 2=ApproachWaterfall, 3=PlayingCutscene, 4=OpenWorld</summary>
@@ -50,8 +51,10 @@ namespace Aetheria
         private readonly GameObject[] _orbitSpheres = new GameObject[3];
         private readonly Light[] _orbitLights = new Light[3];
         private readonly OrbType[] _orbMatType = new OrbType[3];
-        private readonly Dictionary<SlotClass, Material> _classMaterials = new Dictionary<SlotClass, Material>();
-        private readonly Dictionary<SlotClass, Color> _classBase = new Dictionary<SlotClass, Color>();
+        private readonly List<(Material mat, SlotClass cls, Color baseColor)> _instancedLookMaterials = new List<(Material, SlotClass, Color)>();
+        private readonly HashSet<EnemyAndBossAI> _meleeHitEnemies = new HashSet<EnemyAndBossAI>();
+        private readonly HashSet<BreakableProp> _meleeHitProps = new HashSet<BreakableProp>();
+        private readonly RaycastHit[] _aimHits = new RaycastHit[16];
 
         // Camera & locomotion
         private float _camYaw = 0f;
@@ -68,6 +71,7 @@ namespace Aetheria
         private int _pendingHitStep = 0;
         private bool _pendingHitApplied = true;
         private float _pendingHitAge = 0f;
+        private float _pendingAttackSpeed = 1f;
         private float _dashTimer = 0f;
         private float _dashTotal = 0.36f;
         private Vector3 _dashDir = Vector3.forward;
@@ -276,8 +280,9 @@ namespace Aetheria
 
         private void HandleCameraAndMovement(float dt)
         {
-            float mx = Input.GetAxis("Mouse X") * 2.6f;
-            float my = Input.GetAxis("Mouse Y") * 2.1f;
+            float sens = Mathf.Clamp(MouseSensitivity, 0.2f, 4.0f);
+            float mx = Input.GetAxis("Mouse X") * 2.6f * sens;
+            float my = Input.GetAxis("Mouse Y") * 2.1f * sens;
             _camYaw += mx;
             _camPitch = Mathf.Clamp(_camPitch - my, -24f, 68f);
             float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -334,8 +339,12 @@ namespace Aetheria
                 if (Input.GetKeyDown(KeyCode.Space))
                 {
                     if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.V) || BossNearDanger()) PerformDash(moveDir);
-                    else if (!GodMode && Stamina >= 8f) { Stamina -= 8f; _verticalVel = 7.6f; AetheriaFx.Puff(transform.position, new Color(0.85f, 0.78f, 0.62f, 0.5f), 5, 1.4f, 0.5f, 0.6f, 0.4f); }
-                    else _verticalVel = 7.6f;
+                    else if (GodMode || Stamina >= 8f)
+                    {
+                        if (!GodMode) Stamina -= 8f;
+                        _verticalVel = 7.6f;
+                        AetheriaFx.Puff(transform.position, new Color(0.85f, 0.78f, 0.62f, 0.5f), 5, 1.4f, 0.5f, 0.6f, 0.4f);
+                    }
                 }
             }
             else
@@ -433,9 +442,13 @@ namespace Aetheria
             {
                 var npc = FindNearestNPC(4.4f);
                 var shrine = AetheriaShrine.FindNearest(transform.position, 6.5f);
-                if (npc != null) AetheriaHUDManager.Instance.OpenDialogue(npc);
-                else if (shrine != null && !shrine.Kindled) shrine.Kindle();
-                else Spells.PushOrb(OrbType.Exort);
+                bool shrineReady = shrine != null && !shrine.Kindled;
+                if (npc != null && (!shrineReady || Vector3.Distance(transform.position, npc.transform.position) <= Vector3.Distance(transform.position, shrine.transform.position)))
+                    AetheriaHUDManager.Instance?.OpenDialogue(npc);
+                else if (shrineReady)
+                    shrine.Kindle();
+                else if (Spells != null)
+                    Spells.PushOrb(OrbType.Exort);
             }
             if (Input.GetKeyDown(KeyCode.Z)) Spells.PushOrb(OrbType.Exort);
             if (Input.GetKeyDown(KeyCode.X)) Spells.PushOrb(OrbType.Wex);
@@ -445,10 +458,25 @@ namespace Aetheria
             if (Input.GetKeyDown(KeyCode.R)) Spells.InvokeCurrentSpell();
 
             Vector3 aimOrigin = transform.position + Vector3.up * 1.4f;
-            Vector3 aimDir = MainCam != null ? MainCam.transform.forward : transform.forward;
-            Vector3 targetPt = aimOrigin + aimDir * 16f;
-            if (Physics.Raycast(aimOrigin, aimDir, out RaycastHit hit, 60f)) targetPt = hit.point;
-            else targetPt.y = AetheriaWorld.SampleHeight(targetPt);
+            Ray camRay = MainCam != null ? MainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f)) : new Ray(aimOrigin, transform.forward);
+            Vector3 targetPt = camRay.origin + camRay.direction * 22f;
+            int hitCount = Physics.RaycastNonAlloc(camRay, _aimHits, 80f, ~0, QueryTriggerInteraction.Ignore);
+            float bestDist = float.MaxValue;
+            bool foundHit = false;
+            for (int i = 0; i < hitCount; i++)
+            {
+                var h = _aimHits[i];
+                if (h.collider == null || h.distance < 0.5f || h.collider.transform.IsChildOf(transform)) continue;
+                if (h.distance < bestDist)
+                {
+                    bestDist = h.distance;
+                    targetPt = h.point;
+                    foundHit = true;
+                }
+            }
+            if (!foundHit) targetPt.y = AetheriaWorld.SampleHeight(targetPt);
+            Vector3 toTarget = targetPt - aimOrigin;
+            Vector3 aimDir = toTarget.sqrMagnitude > 0.01f ? toTarget.normalized : CameraFlatForward();
 
             if (Input.GetKeyDown(KeyCode.G)) Spells.CastSlot(false, aimOrigin, aimDir, targetPt);
             if (Input.GetKeyDown(KeyCode.H)) Spells.CastSlot(true, aimOrigin, aimDir, targetPt);
@@ -486,8 +514,21 @@ namespace Aetheria
             normalizedTime = 0f;
             if (ActiveAnimator == null || !ActiveAnimator.isActiveAndEnabled || ActiveAnimator.runtimeAnimatorController == null) return false;
             var st = ActiveAnimator.GetCurrentAnimatorStateInfo(0);
-            normalizedTime = st.normalizedTime;
-            return st.shortNameHash == shortNameHash;
+            if (st.shortNameHash == shortNameHash)
+            {
+                normalizedTime = st.normalizedTime;
+                return true;
+            }
+            if (ActiveAnimator.IsInTransition(0))
+            {
+                var next = ActiveAnimator.GetNextAnimatorStateInfo(0);
+                if (next.shortNameHash == shortNameHash)
+                {
+                    normalizedTime = next.normalizedTime;
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static readonly int StateAttack1 = Animator.StringToHash("Attack1");
@@ -562,10 +603,30 @@ namespace Aetheria
             float attackSpeed = Mathf.Max(0.5f, d.AttackSpeedMultiplier * _alacrityMult);
             _meleeCooldown = 0.46f / attackSpeed;
 
+            // Gently auto-face nearest alive enemy within 4.5m, else camera forward
+            Vector3 faceDir = CameraFlatForward();
+            float bestDistSq = 4.5f * 4.5f;
+            foreach (var col in Physics.OverlapSphere(transform.position, 4.5f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (col.transform.IsChildOf(transform)) continue;
+                var enemy = col.GetComponentInParent<EnemyAndBossAI>();
+                if (enemy == null || enemy.Dead) continue;
+                Vector3 toEnemy = enemy.transform.position - transform.position;
+                toEnemy.y = 0f;
+                if (toEnemy.sqrMagnitude > 0.04f && toEnemy.sqrMagnitude < bestDistSq)
+                {
+                    bestDistSq = toEnemy.sqrMagnitude;
+                    faceDir = toEnemy.normalized;
+                }
+            }
+            if (faceDir.sqrMagnitude > 0.001f)
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(faceDir, Vector3.up), 120f);
+
             // The blow lands on the swing frame, not on the click
             _pendingHitStep = _comboStep;
             _pendingHitApplied = false;
             _pendingHitAge = 0f;
+            _pendingAttackSpeed = attackSpeed;
 
             bool animated = ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null;
             if (animated)
@@ -576,8 +637,6 @@ namespace Aetheria
 
             // Small lunge toward the target for weight
             _smoothVel += transform.forward * (2.6f * attackSpeed);
-
-            if (!animated) ApplyPendingMeleeHit();
         }
 
         /// <summary>Deals the damage of the current swing once its clip passes the strike frame.</summary>
@@ -585,12 +644,17 @@ namespace Aetheria
         {
             if (_pendingHitStep <= 0 || _pendingHitApplied) return;
 
+            float invSpeed = 1f / Mathf.Max(0.5f, _pendingAttackSpeed);
             bool animated = ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null;
             if (animated)
             {
-                // Never reached the swing (staggered, dashing, died): give up after a moment
-                if (_pendingHitAge > 0.7f) { _pendingHitStep = 0; return; }
-                if (!AttackState(_pendingHitStep, out float t) || t < HitFrameOf(_pendingHitStep)) return;
+                float timeout = 0.7f * invSpeed;
+                bool reached = AttackState(_pendingHitStep, out float t) && t >= HitFrameOf(_pendingHitStep);
+                if (!reached && _pendingHitAge < timeout) return;
+            }
+            else
+            {
+                if (_pendingHitAge < 0.22f * invSpeed) return;
             }
             _pendingHitApplied = true;
 
@@ -603,18 +667,20 @@ namespace Aetheria
 
             Vector3 hitCenter = transform.position + transform.forward * (reach * 0.55f) + Vector3.up * 1.15f;
             int hits = 0;
-            foreach (var col in Physics.OverlapSphere(hitCenter, reach * 0.68f))
+            _meleeHitEnemies.Clear();
+            _meleeHitProps.Clear();
+            foreach (var col in Physics.OverlapSphere(hitCenter, reach * 0.68f, ~0, QueryTriggerInteraction.Ignore))
             {
-                if (col.gameObject == gameObject) continue;
+                if (col.gameObject == gameObject || col.transform.IsChildOf(transform)) continue;
                 var enemy = col.GetComponentInParent<EnemyAndBossAI>();
-                if (enemy != null)
+                if (enemy != null && _meleeHitEnemies.Add(enemy))
                 {
                     float mult = enemy.IsStaggerBroken ? SkillTree.ExecutionerMult : 1f;
                     enemy.TakeDamage(dmg * mult, gameObject, transform.forward * (6f + step * 2f) + Vector3.up * (step == 4 ? 5f : 2f), OrbType.None);
                     hits++;
                 }
                 var prop = col.GetComponentInParent<BreakableProp>();
-                if (prop != null && prop.ApplyDamage(dmg * d.DestructionDamageMultiplier, hitCenter, false, false)) hits++;
+                if (prop != null && _meleeHitProps.Add(prop) && prop.ApplyDamage(dmg * d.DestructionDamageMultiplier, hitCenter, false, false)) hits++;
             }
 
             // Swing trail
@@ -674,7 +740,7 @@ namespace Aetheria
                 AetheriaFx.Burst(at, new Color(1f, 0.86f, 0.45f), 30, 4f, 11f, 0.08f, 0.20f, 0.1f, 1.2f, new Color(1f, 0.5f, 0.1f, 0f));
                 AetheriaFx.Shockwave(at, new Color(1f, 0.80f, 0.30f), 2.6f, 0.30f, vertical: true, facing: transform.forward);
                 AetheriaFx.Shake(0.16f, 0.24f);
-                QuestAndMapService.Instance?.PushNotification("ИДЕАЛЬНЫЙ ПАРИРОВАНИЕ! +Мана +Оглушение");
+                QuestAndMapService.Instance?.PushNotification("ИДЕАЛЬНОЕ ПАРИРОВАНИЕ! +Мана +Оглушение");
                 if (attacker != null) attacker.GetComponentInParent<EnemyAndBossAI>()?.ApplyParryStagger(Customization.Derived.ParryStaggerBonusMult);
                 return;
             }
@@ -701,21 +767,42 @@ namespace Aetheria
                 _pendingHitStep = 0;
             }
 
-            if (HP <= 0f)
-            {
-                IsDead = true;
-                IsBlocking = false;
-                if (ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null)
-                    ActiveAnimator.SetTrigger(AnimDie);
-                AetheriaFx.Shake(0.5f, 0.6f);
-                AetheriaFx.Puff(transform.position + Vector3.up * 0.4f, new Color(0.25f, 0.22f, 0.28f, 0.55f), 16, 2.2f, 1.4f, 1.6f, 0.6f);
-                QuestAndMapService.Instance?.PushNotification("ВЫ ПАЛИ — нажмите [E], чтобы вернуться в Оукхейвен");
-            }
+            if (HP <= 0f) Die();
         }
+
+        public void Die()
+        {
+            if (IsDead) return;
+            if (DragonController.Instance != null && DragonController.Instance.Mounted)
+                DragonController.Instance.Dismount();
+
+            IsDead = true;
+            IsBlocking = false;
+            _pendingHitStep = 0;
+            _pendingHitApplied = true;
+            _dashTimer = 0f;
+            _invulnTimer = 0f;
+            if (ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null)
+                ActiveAnimator.SetTrigger(AnimDie);
+            AetheriaFx.Shake(0.5f, 0.6f);
+            AetheriaFx.Puff(transform.position + Vector3.up * 0.4f, new Color(0.25f, 0.22f, 0.28f, 0.55f), 16, 2.2f, 1.4f, 1.6f, 0.6f);
+            QuestAndMapService.Instance?.PushNotification("ВЫ ПАЛИ — нажмите [E], чтобы вернуться в Оукхейвен");
+        }
+
+        public void ReviveAtSanctuary() => RespawnAtOakhaven();
 
         public void RespawnAtOakhaven()
         {
+            if (DragonController.Instance != null && DragonController.Instance.Mounted)
+                DragonController.Instance.Dismount();
             IsDead = false;
+            IsBlocking = false;
+            _pendingHitStep = 0;
+            _pendingHitApplied = true;
+            _dashTimer = 0f;
+            _invulnTimer = 0f;
+            _comboStep = 0;
+            _comboResetTimer = 0f;
             HP = MaxHP;
             Stamina = MaxStamina;
             if (Spells != null) Spells.Mana = Spells.MaxMana;
@@ -725,6 +812,47 @@ namespace Aetheria
             EnemyAndBossAI.ActiveBoss?.ResetBoss();
             AetheriaFx.FlashLight(transform.position + Vector3.up, new Color(0.45f, 1f, 0.85f), 30f, 14f, 0.9f);
             AetheriaFx.Shockwave(transform.position + Vector3.up * 0.15f, new Color(0.45f, 1f, 0.85f), 5f, 0.9f);
+        }
+
+        public void ResetHeroForNewGame()
+        {
+            if (DragonController.Instance != null && DragonController.Instance.Mounted)
+                DragonController.Instance.Dismount();
+            IsDead = false;
+            IsBlocking = false;
+            DragonUnlocked = false;
+            EnemiesSlain = 0;
+            _pendingHitStep = 0;
+            _pendingHitApplied = true;
+            _dashTimer = 0f;
+            _invulnTimer = 0f;
+            _alacrityTimer = 0f;
+            _alacrityMult = 1f;
+            _comboStep = 0;
+            _comboResetTimer = 0f;
+            _meleeCooldown = 0f;
+            _parryWindowTimer = 0f;
+            _knockback = Vector3.zero;
+            _smoothVel = Vector3.zero;
+            _verticalVel = 0f;
+            Customization?.Recalculate();
+            HP = MaxHP;
+            Stamina = MaxStamina;
+            if (Spells != null)
+            {
+                if (!GodMode)
+                {
+                    Spells.UnlockedExort = false;
+                    Spells.UnlockedWex = false;
+                    Spells.UnlockedQuas = false;
+                    Spells.ActiveOrbs.Clear();
+                    Spells.SlotD = SpellId.None;
+                    Spells.SlotF = SpellId.None;
+                }
+                Spells.Mana = Spells.MaxMana;
+            }
+            if (ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null)
+                ActiveAnimator.SetTrigger(AnimRespawn);
         }
 
         public void TeleportSafe(Vector3 target)
@@ -843,6 +971,11 @@ namespace Aetheria
             {
                 PrologueStage = 4;
                 TeleportSafe(landing);
+                AetheriaFx.Shockwave(landing, new Color(0.55f, 0.88f, 1f), 4.5f, 0.55f);
+                AetheriaFx.Puff(landing, new Color(0.84f, 0.90f, 0.96f, 0.55f), 14, 3.2f, 1.4f, 1.0f, 0.35f);
+                AetheriaFx.Burst(landing + Vector3.up * 0.25f, new Color(0.65f, 0.92f, 1f), 22, 2.5f, 7f, 0.08f, 0.18f, 0.6f, 1.2f, new Color(0.3f, 0.7f, 1f, 0f));
+                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Footstep", landing, 0.7f);
+                AetheriaFx.Shake(0.18f, 0.25f);
                 QuestAndMapService.Instance?.PushNotification("Зеркальное озеро · через Каменный мост в Оукхейвен");
             }
         }
@@ -905,10 +1038,9 @@ namespace Aetheria
             if (_loadedHeroKey != wantHero || _heroModelInstance == null)
             {
                 var prefab = Resources.Load<GameObject>(wantHero) ?? Resources.Load<GameObject>("Heroes/Hero_Kwang");
+                    DestroyLookMaterials();
                     if (_heroModelInstance != null) Destroy(_heroModelInstance);
                     _heroModelInstance = null;
-                    _classMaterials.Clear();
-                    _classBase.Clear();
                     ActiveAnimator = null;
                 if (prefab != null)
                 {
@@ -951,6 +1083,7 @@ namespace Aetheria
             ActiveAnimator = null;
             if (anim != null) anim.enabled = false;
             AetheriaPalette.RelaxHumanoidArms(_heroModelInstance);
+            if (Overlay != null) Overlay.Bind(_heroModelInstance);
         }
 
         private void NormalizeGroundedHeight(GameObject model, float targetHeight)
@@ -973,7 +1106,9 @@ namespace Aetheria
         private void AttachRightHandWeapon(HeroCustomizationProfile p)
         {
             string wantWep = HeroCustomizationService.GetWeaponResourceName(p);
-            bool bakedMeleeHero = (_loadedHeroKey.Contains("Kwang") || _loadedHeroKey.Contains("Serath") || _loadedHeroKey.Contains("Kallari"))
+            bool bakedMeleeHero = (_loadedHeroKey.Contains("Kwang") || _loadedHeroKey.Contains("Serath") ||
+                                   _loadedHeroKey.Contains("Kallari") || _loadedHeroKey.Contains("Khaimera") ||
+                                   _loadedHeroKey.Contains("Morigesh"))
                 && !wantWep.Contains("Staff") && !wantWep.Contains("Scepter");
             if (bakedMeleeHero)
             {
@@ -991,10 +1126,12 @@ namespace Aetheria
 
             Transform hand = AetheriaPalette.FindBoneAny(_heroModelInstance != null ? _heroModelInstance.transform : VisualRoot,
                 "weapon_r", "hand_r", "RightHand", "Bip001_R_Hand");
-            _weaponInstance = Instantiate(wepPrefab, hand != null ? hand : VisualRoot);
+            Transform parentTf = hand != null ? hand : VisualRoot;
+            _weaponInstance = Instantiate(wepPrefab, parentTf);
             _weaponInstance.name = "HeroEquippedWeapon";
-            // Undo the hero's visual scale so the weapon keeps a sane size on a small or tall hero
-            _weaponInstance.transform.localScale = Vector3.one / Mathf.Max(0.35f, VisualRoot.localScale.x);
+            // Undo parent hierarchy scale so weapons keep a consistent world size on any hero stature
+            Vector3 pls = parentTf.lossyScale;
+            _weaponInstance.transform.localScale = new Vector3(1f / Mathf.Max(0.25f, pls.x), 1f / Mathf.Max(0.25f, pls.y), 1f / Mathf.Max(0.25f, pls.z));
             if (hand != null)
             {
                 _weaponInstance.transform.localPosition = new Vector3(0.02f, 0.03f, 0.05f);
@@ -1034,9 +1171,18 @@ namespace Aetheria
             ApplyLookTints();
         }
 
+        private void DestroyLookMaterials()
+        {
+            for (int i = 0; i < _instancedLookMaterials.Count; i++)
+            {
+                if (_instancedLookMaterials[i].mat != null) Destroy(_instancedLookMaterials[i].mat);
+            }
+            _instancedLookMaterials.Clear();
+        }
+
         /// <summary>
         /// Recolors the hero by meaning: skin follows the race, hair the hair color, armor and leather the armor tint,
-        /// cloth only takes a whisper of it. Materials are instance copies shared by all slots of the same class.
+        /// cloth only takes a whisper of it. Each renderer slot keeps its own cloned material instance so unique textures stay intact.
         /// </summary>
         private void ApplyLookTints()
         {
@@ -1044,8 +1190,8 @@ namespace Aetheria
             var look = _heroModelInstance.GetComponent<AetheriaCharacterLook>();
             if (look == null || look.Renderers.Count == 0) return;
 
-            // First dress-up of this model: clone the prefab's materials and remember each class's untinted color
-            if (_classMaterials.Count == 0)
+            // First dress-up of this model: clone each slot's material individually and remember its untinted color
+            if (_instancedLookMaterials.Count == 0)
             {
                 foreach (var rs in look.Renderers)
                 {
@@ -1056,12 +1202,11 @@ namespace Aetheria
                     {
                         SlotClass cls = i < rs.Classes.Length ? rs.Classes[i] : SlotClass.Unknown;
                         if (src[i] == null) { mats[i] = null; continue; }
-                        if (!_classMaterials.TryGetValue(cls, out Material inst))
-                        {
-                            inst = new Material(src[i]) { name = src[i].name + " (Instance)" };
-                            _classMaterials[cls] = inst;
-                            _classBase[cls] = src[i].HasProperty("_BaseColor") ? src[i].GetColor("_BaseColor") : src[i].color;
-                        }
+                        var inst = new Material(src[i]) { name = src[i].name + " (Instance)" };
+                        Color baseCol = src[i].HasProperty("_BaseColor")
+                            ? src[i].GetColor("_BaseColor")
+                            : (src[i].HasProperty("_Color") ? src[i].GetColor("_Color") : Color.white);
+                        _instancedLookMaterials.Add((inst, cls, baseCol));
                         mats[i] = inst;
                     }
                     rs.Renderer.sharedMaterials = mats;
@@ -1073,10 +1218,12 @@ namespace Aetheria
             Color skinCol = HeroCustomizationService.GetRaceSkinTint(p.Race);
             Color armorCol = HeroCustomizationService.ArmorTints[Mathf.Clamp(p.ArmorTintIndex, 0, HeroCustomizationService.ArmorTints.Length - 1)];
 
-            foreach (var kv in _classMaterials)
+            for (int i = 0; i < _instancedLookMaterials.Count; i++)
             {
+                var entry = _instancedLookMaterials[i];
+                if (entry.mat == null) continue;
                 Color tint; float amount;
-                switch (kv.Key)
+                switch (entry.cls)
                 {
                     case SlotClass.Skin:     tint = skinCol; amount = 0.82f; break;
                     case SlotClass.Hair:     tint = hairCol; amount = 1.00f; break;
@@ -1086,8 +1233,15 @@ namespace Aetheria
                     case SlotClass.Cloth:    tint = armorCol; amount = 0.12f; break;
                     default: continue;
                 }
-                AetheriaRender.SetBaseColor(kv.Value, Color.Lerp(_classBase[kv.Key], tint, amount));
+                AetheriaRender.SetBaseColor(entry.mat, Color.Lerp(entry.baseColor, tint, amount));
             }
+        }
+
+        private void OnDestroy()
+        {
+            DestroyLookMaterials();
+            if (Customization != null) Customization.OnProfileChanged -= RefreshDerivedStatsAndVisuals;
+            if (Instance == this) Instance = null;
         }
     }
 }

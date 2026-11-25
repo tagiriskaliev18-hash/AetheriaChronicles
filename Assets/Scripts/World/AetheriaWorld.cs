@@ -248,16 +248,22 @@ namespace Aetheria
         /// <summary>Discrete biome at a world position (sea when the point is under water).</summary>
         public static BiomeId BiomeAt(float x, float z)
         {
-            if (HeightAt(x, z) <= SeaLevel + 0.15f)
+            var p = new Vector2(x, z);
+            foreach (var isle in Isles)
+                if (Vector2.Distance(p, new Vector2(isle.x, isle.y)) < isle.z)
+                    return BiomeId.OakhavenValley;
+
+            if (x >= -210f && x <= -60f && z >= -130f && z <= 0f)
             {
-                foreach (var isle in Isles)
-                    if (Vector2.Distance(new Vector2(x, z), new Vector2(isle.x, isle.y)) < isle.z)
-                        return BiomeId.OakhavenValley;
-                return BiomeId.AetherianSea;
+                if (HeightAt(x, z) <= SeaLevel + 0.15f || EllipseMask(x, z, -130f, -60f, 1.2f, 1f, 28f, 56f) > 0f)
+                    return BiomeId.MirrorLake;
             }
+
+            if (HeightAt(x, z) <= SeaLevel + 0.15f)
+                return BiomeId.AetherianSea;
+
             var best = BiomeId.OakhavenValley;
             float bestW = float.MaxValue;
-            var p = new Vector2(x, z);
             for (int i = 0; i < Regions.Length; i++)
             {
                 var r = Regions[i];

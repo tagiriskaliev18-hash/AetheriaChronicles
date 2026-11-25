@@ -14,9 +14,29 @@ namespace Aetheria
 
         public OverlayMode ActiveOverlay = OverlayMode.MainMenu;
         public bool IsModalOpen => ActiveOverlay != OverlayMode.None;
+        public bool IsPaused => ActiveOverlay == OverlayMode.PauseMenu
+            || ActiveOverlay == OverlayMode.WorldMap
+            || ActiveOverlay == OverlayMode.SkillTree
+            || ActiveOverlay == OverlayMode.QuestLog
+            || ActiveOverlay == OverlayMode.Grimoire
+            || ActiveOverlay == OverlayMode.Dialogue;
         public Canvas MainCanvas { get; private set; }
         public Font DisplayFont { get; private set; }
         public Font SerifFont { get; private set; }
+
+        private static Sprite _whiteSprite;
+        private static Sprite WhiteSprite
+        {
+            get
+            {
+                if (_whiteSprite == null)
+                {
+                    var tex = Texture2D.whiteTexture;
+                    _whiteSprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                }
+                return _whiteSprite;
+            }
+        }
 
         private GameObject _hudRoot;
         private Image _hpFill, _stamFill, _manaFill, _xpFill;
@@ -26,8 +46,12 @@ namespace Aetheria
         private Text _bossTitleText;
         private GameObject _dragonPanel;
         private Image _dragonFireFill;
+        private GameObject _deathPanel;
         private RawImage _minimapImg;
+        private RectTransform _minimapArrow;
         private Texture2D _minimapTex;
+        private Texture2D _arrowTex;
+        private Sprite _arrowSprite;
         private Color[] _minimapPixels;
         private float _toastTimer;
         private float _minimapRefreshAt;
@@ -48,6 +72,13 @@ namespace Aetheria
         private void Start()
         {
             SetOverlay(OverlayMode.MainMenu);
+        }
+
+        private void OnDestroy()
+        {
+            if (_minimapTex != null) Destroy(_minimapTex);
+            if (_arrowSprite != null) Destroy(_arrowSprite);
+            if (_arrowTex != null) Destroy(_arrowTex);
         }
 
         private void EnsureEventSystem()
@@ -84,7 +115,7 @@ namespace Aetheria
             _bossStagFill = CreateBar("BossStaggerFill", _bossPanel.transform, new Vector2(20, 10), new Vector2(-20, 22), AetheriaPalette.BarStagger);
             _bossPanel.SetActive(false);
 
-            // Top-Right: Minimap (Live 64x64 Fog Texture)
+            // Top-Right: Minimap (Live 96x96 Fog Texture + Rotating Arrow + Optional Ornate Frame)
             var mmFrame = CreatePanel("MinimapBox", _hudRoot.transform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-206, -214), new Vector2(-24, -20), AetheriaPalette.PanelBgDeep, true);
             var mmGo = new GameObject("MinimapTexture");
             mmGo.transform.SetParent(mmFrame.transform, false);
@@ -94,6 +125,31 @@ namespace Aetheria
             _minimapImg = mmGo.AddComponent<RawImage>();
             _minimapTex = new Texture2D(MinimapTexSize, MinimapTexSize, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
             _minimapImg.texture = _minimapTex;
+
+            var arrowGo = new GameObject("MinimapArrow");
+            arrowGo.transform.SetParent(mmGo.transform, false);
+            _minimapArrow = arrowGo.AddComponent<RectTransform>();
+            _minimapArrow.anchorMin = new Vector2(0.5f, 0.5f);
+            _minimapArrow.anchorMax = new Vector2(0.5f, 0.5f);
+            _minimapArrow.sizeDelta = new Vector2(14f, 14f);
+            var arrowImg = arrowGo.AddComponent<Image>();
+            arrowImg.sprite = BuildArrowSprite();
+            arrowImg.color = AetheriaPalette.TextCyan;
+            arrowImg.raycastTarget = false;
+
+            var mmOverlaySprite = Resources.Load<Sprite>("UI/hud_minimap_frame");
+            if (mmOverlaySprite != null)
+            {
+                var frameGo = new GameObject("MinimapOrnateFrame");
+                frameGo.transform.SetParent(mmFrame.transform, false);
+                var frt = frameGo.AddComponent<RectTransform>();
+                frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
+                frt.offsetMin = new Vector2(-4f, 20f); frt.offsetMax = new Vector2(4f, 4f);
+                var fimg = frameGo.AddComponent<Image>();
+                fimg.sprite = mmOverlaySprite;
+                fimg.color = new Color(1f, 1f, 1f, 0.72f);
+                fimg.raycastTarget = false;
+            }
             CreateText("MinimapHint", mmFrame.transform, new Vector2(0, 0), new Vector2(1, 0), new Vector2(6, 2), new Vector2(-6, 22), 12, AetheriaPalette.TextGold, DisplayFont, TextAnchor.MiddleCenter, "[M] MAP");
 
             // Center Toast Banner
@@ -102,6 +158,20 @@ namespace Aetheria
 
             // Bottom-Center: Vitals + Invoker Orbs + Cast Bar (150px tall dock with strict internal bands)
             var bot = CreatePanel("BottomDock", _hudRoot.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(-370, 16), new Vector2(370, 166), AetheriaPalette.PanelBg, true);
+            var dockArt = Resources.Load<Sprite>("UI/hud_dock_reliquary");
+            if (dockArt != null)
+            {
+                var dockBg = new GameObject("DockBackdrop");
+                dockBg.transform.SetParent(bot.transform, false);
+                dockBg.transform.SetAsFirstSibling();
+                var drt = dockBg.AddComponent<RectTransform>();
+                drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one;
+                drt.offsetMin = new Vector2(2f, 2f); drt.offsetMax = new Vector2(-2f, -2f);
+                var dimg = dockBg.AddComponent<Image>();
+                dimg.sprite = dockArt;
+                dimg.color = new Color(1f, 1f, 1f, 0.25f);
+                dimg.raycastTarget = false;
+            }
             _vitalsText = CreateText("VitalsTxt", bot.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, -34), new Vector2(-16, -8), 14, AetheriaPalette.TextPrimary, SerifFont, TextAnchor.MiddleLeft);
             _hpFill = CreateBar("HPBar", bot.transform, new Vector2(16, 92), new Vector2(345, 108), AetheriaPalette.BarHP);
             _stamFill = CreateBar("StamBar", bot.transform, new Vector2(16, 70), new Vector2(345, 84), AetheriaPalette.BarStamina);
@@ -118,14 +188,49 @@ namespace Aetheria
             _dragonFireFill = CreateBar("DrakeFire", _dragonPanel.transform, new Vector2(14, 8), new Vector2(-14, 18), AetheriaPalette.OrbExort);
             _dragonPanel.SetActive(false);
 
-            // Hotkey legend strip
-            CreateText("HotkeysStrip", _hudRoot.transform, new Vector2(0.02f, 0.01f), new Vector2(0.32f, 0.09f), Vector2.zero, Vector2.zero,
+            // Death / Respawn Banner
+            _deathPanel = CreatePanel("DeathPanel", _hudRoot.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-280, -94), new Vector2(280, 94), AetheriaPalette.PanelBgDeep, true);
+            CreateText("DeathTitle", _deathPanel.transform, new Vector2(0, 1), new Vector2(1, 1), new Vector2(16, -54), new Vector2(-16, -12), 24, AetheriaPalette.TextCrimson, DisplayFont, TextAnchor.MiddleCenter, "ВЫ ПАЛИ В БОЮ");
+            CreateText("DeathSub", _deathPanel.transform, new Vector2(0, 0.36f), new Vector2(1, 0.68f), new Vector2(16, 0), new Vector2(-16, 0), 14, AetheriaPalette.TextPrimary, SerifFont, TextAnchor.MiddleCenter, "Нажмите [E] или кнопку ниже, чтобы вернуться в Оукхейвен");
+            var respawnBtn = CreateButton("RespawnButton", _deathPanel.transform, "Возродиться в Оукхейвене [E]", new Color(0.24f, 0.08f, 0.09f, 0.96f), AetheriaPalette.TextGold, () => HeroController.Instance?.RespawnAtOakhaven());
+            var btnRt = respawnBtn.GetComponent<RectTransform>();
+            btnRt.anchorMin = new Vector2(0.14f, 0.08f);
+            btnRt.anchorMax = new Vector2(0.86f, 0.34f);
+            btnRt.offsetMin = Vector2.zero;
+            btnRt.offsetMax = Vector2.zero;
+            _deathPanel.SetActive(false);
+
+            // Hotkey legend strip (strictly left of BottomDock so zero overlap at 1280x720 & 1920x1080)
+            CreateText("HotkeysStrip", _hudRoot.transform, Vector2.zero, Vector2.zero, new Vector2(20, 14), new Vector2(540, 74),
                 12, AetheriaPalette.TextSecondary, SerifFont, TextAnchor.LowerLeft,
                 "[C] Customizer · [K] Skills · [J] Quests\n[B] Grimoire · [M] Map · [T] Sky · [~] Console");
         }
 
+        private Sprite BuildArrowSprite()
+        {
+            const int S = 16;
+            _arrowTex = new Texture2D(S, S, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+            var px = new Color[S * S];
+            for (int y = 0; y < S; y++)
+            {
+                float ny = y / (float)(S - 1); // 0 bottom .. 1 top (+Z north)
+                float halfW = (1f - ny) * 0.44f;
+                for (int x = 0; x < S; x++)
+                {
+                    float nx = Mathf.Abs(x / (float)(S - 1) - 0.5f);
+                    bool inside = ny >= 0.14f && nx <= halfW && !(ny < 0.30f && nx < 0.14f);
+                    px[y * S + x] = inside ? Color.white : Color.clear;
+                }
+            }
+            _arrowTex.SetPixels(px);
+            _arrowTex.Apply();
+            _arrowSprite = Sprite.Create(_arrowTex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f));
+            return _arrowSprite;
+        }
+
         private void Update()
         {
+            if (IsPaused && Time.timeScale != 0f) Time.timeScale = 0f;
             HandleGlobalKeys();
             RefreshHUD();
         }
@@ -136,19 +241,22 @@ namespace Aetheria
                 ToggleOverlay(OverlayMode.DevConsole);
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
-                if (ActiveOverlay == OverlayMode.DevConsole || (IsModalOpen && ActiveOverlay != OverlayMode.MainMenu))
+                if (ActiveOverlay == OverlayMode.HeroCustomizer && (HeroController.Instance == null || !HeroController.Instance.HasEnteredWorld))
+                    SetOverlay(OverlayMode.MainMenu);
+                else if (ActiveOverlay == OverlayMode.DevConsole || (IsModalOpen && ActiveOverlay != OverlayMode.MainMenu))
                     SetOverlay(OverlayMode.None);
                 else if (HeroController.Instance != null && HeroController.Instance.HasEnteredWorld)
                     ToggleOverlay(OverlayMode.PauseMenu);
             }
-            else if (ActiveOverlay == OverlayMode.None || IsModalOpen)
+            else if (ActiveOverlay != OverlayMode.MainMenu && ActiveOverlay != OverlayMode.HeroCustomizer && ActiveOverlay != OverlayMode.DevConsole)
             {
-                if (ActiveOverlay == OverlayMode.DevConsole) return;
                 if (Input.GetKeyDown(KeyCode.C)) ToggleOverlay(OverlayMode.HeroCustomizer);
                 else if (Input.GetKeyDown(KeyCode.M)) ToggleOverlay(OverlayMode.WorldMap);
                 else if (Input.GetKeyDown(KeyCode.K)) ToggleOverlay(OverlayMode.SkillTree);
                 else if (Input.GetKeyDown(KeyCode.J)) ToggleOverlay(OverlayMode.QuestLog);
                 else if (Input.GetKeyDown(KeyCode.B)) ToggleOverlay(OverlayMode.Grimoire);
+                else if (Input.GetKeyDown(KeyCode.T) && ActiveOverlay == OverlayMode.None && (HeroController.Instance == null || HeroController.Instance.IsMounting))
+                    AetheriaWorldGenerator.Instance?.CycleTimeOfDayPreset();
                 else if (Input.GetKeyDown(KeyCode.F10)) AudioAndQualityService.Instance?.ToggleRenderTier();
             }
 
@@ -162,6 +270,7 @@ namespace Aetheria
         {
             ActiveOverlay = mode;
             bool modal = mode != OverlayMode.None;
+            Time.timeScale = IsPaused ? 0f : 1f;
             Cursor.visible = modal;
             Cursor.lockState = modal ? CursorLockMode.None : CursorLockMode.Locked;
             _hudRoot?.SetActive(!modal);
@@ -184,7 +293,7 @@ namespace Aetheria
 
             if (_toastTimer > 0f)
             {
-                _toastTimer -= Time.deltaTime;
+                _toastTimer -= Time.unscaledDeltaTime;
                 if (_toastTimer <= 0f) _toastText.text = "";
             }
             else
@@ -199,6 +308,10 @@ namespace Aetheria
 
             if (IsModalOpen) return;
 
+            if (_deathPanel != null) _deathPanel.SetActive(hero.IsDead);
+            Cursor.visible = hero.IsDead;
+            Cursor.lockState = hero.IsDead ? CursorLockMode.None : CursorLockMode.Locked;
+
             var st = hero.SkillTree;
             _vitalsText.text = $"LVL {st.Level} · {st.Gold}G · HP {hero.HP:F0}/{hero.MaxHP:F0} · MANA {hero.Spells.Mana:F0}/{hero.Spells.MaxMana:F0}";
             _hpFill.fillAmount = Mathf.Clamp01(hero.HP / Mathf.Max(1f, hero.MaxHP));
@@ -212,6 +325,9 @@ namespace Aetheria
             _slotDText.text = $"[G/1-0] {(defD != null ? defD.DisplayName : "Orbs [Z/X/Q] + [R]")}";
             _slotFText.text = defF != null ? $"[H] Alt: {defF.DisplayName}" : "[F] Drake · [RMB] Parry";
 
+            if (_minimapArrow != null)
+                _minimapArrow.localEulerAngles = new Vector3(0f, 0f, -hero.transform.eulerAngles.y);
+
             var map = QuestAndMapService.Instance;
             if (map != null)
             {
@@ -219,9 +335,9 @@ namespace Aetheria
                 _biomeText.text = $"{QuestAndMapService.GetBiomeDisplayName(biome).ToUpper()} · {map.GetExplorationPercent():F1}% EXPLORED";
                 var q = map.GetTrackedQuest();
                 _questText.text = q != null ? $"{q.Title}\n• {q.ObjectiveText} ({q.Progress}/{q.TargetCount})" : "All Story Quests Complete!";
-                if (Time.time - _minimapRefreshAt > 0.1f)
+                if (Time.unscaledTime - _minimapRefreshAt > 0.1f)
                 {
-                    _minimapRefreshAt = Time.time;
+                    _minimapRefreshAt = Time.unscaledTime;
                     RefreshMinimapTexture(map, hero.transform.position);
                 }
             }
@@ -280,14 +396,28 @@ namespace Aetheria
                 }
             }
 
-            // Hero arrow at the centre of the window
-            int cx = N / 2, cy = N / 2;
-            for (int y = -1; y <= 1; y++)
-                for (int x = -1; x <= 1; x++)
-                {
-                    int px = Mathf.Clamp(cx + x, 0, N - 1), py = Mathf.Clamp(cy + y, 0, N - 1);
-                    _minimapPixels[py * N + px] = AetheriaPalette.TextCyan;
-                }
+            void DrawMinimapDot(Vector3 worldPos, Color col)
+            {
+                int dx = Mathf.RoundToInt(((worldPos.x - heroPos.x) / MinimapWorldSpan + 0.5f) * N);
+                int dy = Mathf.RoundToInt(((worldPos.z - heroPos.z) / MinimapWorldSpan + 0.5f) * N);
+                if (dx < 1 || dx >= N - 1 || dy < 1 || dy >= N - 1) return;
+                for (int oy = -1; oy <= 1; oy++)
+                    for (int ox = -1; ox <= 1; ox++)
+                        _minimapPixels[(dy + oy) * N + (dx + ox)] = col;
+            }
+
+            foreach (var pin in map.MapPins)
+            {
+                if (!pin.Discovered && !pin.FastTravel) continue;
+                Color dotCol = pin.FastTravel
+                    ? (map.IsKindled(pin.PinId) ? AetheriaPalette.TextCyan : AetheriaPalette.TextAmber)
+                    : pin.Color;
+                DrawMinimapDot(pin.WorldLocation, dotCol);
+            }
+
+            var tracked = map.GetTrackedQuest();
+            if (tracked != null)
+                DrawMinimapDot(tracked.ObjectiveWorldLocation, AetheriaPalette.TextGold);
 
             _minimapTex.SetPixels(_minimapPixels);
             _minimapTex.Apply(false);
@@ -342,6 +472,7 @@ namespace Aetheria
             var frt = fillGo.AddComponent<RectTransform>();
             frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
             var img = fillGo.AddComponent<Image>();
+            img.sprite = WhiteSprite;
             img.color = fillCol;
             img.type = Image.Type.Filled;
             img.fillMethod = Image.FillMethod.Horizontal;

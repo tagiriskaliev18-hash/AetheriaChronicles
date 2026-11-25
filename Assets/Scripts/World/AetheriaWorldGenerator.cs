@@ -34,6 +34,8 @@ namespace Aetheria
         private class TerrainScar
         {
             public GameObject DecalObj;
+            public Material RingMat;
+            public Material DiscMat;
             public float Remaining;
         }
 
@@ -127,11 +129,13 @@ namespace Aetheria
                 case 5:  // Rideable Dragon Ignis over Mirror Lake & Bridge
                 {
                     hud.SetOverlay(OverlayMode.None);
+                    map?.RevealAround(new Vector3(-130f, 0f, -60f), 220f, true);
                     var drake = DragonController.Instance;
                     if (drake != null)
                     {
-                        drake.transform.rotation = Quaternion.Euler(0f, 38f, 0f);
-                        drake.transform.position = new Vector3(-4f, 16f, -24f);
+                        float lakeY = Mathf.Max(AetheriaWorld.SeaLevel, AetheriaWorld.SampleHeight(new Vector3(-130f, 0f, -60f)));
+                        drake.transform.rotation = Quaternion.Euler(0f, 45f, 0f);
+                        drake.transform.position = new Vector3(-130f, lakeY + 14f, -60f);
                         drake.Mount(hero);
                         drake.ForceBreathForDemo = true;
                     }
@@ -146,10 +150,10 @@ namespace Aetheria
                         drake.ForceBreathForDemo = false;
                         if (drake.Mounted) drake.Dismount();
                     }
-                    map?.RevealAround(new Vector3(0f, 16f, -104f), 220f, true);
+                    map?.RevealAround(new Vector3(0f, 48f, 440f), 220f, true);
                     while (map != null && map.PopNotification() != null) { }
-                    hero.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-                    hero.TeleportSafe(new Vector3(0f, 16f, -92f));
+                    hero.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+                    hero.TeleportSafe(new Vector3(0f, AetheriaWorld.SampleHeight(new Vector3(0f, 0f, 418f)) + 0.5f, 418f));
                     break;
                 }
                 case 7:  // World Map Fog-of-War & Teleport Landmarks
@@ -191,6 +195,17 @@ namespace Aetheria
             Application.Quit(0);
         }
 
+        private void OnDestroy()
+        {
+            foreach (var s in _scars)
+            {
+                if (s.DecalObj != null) Destroy(s.DecalObj);
+                if (s.RingMat != null) Destroy(s.RingMat);
+                if (s.DiscMat != null) Destroy(s.DiscMat);
+            }
+            _scars.Clear();
+        }
+
         private void Update()
         {
             // The render pipeline is created after Start, so the opening sky may have to wait for its first frame.
@@ -206,6 +221,8 @@ namespace Aetheria
                         AetheriaFx.Burst(_scars[i].DecalObj.transform.position, AetheriaPalette.TextEmerald, 18, 1.5f, 4f, 0.1f, 0.2f, 0.5f, 1f);
                         Destroy(_scars[i].DecalObj);
                     }
+                    if (_scars[i].RingMat != null) Destroy(_scars[i].RingMat);
+                    if (_scars[i].DiscMat != null) Destroy(_scars[i].DiscMat);
                     _scars.RemoveAt(i);
                 }
             }
@@ -271,6 +288,15 @@ namespace Aetheria
         public void ApplyTimeOfDay(float t)
         {
             TimeOfDay = Mathf.Repeat(t, 1f);
+            int bestIdx = 0;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < _presets.Length; i++)
+            {
+                float diff = Mathf.Abs(Mathf.DeltaAngle(TimeOfDay * 360f, _presets[i] * 360f));
+                if (diff < bestDist) { bestDist = diff; bestIdx = i; }
+            }
+            _presetIdx = bestIdx;
+
             bool night = TimeOfDay < 0.22f || TimeOfDay > 0.80f;
             bool lowSun = TimeOfDay > 0.60f && TimeOfDay < 0.78f;
             float sunPitch = lowSun ? 15f : (night ? -14f : 48f);
@@ -292,29 +318,71 @@ namespace Aetheria
             if (_scars.Count >= 28)
             {
                 if (_scars[0].DecalObj != null) Destroy(_scars[0].DecalObj);
+                if (_scars[0].RingMat != null) Destroy(_scars[0].RingMat);
+                if (_scars[0].DiscMat != null) Destroy(_scars[0].DiscMat);
                 _scars.RemoveAt(0);
             }
 
-            float gy = Terrain.activeTerrain != null ? Terrain.activeTerrain.SampleHeight(worldPos) + Terrain.activeTerrain.transform.position.y : 0f;
+            float gy = AetheriaWorld.SampleHeight(worldPos);
+            Vector3 groundPos = new Vector3(worldPos.x, gy, worldPos.z);
+            const float eps = 0.6f;
+            float hx = AetheriaWorld.HeightAt(worldPos.x + eps, worldPos.z) - AetheriaWorld.HeightAt(worldPos.x - eps, worldPos.z);
+            float hz = AetheriaWorld.HeightAt(worldPos.x, worldPos.z + eps) - AetheriaWorld.HeightAt(worldPos.x, worldPos.z - eps);
+            Vector3 normal = new Vector3(-hx, 2f * eps, -hz).normalized;
+
+            if (Physics.Raycast(new Vector3(worldPos.x, Mathf.Max(worldPos.y, gy) + 20f, worldPos.z), Vector3.down, out RaycastHit hit, 70f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (hit.collider != null
+                    && hit.collider.GetComponentInParent<HeroController>() == null
+                    && hit.collider.GetComponentInParent<EnemyAndBossAI>() == null
+                    && hit.collider.GetComponentInParent<DragonController>() == null
+                    && Mathf.Abs(hit.point.y - gy) < 14f)
+                {
+                    groundPos = hit.point;
+                    if (hit.normal.sqrMagnitude > 0.001f) normal = hit.normal.normalized;
+                }
+            }
+
             var go = new GameObject("SpellTerrainScar");
-            go.transform.position = new Vector3(worldPos.x, gy + 0.08f, worldPos.z);
+            go.transform.position = groundPos + normal * 0.06f;
+            go.transform.rotation = Quaternion.FromToRotation(Vector3.up, normal);
+
+            Color elemCol = AetheriaPalette.GetOrbColor(element);
+            float r = Mathf.Max(1.2f, radius * 0.45f);
+
+            // Ground-hugging charred glow disc
+            var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            disc.name = "ScarDisc";
+            Destroy(disc.GetComponent<Collider>());
+            disc.transform.SetParent(go.transform, false);
+            disc.transform.localPosition = Vector3.zero;
+            disc.transform.localScale = new Vector3(r * 1.75f, 0.015f, r * 1.75f);
+            Color discBase = Color.Lerp(new Color(0.05f, 0.04f, 0.05f, 1f), elemCol, 0.25f);
+            Material discMat = AetheriaPalette.GetLitMaterial(discBase, elemCol * 0.9f);
+            var discRend = disc.GetComponent<Renderer>();
+            discRend.sharedMaterial = discMat;
+            discRend.shadowCastingMode = ShadowCastingMode.Off;
+
+            // Crack / rune ring aligned to the ground normal
             var lr = go.AddComponent<LineRenderer>();
             lr.useWorldSpace = false;
             lr.loop = true;
             lr.positionCount = 36;
-            lr.startWidth = 0.22f;
-            lr.endWidth = 0.22f;
-            Color elemCol = AetheriaPalette.GetOrbColor(element);
+            lr.startWidth = 0.20f;
+            lr.endWidth = 0.20f;
             lr.startColor = elemCol;
             lr.endColor = elemCol;
-            lr.material = AetheriaPalette.GetLitMaterial(elemCol, elemCol * 1.6f);
-            float r = Mathf.Max(1.2f, radius * 0.45f);
+            Material ringMat = AetheriaPalette.GetLitMaterial(elemCol, elemCol * 1.6f);
+            lr.sharedMaterial = ringMat;
+            lr.shadowCastingMode = ShadowCastingMode.Off;
             for (int i = 0; i < 36; i++)
             {
                 float a = (i / 36f) * Mathf.PI * 2f;
-                lr.SetPosition(i, new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
+                float jag = 1f + 0.10f * Mathf.Sin(a * 7f) + 0.06f * Mathf.Cos(a * 11f);
+                lr.SetPosition(i, new Vector3(Mathf.Cos(a) * r * jag, 0.03f, Mathf.Sin(a) * r * jag));
             }
-            _scars.Add(new TerrainScar { DecalObj = go, Remaining = 60f });
+
+            _scars.Add(new TerrainScar { DecalObj = go, RingMat = ringMat, DiscMat = discMat, Remaining = 60f });
         }
 
         public int RestoreAllScarsAndPropsNow()
@@ -327,12 +395,20 @@ namespace Aetheria
                     AetheriaFx.Burst(s.DecalObj.transform.position, AetheriaPalette.TextEmerald, 18, 1.5f, 4f, 0.1f, 0.2f, 0.5f, 1f);
                     Destroy(s.DecalObj);
                 }
+                if (s.RingMat != null) Destroy(s.RingMat);
+                if (s.DiscMat != null) Destroy(s.DiscMat);
             }
             _scars.Clear();
 
-            foreach (var b in _breakables)
+            for (int i = _breakables.Count - 1; i >= 0; i--)
             {
-                if (b != null && b.Broken) { b.RestoreNow(); count++; }
+                var b = _breakables[i];
+                if (b == null) { _breakables.RemoveAt(i); continue; }
+                if (b.Broken || b.HP < b.MaxHP)
+                {
+                    b.RestoreNow();
+                    count++;
+                }
             }
             return count;
         }

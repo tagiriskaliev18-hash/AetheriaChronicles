@@ -107,6 +107,7 @@ namespace Aetheria
         public static HeroDerivedStats ComputeDerivedStats(
             HeroCustomizationProfile p, int heroLevel = 1, bool isNightTime = false, float hpRatio = 1f)
         {
+            if (p == null) p = new HeroCustomizationProfile();
             HeroDerivedStats s = new HeroDerivedStats
             {
                 MaxHP = 120f + Mathf.Max(0, heroLevel - 1) * 14f,
@@ -330,6 +331,7 @@ namespace Aetheria
 
         public void SetRace(HeroRace race, bool applyDefaults = true)
         {
+            if (Profile == null) Profile = new HeroCustomizationProfile();
             Profile.Race = race;
             if (applyDefaults)
             {
@@ -349,6 +351,7 @@ namespace Aetheria
         public bool ModifyAttribute(HeroAttribute attr, int delta)
         {
             if (delta == 0) return false;
+            if (Profile == null) Profile = new HeroCustomizationProfile();
             ref HeroAttributes a = ref Profile.Attributes;
             int val = GetBaseAttr(attr);
             if (delta > 0)
@@ -378,10 +381,17 @@ namespace Aetheria
 
         public void ResetAttributes()
         {
-            var a = Profile.Attributes;
+            if (Profile == null) Profile = new HeroCustomizationProfile();
+            ref HeroAttributes a = ref Profile.Attributes;
             int pool = a.Strength + a.Endurance + a.Agility + a.Intelligence + a.Spirit + a.Fortune + a.UnspentPoints;
             a.Strength = a.Endurance = a.Agility = a.Intelligence = a.Spirit = a.Fortune = 10;
             a.UnspentPoints = Mathf.Max(DefaultStartPoints, pool - 60);
+            Recalculate();
+        }
+
+        public void ResetToDefault()
+        {
+            Profile = new HeroCustomizationProfile();
             Recalculate();
         }
 
@@ -411,6 +421,7 @@ namespace Aetheria
 
         public void Recalculate()
         {
+            if (Profile == null) Profile = new HeroCustomizationProfile();
             Profile.HeightMeters = Mathf.Clamp(Profile.HeightMeters, MinHeightMeters, MaxHeightMeters);
             Profile.Musculature = Mathf.Clamp01(Profile.Musculature);
             Profile.ShoulderWidth = Mathf.Clamp01(Profile.ShoulderWidth);

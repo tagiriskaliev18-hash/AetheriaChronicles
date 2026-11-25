@@ -19,7 +19,11 @@ namespace Aetheria
         private Transform _marker;
         private MeshRenderer _markerRenderer;
         private Animator _anim;
+        private Transform _spine;
+        private Quaternion _restSpineRot = Quaternion.identity;
+        private Vector3 _baseScale = Vector3.one;
         private float _markerPhase;
+        private float _breathPhase;
         private Color _markerColor;
         private bool _markerShown;
 
@@ -27,6 +31,8 @@ namespace Aetheria
         {
             if (!AllNPCs.Contains(this)) AllNPCs.Add(this);
             FxAssets.Ensure();
+            _baseScale = transform.localScale;
+            _breathPhase = Random.value * 6.283f;
 
             _anim = GetComponentInChildren<Animator>(true);
             if (_anim != null)
@@ -40,6 +46,8 @@ namespace Aetheria
                     _anim.speed = IdleAnimSpeed;
                 }
             }
+            _spine = AetheriaPalette.FindBoneAny(transform, "spine_02", "spine_01", "Chest");
+            if (_spine != null) _restSpineRot = _spine.localRotation;
 
             if (_marker == null)
             {
@@ -73,6 +81,8 @@ namespace Aetheria
 
         private void Update()
         {
+            float dt = Time.deltaTime;
+            _breathPhase += dt;
             var hero = HeroController.Instance;
             bool near = hero != null && Vector3.Distance(transform.position, hero.transform.position) < TurnRange;
             float headHeight = transform.lossyScale.y > 0.01f ? 2.25f / transform.lossyScale.y : 2.25f;
@@ -90,7 +100,7 @@ namespace Aetheria
             }
             if (show)
             {
-                _markerPhase += Time.deltaTime;
+                _markerPhase += dt;
                 float bob = 0.16f / Mathf.Max(0.2f, transform.lossyScale.y);
                 _marker.localPosition = new Vector3(0f, headHeight + Mathf.Sin(_markerPhase * 2.4f) * bob, 0f);
                 _marker.localScale = Vector3.one * (0.72f / Mathf.Max(0.15f, transform.lossyScale.y));
@@ -104,9 +114,25 @@ namespace Aetheria
                 Vector3 toHero = hero.transform.position - transform.position;
                 toHero.y = 0f;
                 if (toHero.sqrMagnitude > 0.05f)
-                    transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(toHero, Vector3.up), 220f * Time.deltaTime);
+                    transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(toHero, Vector3.up), 220f * dt);
             }
-            if (_anim != null) _anim.SetFloat("Speed", 0f);
+            if (_anim != null)
+            {
+                _anim.SetFloat("Speed", 0f);
+            }
+            else
+            {
+                float s = Mathf.Sin(_breathPhase * 1.8f);
+                if (_spine != null)
+                    _spine.localRotation = _restSpineRot * Quaternion.Euler(s * 1.6f, 0f, 0f);
+                else
+                    transform.localScale = new Vector3(_baseScale.x, _baseScale.y * (1f + s * 0.012f), _baseScale.z);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_markerRenderer != null) _markerRenderer.sharedMaterial = null;
         }
     }
 }

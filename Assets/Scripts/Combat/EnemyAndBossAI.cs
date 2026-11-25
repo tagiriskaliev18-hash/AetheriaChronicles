@@ -110,12 +110,17 @@ namespace Aetheria
         private bool _strikeDone;
         private Vector3 _knockback;
         private float _deathTimer;
-        private float _statusTick;
+        private float _burnTick;
+        private float _shockTick;
         private float _hitFlash;
+        private float _stateTimer;
+        private const float RegularRecoverTime = 0.45f;
+        private const float BossRecoverTime = 0.65f;
 
         private GameObject _telegraphRing;
         private Light _telegraphLight;
         private readonly List<Material> _materials = new List<Material>();
+        private readonly List<Color> _origEmissives = new List<Color>();
         private float _staggerFxTick;
 
         private static readonly int[] MonsterActions = { 1, 2, 1, 3, 2, 1 };
@@ -138,7 +143,14 @@ namespace Aetheria
                 for (int i = 0; i < src.Length; i++)
                 {
                     mats[i] = src[i] != null ? new Material(src[i]) : null;
-                    if (mats[i] != null) _materials.Add(mats[i]);
+                    if (mats[i] != null)
+                    {
+                        Color origEm = Color.black;
+                        if (mats[i].HasProperty("_EmissiveColor")) origEm = mats[i].GetColor("_EmissiveColor");
+                        else if (mats[i].HasProperty("_EmissionColor")) origEm = mats[i].GetColor("_EmissionColor");
+                        _materials.Add(mats[i]);
+                        _origEmissives.Add(origEm);
+                    }
                 }
                 r.sharedMaterials = mats;
             }
@@ -177,13 +189,21 @@ namespace Aetheria
             float dt = Time.deltaTime;
             var hero = HeroController.Instance;
             if (hero == null || !hero.HasEnteredWorld) return;
+            float dist = Vector3.Distance(transform.position, hero.transform.position);
+            if (IsBoss) AudioAndQualityService.Instance?.SetBossActive(dist < 40f);
+
             bool frozen = AetheriaHUDManager.Instance != null && AetheriaHUDManager.Instance.IsModalOpen && AetheriaHUDManager.Instance.ActiveOverlay != OverlayMode.DevConsole;
+            if (frozen) { Anim.Drive(0f); return; }
 
             if (_hitFlash > 0f)
             {
                 _hitFlash -= dt;
                 float k = Mathf.Clamp01(_hitFlash / 0.16f);
-                for (int i = 0; i < _materials.Count; i++) AetheriaRender.SetEmission(_materials[i], Color.white * k * 2.4f);
+                for (int i = 0; i < _materials.Count; i++)
+                {
+                    Color orig = i < _origEmissives.Count ? _origEmissives[i] : Color.black;
+                    AetheriaRender.SetEmission(_materials[i], _hitFlash <= 0f ? orig : orig + Color.white * (k * 2.4f));
+                }
             }
 
             // Elemental damage over time and their tell-tale effects
@@ -191,18 +211,18 @@ namespace Aetheria
             {
                 _burnTimer -= dt;
                 HP = Mathf.Max(0f, HP - 8f * dt);
-                _statusTick -= dt;
-                if (_statusTick <= 0f) { _statusTick = 0.12f; AetheriaFx.Burst(transform.position + Vector3.up * 1.1f, new Color(1f, 0.55f, 0.15f), 3, 0.6f, 1.8f, 0.12f, 0.26f, 0.45f, -0.1f, 1f, new Color(0.6f, 0.1f, 0f, 0f)); }
+                _burnTick -= dt;
+                if (_burnTick <= 0f) { _burnTick = 0.12f; AetheriaFx.Burst(transform.position + Vector3.up * 1.1f, new Color(1f, 0.55f, 0.15f), 3, 0.6f, 1.8f, 0.12f, 0.26f, 0.45f, -0.1f, 1f, new Color(0.6f, 0.1f, 0f, 0f)); }
                 if (HP <= 0f) { Die(); return; }
             }
             if (_freezeTimer > 0f) _freezeTimer -= dt;
             if (_shockTimer > 0f)
             {
                 _shockTimer -= dt;
-                _statusTick -= dt;
-                if (_statusTick <= 0f)
+                _shockTick -= dt;
+                if (_shockTick <= 0f)
                 {
-                    _statusTick = 0.22f;
+                    _shockTick = 0.22f;
                     AetheriaFx.Lightning(transform.position + Random.insideUnitSphere * 0.6f + Vector3.up * 1.3f,
                         transform.position + Random.insideUnitSphere * 0.9f + Vector3.up * 0.8f, new Color(0.65f, 0.45f, 1f), 0.16f, 0.07f, 5, 0.5f);
                 }
@@ -223,15 +243,11 @@ namespace Aetheria
                     IsStaggerBroken = false;
                     StaggerGauge = 0f;
                     _state = State.Recover;
+                    _stateTimer = 0f;
                     _attackCooldown = 0.5f;
                 }
                 return;
             }
-
-            float dist = Vector3.Distance(transform.position, hero.transform.position);
-            if (IsBoss) AudioAndQualityService.Instance?.SetBossActive(dist < 40f);
-
-            if (frozen) { Anim.Drive(0f); return; }
 
             _knockback = Vector3.Lerp(_knockback, Vector3.zero, Mathf.Clamp01(dt * 8f));
             if (_knockback.sqrMagnitude > 0.02f)
@@ -240,14 +256,23 @@ namespace Aetheria
                 PlaceOnGround();
             }
 
+            _stateTimer += dt;
             switch (_state)
             {
                 case State.Windup:
                     WindupTick(dist);
                     break;
                 case State.Recover:
-                    if (!Anim.InAttack || Anim.ActionTime > 2.2f) { _state = State.Chase; _attackCooldown = IsBoss ? (BossPhase == 3 ? 1.2f : 1.7f) : 1.55f; }
+                {
+                    float recoverDur = IsBoss ? BossRecoverTime : RegularRecoverTime;
+                    if (((!Anim.Valid || !Anim.InAttack || Anim.ActionTime > 2.2f) && _stateTimer >= recoverDur) || _stateTimer >= 1.8f)
+                    {
+                        _state = State.Chase;
+                        _stateTimer = 0f;
+                        _attackCooldown = IsBoss ? (BossPhase == 3 ? 1.2f : 1.7f) : 1.55f;
+                    }
                     break;
+                }
                 default:
                     Think(hero, dist, dt);
                     break;
@@ -255,11 +280,18 @@ namespace Aetheria
 
             if (_telegraphRing != null && _telegraphRing.activeSelf)
             {
-                float pulse = 1f + Mathf.Sin(Time.time * 18f) * 0.025f;
-                float r = _telegraphRadius;
-                _telegraphRing.transform.localScale = new Vector3(r * pulse, 1f, r * pulse);
+                ApplyTelegraphScale(1f + Mathf.Sin(Time.time * 18f) * 0.025f);
             }
             FaceHero(hero, dt, _state == State.Windup);
+        }
+
+        private void ApplyTelegraphScale(float pulse)
+        {
+            if (_telegraphRing == null) return;
+            float parentXZ = Mathf.Max(0.01f, Mathf.Max(transform.lossyScale.x, transform.lossyScale.z));
+            float parentY = Mathf.Max(0.01f, transform.lossyScale.y);
+            float r = _telegraphRadius / parentXZ;
+            _telegraphRing.transform.localScale = new Vector3(r * pulse, 1f / parentY, r * pulse);
         }
 
         private float _telegraphRadius = 5f;
@@ -330,30 +362,35 @@ namespace Aetheria
             }
             _strikeDone = false;
             _state = State.Windup;
-            if (!Anim.PlayAction(_pendingAction))
-            {
-                // No animation available: resolve immediately
-                ExecuteStrike();
-                _state = State.Recover;
-                _attackCooldown = 1.6f;
-            }
-            AudioAndQualityService.Instance?.PlaySfxAt(IsBoss ? "SFX_Boss_Melee" : "SFX_Enemy_Ranged_Cast", transform.position, Ranged ? 0.6f : 0.3f);
+            _stateTimer = 0f;
+            Anim.PlayAction(_pendingAction);
+            AudioAndQualityService.Instance?.PlaySfxAt(Ranged ? "SFX_Enemy_Ranged_Cast" : "SFX_Boss_Melee", transform.position, Ranged ? 0.6f : 0.3f);
         }
 
         private void WindupTick(float dist)
         {
+            if (_strikeDone)
+            {
+                _state = State.Recover;
+                _stateTimer = 0f;
+                return;
+            }
             if (IsBoss)
             {
                 // Telegraph pulses until the swing frame of the animation
                 UpdateBossTelegraphVisual();
             }
-            if (_strikeDone) return;
 
-            bool inState = Anim.InActionState(_pendingAction, out float t);
-            if (!Anim.Valid || (inState && t >= _pendingHitFrame) || Anim.ActionTime > 1.6f)
+            float fallbackWindupSec = IsBoss ? 0.65f : 0.42f;
+            bool hitReady = Anim.Valid
+                ? ((Anim.InActionState(_pendingAction, out float t) && t >= _pendingHitFrame) || Anim.ActionTime > 1.6f)
+                : (_stateTimer >= fallbackWindupSec);
+            if (hitReady)
             {
                 _strikeDone = true;
                 ExecuteStrike();
+                _state = State.Recover;
+                _stateTimer = 0f;
             }
         }
 
@@ -382,6 +419,27 @@ namespace Aetheria
                     AudioAndQualityService.Instance?.PlaySfxAt("SFX_Boss_Slam", at, 1f);
                     AetheriaFx.Shake(0.55f, 0.5f);
                 }
+                else if (CurrentBossAttack == BossAttackKind.AbyssalFireVolley)
+                {
+                    Vector3 muzzle = transform.position + forward * 1.4f + Vector3.up * 1.8f;
+                    Vector3 toHero = (hero.transform.position + Vector3.up * 1.1f) - muzzle;
+                    Vector3 baseDir = toHero.sqrMagnitude > 0.01f ? toHero.normalized : forward;
+                    Color fireCol = new Color(1f, 0.38f, 0.08f);
+                    for (int i = -2; i <= 2; i++)
+                    {
+                        Vector3 spreadDir = Quaternion.Euler(0f, i * 11f, 0f) * baseDir;
+                        EnemyProjectile.Fire(gameObject, muzzle, muzzle + spreadDir * 22f, 22f, fireCol);
+                    }
+                    Vector3 scorchAt = transform.position + forward * 3.0f;
+                    scorchAt.y = AetheriaWorld.SampleHeight(scorchAt) + 0.12f;
+                    AetheriaWorldGenerator.Instance?.RegisterSpellTerrainScar(scorchAt, 4.5f, OrbType.Exort);
+                    AetheriaFx.GroundRing(scorchAt, fireCol, 2.2f, 5.2f, 0.45f);
+                    AetheriaFx.Shockwave(scorchAt, fireCol, 5.2f, 0.5f);
+                    AetheriaFx.Burst(muzzle, fireCol, 52, 4f, 12f, 0.10f, 0.26f, 0.6f, 0.8f, 1.8f, new Color(0.6f, 0.12f, 0.02f, 0f));
+                    AetheriaFx.Puff(scorchAt + Vector3.up * 0.4f, new Color(0.35f, 0.20f, 0.14f, 0.65f), 12, 3.2f, 2.0f, 1.2f, 0.6f);
+                    AudioAndQualityService.Instance?.PlaySfxAt("SFX_Fireball_Boom", muzzle, 0.9f);
+                    AetheriaFx.Shake(0.35f, 0.4f);
+                }
                 else if (CurrentBossAttack == BossAttackKind.ChronoCataclysm)
                 {
                     AetheriaFx.SpherePulse(transform.position + Vector3.up * 1.6f, col, radius, 0.9f, 0.5f);
@@ -404,7 +462,8 @@ namespace Aetheria
                 }
                 AetheriaFx.FlashLight(at, col, 44f, 20f, 0.45f);
 
-                if (dist <= radius) hero.TakeDamage(dmg, gameObject, amber);
+                float hitRadius = CurrentBossAttack == BossAttackKind.AbyssalFireVolley ? 3.8f : radius;
+                if (dist <= hitRadius) hero.TakeDamage(dmg, gameObject, amber);
                 if (_telegraphRing != null) _telegraphRing.SetActive(false);
                 if (_telegraphLight != null) _telegraphLight.enabled = false;
                 IsTelegraphing = false;
@@ -431,28 +490,32 @@ namespace Aetheria
             _cycle++;
             BossPhase = HP < MaxHP * 0.32f ? 3 : (HP < MaxHP * 0.65f ? 2 : 1);
             BossAttackKind[] pool = BossPhase == 3
-                ? new[] { BossAttackKind.CrimsonCleave, BossAttackKind.SeismicSlam, BossAttackKind.ShatterSpin, BossAttackKind.ChronoCataclysm, BossAttackKind.TempestLunge }
-                : new[] { BossAttackKind.CrimsonCleave, BossAttackKind.SeismicSlam, BossAttackKind.TempestLunge };
+                ? new[] { BossAttackKind.CrimsonCleave, BossAttackKind.SeismicSlam, BossAttackKind.ShatterSpin, BossAttackKind.AbyssalFireVolley, BossAttackKind.ChronoCataclysm, BossAttackKind.TempestLunge }
+                : (BossPhase == 2
+                    ? new[] { BossAttackKind.AbyssalFireVolley, BossAttackKind.TempestLunge, BossAttackKind.SeismicSlam }
+                    : new[] { BossAttackKind.CrimsonCleave, BossAttackKind.SeismicSlam, BossAttackKind.TempestLunge });
             CurrentBossAttack = pool[_cycle % pool.Length];
             IsTelegraphing = true;
 
             switch (CurrentBossAttack)
             {
-                case BossAttackKind.CrimsonCleave: _pendingAction = 1; _pendingHitFrame = 0.40f; break;
-                case BossAttackKind.SeismicSlam: _pendingAction = 2; _pendingHitFrame = 0.46f; break;
-                case BossAttackKind.TempestLunge: _pendingAction = 3; _pendingHitFrame = 0.34f; break;
-                case BossAttackKind.ShatterSpin: _pendingAction = 1; _pendingHitFrame = 0.30f; break;
-                default: _pendingAction = 4; _pendingHitFrame = 0.52f; break;
+                case BossAttackKind.CrimsonCleave:     _pendingAction = 1; _pendingHitFrame = 0.40f; break;
+                case BossAttackKind.SeismicSlam:       _pendingAction = 2; _pendingHitFrame = 0.46f; break;
+                case BossAttackKind.TempestLunge:      _pendingAction = 3; _pendingHitFrame = 0.34f; break;
+                case BossAttackKind.ShatterSpin:       _pendingAction = 1; _pendingHitFrame = 0.30f; break;
+                case BossAttackKind.AbyssalFireVolley: _pendingAction = 5; _pendingHitFrame = 0.45f; break;
+                default:                               _pendingAction = 4; _pendingHitFrame = 0.52f; break;
             }
             _strikeDone = false;
             _state = State.Windup;
+            _stateTimer = 0f;
 
             Color col = IsCurrentAttackParryable ? AetheriaPalette.TextAmber : AetheriaPalette.TextCrimson;
             _telegraphRadius = BossAttackRadius(CurrentBossAttack);
             if (_telegraphRing != null)
             {
                 _telegraphRing.GetComponent<MeshRenderer>().sharedMaterial = AetheriaRender.TransparentGlow(col, true, FxAssets.Glow);
-                _telegraphRing.transform.localScale = new Vector3(_telegraphRadius, 1f, _telegraphRadius);
+                ApplyTelegraphScale(1f);
                 _telegraphRing.SetActive(true);
             }
             if (_telegraphLight != null)
@@ -460,13 +523,7 @@ namespace Aetheria
                 AetheriaRender.StyleFxLight(_telegraphLight, col, 18f, 20f);
                 _telegraphLight.enabled = true;
             }
-            if (!Anim.PlayAction(_pendingAction))
-            {
-                _strikeDone = true;
-                ExecuteStrike();
-                _state = State.Recover;
-                _attackCooldown = 1.7f;
-            }
+            Anim.PlayAction(_pendingAction);
             QuestAndMapService.Instance?.PushNotification(
                 $"МАЛАКОР: {BossAttackName(CurrentBossAttack)} · {(IsCurrentAttackParryable ? "ЯНТАРНЫЙ — ПАРИРУЙТЕ [RMB]" : "АЛЫЙ — УКЛОНЯЙТЕСЬ [V]")}");
             AudioAndQualityService.Instance?.PlaySfxAt("SFX_BossRoar", transform.position, 0.5f);
@@ -519,6 +576,7 @@ namespace Aetheria
                 IsTelegraphing = false;
                 _strikeDone = true;
                 _state = State.Stagger;
+                _stateTimer = 0f;
                 if (_telegraphRing != null) _telegraphRing.SetActive(false);
                 if (_telegraphLight != null) _telegraphLight.enabled = false;
                 _staggerBreakTimer = 2.8f + (HeroController.Instance?.SkillTree?.StaggerWindowBonus ?? 0f);
@@ -548,12 +606,12 @@ namespace Aetheria
             }
             else if (elem == OrbType.Wex)
             {
-                if (_burnTimer > 0f) { HP -= 30f; QuestAndMapService.Instance?.PushNotification("ПЕРЕГРУЗКА!"); }
+                if (_burnTimer > 0f) { HP -= 30f; _burnTimer = 0f; AetheriaFx.Shockwave(transform.position + Vector3.up, new Color(1f, 0.55f, 0.2f), 3.8f, 0.4f); QuestAndMapService.Instance?.PushNotification("ПЕРЕГРУЗКА!"); }
                 _shockTimer = 4f;
             }
             else if (elem == OrbType.Quas)
             {
-                if (_shockTimer > 0f) { HP -= 32f; QuestAndMapService.Instance?.PushNotification("СВЕРХПРОВОДИМОСТЬ!"); }
+                if (_shockTimer > 0f) { HP -= 32f; _shockTimer = 0f; AetheriaFx.Shockwave(transform.position + Vector3.up, new Color(0.55f, 0.85f, 1f), 3.8f, 0.4f); QuestAndMapService.Instance?.PushNotification("СВЕРХПРОВОДИМОСТЬ!"); }
                 _freezeTimer = 3.5f;
             }
 
@@ -571,6 +629,7 @@ namespace Aetheria
             if (Dead) return;
             Dead = true;
             _state = State.Dead;
+            _stateTimer = 0f;
             IsTelegraphing = false;
             if (_telegraphRing != null) _telegraphRing.SetActive(false);
             if (_telegraphLight != null) _telegraphLight.enabled = false;
@@ -612,7 +671,16 @@ namespace Aetheria
             IsTelegraphing = false;
             Dead = false;
             _state = State.Idle;
+            _stateTimer = 0f;
+            _strikeDone = false;
             _attackCooldown = 1.2f;
+            _burnTimer = _freezeTimer = _shockTimer = 0f;
+            _burnTick = _shockTick = _hitFlash = 0f;
+            _knockback = Vector3.zero;
+            if (_telegraphRing != null) _telegraphRing.SetActive(false);
+            if (_telegraphLight != null) _telegraphLight.enabled = false;
+            for (int i = 0; i < _materials.Count && i < _origEmissives.Count; i++)
+                AetheriaRender.SetEmission(_materials[i], _origEmissives[i]);
             CancelInvoke();
             transform.position = _homePos;
             gameObject.SetActive(true);

@@ -45,21 +45,27 @@ namespace Aetheria
 
         // ------------------------------------------------------------------ shared damage + scorch
 
+        private static readonly HashSet<EnemyAndBossAI> _hitEnemies = new HashSet<EnemyAndBossAI>();
+        private static readonly HashSet<BreakableProp> _hitProps = new HashSet<BreakableProp>();
+
         public static void DamageBurst(Vector3 center, float radius, float dmg, GameObject caster, OrbType element, bool pullIn, float upward, bool sunStrike, bool meteor, float dmgMult = 1f)
         {
             AetheriaWorldGenerator.Instance?.RegisterSpellTerrainScar(center, radius, element);
-            foreach (var col in Physics.OverlapSphere(center, radius))
+            _hitEnemies.Clear();
+            _hitProps.Clear();
+            foreach (var col in Physics.OverlapSphere(center, radius, ~0, QueryTriggerInteraction.Ignore))
             {
-                if (caster != null && col.gameObject == caster) continue;
+                if (caster != null && (col.gameObject == caster || col.transform.IsChildOf(caster.transform))) continue;
                 var enemy = col.GetComponentInParent<EnemyAndBossAI>();
-                if (enemy != null)
+                if (enemy != null && _hitEnemies.Add(enemy))
                 {
                     Vector3 away = enemy.transform.position - center; away.y = 0f;
                     Vector3 push = pullIn ? -away.normalized : (away.sqrMagnitude > 0.01f ? away.normalized : Vector3.up);
                     enemy.TakeDamage(dmg * dmgMult, caster, push * 8f + Vector3.up * upward, element);
                 }
                 var prop = col.GetComponentInParent<BreakableProp>();
-                if (prop != null) prop.ApplyDamage(dmg * 1.6f * dmgMult, center, sunStrike, meteor);
+                if (prop != null && _hitProps.Add(prop))
+                    prop.ApplyDamage(dmg * 1.6f * dmgMult, center, sunStrike, meteor);
             }
         }
 
@@ -142,10 +148,12 @@ namespace Aetheria
 
             public static void Begin(Vector3 target, Vector3 dir, float radius, float dmg, GameObject caster, float speed)
             {
+                Vector3 flatDir = new Vector3(dir.x, 0f, dir.z);
+                flatDir = flatDir.sqrMagnitude > 0.001f ? flatDir.normalized : Vector3.forward;
                 var go = new GameObject("Vfx_ChaosMeteor");
-                go.transform.position = target - dir * 9f + Vector3.up * 30f;
+                go.transform.position = target - flatDir * 9f + Vector3.up * 30f;
                 var m = go.AddComponent<ChaosMeteor>();
-                m._dir = dir; m._radius = radius; m._dmg = dmg; m._caster = caster; m._speed = speed;
+                m._dir = flatDir; m._radius = radius; m._dmg = dmg; m._caster = caster; m._speed = speed;
                 m._rock = SpellVfxExecutor.GlowShape(FxAssets.Icosphere, new Color(1f, 0.5f, 0.1f), 7f, Vector3.one * 4.6f, go.transform.position, go.transform).transform;
                 m._light = AetheriaRender.CreatePointLight(go.transform, Vector3.zero, Fire, 30f, 70f);
                 AudioAndQualityService.Instance?.PlaySfxAt("SFX_ChaosMeteor", go.transform.position, 0.9f);
@@ -153,6 +161,7 @@ namespace Aetheria
 
             private void Update()
             {
+                if (_done) return;
                 float dt = Time.deltaTime;
                 Vector3 vel = _landed ? _dir * (11.5f * _speed) : FallVelocity + _dir * 9f;
                 Vector3 next = transform.position + vel * dt;
@@ -161,7 +170,7 @@ namespace Aetheria
                 _trail += dt; _smoke += dt;
                 if (_trail > 0.025f) { _trail = 0f; AetheriaFx.Burst(transform.position, Fire, 4, 0.5f, 3f, 0.5f, 1.1f, 0.5f, _landed ? 0.3f : 0.9f, new Color(0.6f, 0.08f, 0.01f, 0f)); }
                 if (_smoke > 0.09f) { _smoke = 0f; AetheriaFx.Puff(transform.position + Vector3.up * 0.8f, new Color(0.30f, 0.20f, 0.16f, 0.7f), 2, 1.5f, 2.0f, 1.8f, 1.0f); }
-                _rock.Rotate(Vector3.one * 260f * dt, Space.Self);
+                if (_rock != null) _rock.Rotate(Vector3.one * 260f * dt, Space.Self);
 
                 if (!_landed)
                 {
@@ -189,7 +198,7 @@ namespace Aetheria
                     AetheriaFx.Burst(g + Vector3.up, Fire, 70, 4f, 12f, 0.10f, 0.28f, 0.8f, 0.6f, 1.8f, new Color(0.6f, 0.1f, 0.01f, 0f));
                     AetheriaFx.Puff(g + Vector3.up, new Color(0.32f, 0.22f, 0.18f, 0.75f), 14, 3f, 2.6f, 2.0f, 0.8f);
                     AetheriaFx.Debris(g + Vector3.up, new Color(0.20f, 0.11f, 0.06f), 12, g + Vector3.up, 8f, 0.26f, false);
-                    Destroy(_rock.gameObject);
+                    if (_rock != null) Destroy(_rock.gameObject);
                     Destroy(gameObject, 0.1f);
                 }
             }
@@ -227,22 +236,29 @@ namespace Aetheria
             public static void Begin(Vector3 origin, Vector3 dir, Vector3 target, float radius, float dmg, GameObject caster, float speed, SpellId id)
             {
                 var go = new GameObject("Vfx_" + id);
-                Vector3 start = origin + dir * 1.4f;
+                bool pull = id == SpellId.GravityTornado;
+                Vector3 moveDir = dir;
+                if (pull)
+                {
+                    moveDir.y = 0f;
+                    moveDir = moveDir.sqrMagnitude > 0.001f ? moveDir.normalized : Vector3.forward;
+                }
+                Vector3 start = origin + moveDir * 1.4f;
                 go.transform.position = start;
                 var p = go.AddComponent<SpellProjectile>();
-                p._dir = dir; p._radius = radius; p._dmg = dmg; p._caster = caster; p._speed = speed; p._id = id;
-                p._pull = id == SpellId.GravityTornado;
+                p._dir = moveDir; p._radius = radius; p._dmg = dmg; p._caster = caster; p._speed = speed; p._id = id;
+                p._pull = pull;
                 Color col = id == SpellId.ColdSnap ? new Color(0.35f, 0.92f, 1f) : new Color(0.62f, 0.58f, 1f);
                 if (id == SpellId.ColdSnap)
                 {
-                    p._velocity = dir * (26f * speed);
+                    p._velocity = moveDir * (26f * speed);
                     p._shape = SpellVfxExecutor.GlowShape(FxAssets.Icosphere, col, 9f, new Vector3(0.5f, 1.5f, 0.5f), start, go.transform).transform;
-                    p._shape.rotation = Quaternion.LookRotation(dir) * Quaternion.Euler(90f, 0f, 0f);
+                    p._shape.rotation = Quaternion.LookRotation(moveDir) * Quaternion.Euler(90f, 0f, 0f);
                     p._life = 1.4f;
                 }
                 else
                 {
-                    p._velocity = dir * (9f * speed);
+                    p._velocity = moveDir * (9f * speed);
                     p._shape = SpellVfxExecutor.GlowShape(FxAssets.Icosphere, col, 2.4f, Vector3.one * 1.8f, start, go.transform).transform;
                     p._life = 1.7f;
                 }
@@ -257,7 +273,7 @@ namespace Aetheria
                 float ground = AetheriaWorld.SampleHeight(next) + (_pull ? 2.0f : 0.6f);
                 if (next.y < ground)
                 {
-                    if (_pull) next.y = ground; else { transform.position = next; Detonate(); return; }
+                    if (_pull) next.y = ground; else { transform.position = next; Detonate(null); return; }
                 }
                 transform.position = next;
                 if (_shape != null && !_pull) _shape.Rotate(Vector3.up * 720f * dt, Space.Self);
@@ -283,10 +299,12 @@ namespace Aetheria
                         if (_lifted <= 0f)
                         {
                             _lifted = 0.18f;
-                            foreach (var c in Physics.OverlapSphere(transform.position, _radius * 0.8f))
+                            SpellVfxExecutor._hitEnemies.Clear();
+                            foreach (var c in Physics.OverlapSphere(transform.position, _radius * 0.8f, ~0, QueryTriggerInteraction.Ignore))
                             {
+                                if (_caster != null && (c.gameObject == _caster || c.transform.IsChildOf(_caster.transform))) continue;
                                 var enemy = c.GetComponentInParent<EnemyAndBossAI>();
-                                if (enemy != null && c.gameObject != _caster)
+                                if (enemy != null && SpellVfxExecutor._hitEnemies.Add(enemy))
                                     enemy.TakeDamage(_dmg * 0.16f, _caster, (transform.position - enemy.transform.position).normalized * 6f + Vector3.up * 9f, OrbType.Wex);
                             }
                         }
@@ -299,16 +317,17 @@ namespace Aetheria
 
                 if (!_pull && _life > 0f)
                 {
-                    foreach (var c in Physics.OverlapSphere(transform.position, 1.6f))
+                    foreach (var c in Physics.OverlapSphere(transform.position, 1.6f, ~0, QueryTriggerInteraction.Ignore))
                     {
-                        if (_caster != null && c.gameObject == _caster) continue;
-                        if (c.GetComponentInParent<EnemyAndBossAI>() != null || c.GetComponentInParent<BreakableProp>() != null) { Detonate(); return; }
+                        if (_caster != null && (c.gameObject == _caster || c.transform.IsChildOf(_caster.transform))) continue;
+                        var enemy = c.GetComponentInParent<EnemyAndBossAI>();
+                        if (enemy != null || c.GetComponentInParent<BreakableProp>() != null) { Detonate(enemy); return; }
                     }
                 }
-                if (_life <= 0f) Detonate();
+                if (_life <= 0f) Detonate(null);
             }
 
-            private void Detonate()
+            private void Detonate(EnemyAndBossAI primaryTarget)
             {
                 Vector3 at = transform.position;
                 if (_pull)
@@ -324,20 +343,61 @@ namespace Aetheria
                 }
                 else
                 {
-                    Color ice = new Color(0.45f, 0.94f, 1f);
-                    AetheriaFx.SpherePulse(at, ice, _radius, 0.45f, 0.5f);
-                    AetheriaFx.Shockwave(SpellVfxExecutor.OnGround(at), ice, _radius * 1.9f, 0.55f);
-                    AetheriaFx.Burst(at, new Color(0.85f, 0.98f, 1f), 80, 4f, 13f, 0.08f, 0.22f, 0.7f, 0.5f, new Color(0.15f, 0.55f, 1f, 0f));
-                    AetheriaFx.Flare(at, ice, 5f, 0.3f);
-                    AetheriaFx.FlashLight(at, ice, 46f, 20f, 0.5f);
-                    AetheriaFx.Shake(0.2f, 0.3f);
-                    SpellVfxExecutor.IceSpikes(SpellVfxExecutor.OnGround(at), _radius * 0.8f, 9, 1.9f);
-                    AudioAndQualityService.Instance?.PlaySfxAt("SFX_Chronosphere", at, 0.8f);
-                    AudioAndQualityService.Instance?.PlaySfxAt("SFX_Hit_Shield_Absorb", at, 0.6f);
-                    SpellVfxExecutor.DamageBurst(at, _radius, _dmg, _caster, OrbType.Quas, false, 4f, false, false);
+                    ColdSnapPulseRunner.Trigger(at, _radius, _dmg, _caster, primaryTarget);
                 }
                 if (_shape != null) Destroy(_shape.gameObject);
                 Destroy(gameObject);
+            }
+        }
+
+        /// <summary>Executes 3 crisp Cold Snap cryo pulses (0.0s, 0.65s, 1.30s) on target/area.</summary>
+        private class ColdSnapPulseRunner : MonoBehaviour
+        {
+            private Vector3 _at;
+            private float _radius, _dmg, _elapsed;
+            private GameObject _caster;
+            private EnemyAndBossAI _target;
+            private int _pulsesFired;
+
+            public static void Trigger(Vector3 at, float radius, float dmg, GameObject caster, EnemyAndBossAI target)
+            {
+                var go = new GameObject("Vfx_ColdSnapPulses");
+                go.transform.position = at;
+                var r = go.AddComponent<ColdSnapPulseRunner>();
+                r._at = at; r._radius = radius; r._dmg = dmg; r._caster = caster; r._target = target;
+                r.FirePulse(0);
+                r._pulsesFired = 1;
+            }
+
+            private void Update()
+            {
+                _elapsed += Time.deltaTime;
+                if (_pulsesFired == 1 && _elapsed >= 0.65f) { FirePulse(1); _pulsesFired = 2; }
+                else if (_pulsesFired == 2 && _elapsed >= 1.30f) { FirePulse(2); _pulsesFired = 3; Destroy(gameObject); }
+            }
+
+            private void FirePulse(int idx)
+            {
+                Vector3 at = (_target != null && !_target.Dead) ? _target.transform.position + Vector3.up * 1.0f : _at;
+                Color ice = new Color(0.45f, 0.94f, 1f);
+                float scale = idx == 0 ? 1f : 0.72f;
+                AetheriaFx.SpherePulse(at, ice, _radius * scale, 0.42f, 0.5f);
+                AetheriaFx.Shockwave(SpellVfxExecutor.OnGround(at), ice, _radius * 1.7f * scale, 0.48f);
+                AetheriaFx.Burst(at, new Color(0.85f, 0.98f, 1f), idx == 0 ? 75 : 42, 3.5f, 12f, 0.08f, 0.22f, 0.7f, 0.5f, new Color(0.15f, 0.55f, 1f, 0f));
+                AetheriaFx.Flare(at, ice, idx == 0 ? 5f : 3.2f, 0.28f);
+                AetheriaFx.FlashLight(at, ice, idx == 0 ? 46f : 28f, 18f, 0.4f);
+                if (idx == 0)
+                {
+                    AetheriaFx.Shake(0.2f, 0.3f);
+                    SpellVfxExecutor.IceSpikes(SpellVfxExecutor.OnGround(at), _radius * 0.8f, 9, 1.9f);
+                    AudioAndQualityService.Instance?.PlaySfxAt("SFX_Chronosphere", at, 0.8f);
+                }
+                else
+                {
+                    SpellVfxExecutor.IceSpikes(SpellVfxExecutor.OnGround(at), _radius * 0.45f, 4, 1.25f);
+                }
+                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Hit_Shield_Absorb", at, 0.6f);
+                SpellVfxExecutor.DamageBurst(at, _radius * (idx == 0 ? 1f : 0.85f), _dmg, _caster, OrbType.Quas, false, idx == 0 ? 4f : 2.2f, false, false, idx == 0 ? 0.50f : 0.25f);
             }
         }
 
@@ -364,17 +424,20 @@ namespace Aetheria
         {
             public static void Begin(Vector3 target, Vector3 dir, float radius, float dmg, GameObject caster, float control)
             {
+                Vector3 flatDir = new Vector3(dir.x, 0f, dir.z);
+                flatDir = flatDir.sqrMagnitude > 0.001f ? flatDir.normalized : Vector3.forward;
                 Vector3 g = SpellVfxExecutor.OnGround(target);
-                Vector3 side = Vector3.Cross(Vector3.up, dir).normalized;
+                Vector3 side = Vector3.Cross(Vector3.up, flatDir).normalized;
                 var go = new GameObject("Vfx_IcePrismWall");
                 go.transform.position = g;
+                go.transform.rotation = Quaternion.LookRotation(flatDir, Vector3.up);
                 int count = 7;
                 float spacing = 1.15f;
                 Color ice = new Color(0.50f, 0.94f, 1f);
                 for (int i = 0; i < count; i++)
                 {
                     float t = i - (count - 1) * 0.5f;
-                    Vector3 p = g + side * (t * spacing) + dir * (Mathf.Abs(t) * -0.18f);
+                    Vector3 p = g + side * (t * spacing) + flatDir * (Mathf.Abs(t) * -0.18f);
                     float h = (3.4f - Mathf.Abs(t) * 0.32f) * Mathf.Lerp(1f, 1.35f, control - 0.5f) * Random.Range(0.9f, 1.1f);
                     Vector3 pg = p; pg.y = AetheriaWorld.SampleHeight(p);
                     var prism = SpellVfxExecutor.GlowShape(FxAssets.Icosphere, ice, 4.5f, new Vector3(0.62f, h * 0.5f, 0.62f), pg + Vector3.up * (h * 0.5f), go.transform);
@@ -386,13 +449,12 @@ namespace Aetheria
                 var box = go.AddComponent<BoxCollider>();
                 box.center = new Vector3(0f, 1.5f, 0f);
                 box.size = new Vector3(count * spacing, 3f, 0.9f);
-                go.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
                 AetheriaRender.CreatePointLight(go.transform, Vector3.up * 1.8f, ice, 16f, 34f);
                 AetheriaFx.Shockwave(g, ice, radius * 1.6f, 0.5f);
                 AetheriaFx.Burst(g + Vector3.up * 1f, new Color(0.85f, 0.98f, 1f), 90, 3f, 12f, 0.10f, 0.26f, 0.8f, 0.4f, 1.4f, new Color(0.15f, 0.55f, 1f, 0f));
                 AetheriaFx.Shake(0.18f, 0.3f);
                 AudioAndQualityService.Instance?.PlaySfxAt("SFX_Chronosphere", g, 0.9f);
-                SpellVfxExecutor.DamageBurst(g + dir * 0.5f, radius, dmg, caster, OrbType.Quas, false, 2.5f, false, false);
+                SpellVfxExecutor.DamageBurst(g + flatDir * 0.5f, radius, dmg, caster, OrbType.Quas, false, 2.5f, false, false);
                 var life = go.AddComponent<FxDestroyAfter>();
                 life.Seconds = 5.2f;
                 life.OnExpire = () =>
@@ -548,8 +610,24 @@ namespace Aetheria
             var hero = caster != null ? caster.GetComponent<HeroController>() : null;
             if (hero == null) return;
 
+            Vector3 flatDir = new Vector3(dir.x, 0f, dir.z);
+            flatDir = flatDir.sqrMagnitude > 0.001f ? flatDir.normalized : caster.transform.forward;
+
             Vector3 from = caster.transform.position;
-            Vector3 to = from + dir * 11f * Mathf.Lerp(0.85f, 1.25f, control - 0.5f);
+            float maxDist = 11f * Mathf.Lerp(0.85f, 1.25f, control - 0.5f);
+            Vector3 p1 = from + Vector3.up * 0.45f;
+            Vector3 p2 = from + Vector3.up * 1.55f;
+            float travelDist = maxDist;
+            if (Physics.CapsuleCast(p1, p2, 0.38f, flatDir, out RaycastHit hit, maxDist, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (!hit.collider.transform.IsChildOf(caster.transform))
+                    travelDist = Mathf.Max(0.5f, hit.distance - 0.6f);
+            }
+
+            Vector3 to = from + flatDir * travelDist;
+            float lim = AetheriaWorld.HalfExtent - 6f;
+            to.x = Mathf.Clamp(to.x, -lim, lim);
+            to.z = Mathf.Clamp(to.z, -lim, lim);
             to.y = AetheriaWorld.SampleHeight(to) + 0.3f;
 
             // Leave an echo behind that detonates
@@ -606,8 +684,6 @@ namespace Aetheria
             AudioAndQualityService.Instance?.RequestHitStop(0.09f, 0.03f);
             Vector3 hitCenter = c + dir * (radius * 0.7f);
             SpellVfxExecutor.DamageBurst(hitCenter, radius, dmg, caster, OrbType.Quas, false, 8f, false, false);
-            SpellVfxExecutor.DamageBurst(hitCenter, radius * 0.9f, 1f, caster, OrbType.Exort, false, 0f, false, false, 0f);
-            SpellVfxExecutor.DamageBurst(hitCenter, radius * 0.9f, 1f, caster, OrbType.Wex, false, 0f, false, false, 0f);
         }
     }
 

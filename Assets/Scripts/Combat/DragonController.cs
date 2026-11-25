@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -33,7 +34,10 @@ namespace Aetheria
         private float _revealAccum;
         private float _bob;
         private float _screamCooldown;
+        private bool _landingGlide;
         private const float CruiseSpeed = 22f;
+        private readonly HashSet<EnemyAndBossAI> _breathEnemies = new HashSet<EnemyAndBossAI>();
+        private readonly HashSet<BreakableProp> _breathProps = new HashSet<BreakableProp>();
 
         private static readonly int PFlying = Animator.StringToHash("Flying");
         private static readonly int PSpeed = Animator.StringToHash("Speed");
@@ -153,7 +157,7 @@ namespace Aetheria
             var em = ps.emission; em.rateOverTime = rate;
             var shape = ps.shape;
             shape.shapeType = ParticleSystemShapeType.Cone; shape.angle = smoke ? 14f : 7f; shape.radius = smoke ? 0.5f : 0.25f;
-            shape.rotation = new Vector3(-90f, 0f, 0f);
+            shape.rotation = Vector3.zero;
             var vol = ps.velocityOverLifetime; vol.enabled = true; vol.space = ParticleSystemSimulationSpace.Local;
             vol.x = new ParticleSystem.MinMaxCurve(-1.2f, 1.2f); vol.y = new ParticleSystem.MinMaxCurve(-0.6f, 1.4f); vol.z = new ParticleSystem.MinMaxCurve(0f, 6f);
             ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
@@ -162,7 +166,8 @@ namespace Aetheria
 
         public void Mount(HeroController hero)
         {
-            if (hero == null || Mounted) return;
+            if (hero == null || Mounted || hero.IsDead) return;
+            _landingGlide = false;
             _rider = hero;
             Mounted = true;
             Airborne = true;
@@ -197,15 +202,23 @@ namespace Aetheria
             if (!Mounted) return;
             Mounted = false;
             BreathingFire = false;
-            _fire.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            _smoke.Stop(true, ParticleSystemStopBehavior.StopEmitting);
             SetBreath(false);
+            if (_anim != null) _anim.SetBool(TBreath, false);
 
             float ty = AetheriaWorld.SampleHeight(transform.position);
-            transform.position = new Vector3(transform.position.x, ty, transform.position.z);
-            transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
-            Airborne = false;
-            SetFlying(false);
+            if (transform.position.y > ty + 1.5f)
+            {
+                _landingGlide = true;
+                Airborne = true;
+            }
+            else
+            {
+                _landingGlide = false;
+                transform.position = new Vector3(transform.position.x, ty, transform.position.z);
+                transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
+                Airborne = false;
+                SetFlying(false);
+            }
 
             if (_rider != null)
             {
@@ -226,11 +239,18 @@ namespace Aetheria
 
         private void SetBreath(bool on)
         {
-            if (_fire == null) return;
-            var em = _fire.emission; em.enabled = on;
-            var ems = _smoke.emission; ems.enabled = on;
-            if (on) { _fire.Play(); _smoke.Play(); }
-            else { _fire.Stop(true, ParticleSystemStopBehavior.StopEmitting); _smoke.Stop(true, ParticleSystemStopBehavior.StopEmitting); }
+            if (_fire != null)
+            {
+                var em = _fire.emission; em.enabled = on;
+                if (on) _fire.Play();
+                else _fire.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            }
+            if (_smoke != null)
+            {
+                var ems = _smoke.emission; ems.enabled = on;
+                if (on) _smoke.Play();
+                else _smoke.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+            }
         }
 
         private void Update()
@@ -243,12 +263,15 @@ namespace Aetheria
                 // Grounded dragon breathes in its idle; airborne it strokes with flight speed
                 _anim.SetFloat(PSpeed, Mounted ? Mathf.Clamp01(FlightSpeed / CruiseSpeed) : 0f);
             }
-            foreach (var t in _wingTrails)
+            if (_wingTrails != null)
             {
-                if (t == null) continue;
-                var em = t.emission;
-                bool trail = Airborne && FlightSpeed > 14f;
-                if (em.enabled != trail) em.enabled = trail;
+                foreach (var t in _wingTrails)
+                {
+                    if (t == null) continue;
+                    var em = t.emission;
+                    bool trail = Airborne && FlightSpeed > 14f;
+                    if (em.enabled != trail) em.enabled = trail;
+                }
             }
             _screamCooldown -= dt;
 
@@ -256,11 +279,38 @@ namespace Aetheria
             {
                 FireEnergy = Mathf.Min(MaxFireEnergy, FireEnergy + 18f * dt);
                 if (_mouthLight != null) _mouthLight.intensity = 0f;
+                if (_landingGlide)
+                {
+                    float ty = AetheriaWorld.SampleHeight(transform.position);
+                    Vector3 p = transform.position;
+                    p.y = Mathf.MoveTowards(p.y, ty, 22f * dt);
+                    transform.position = p;
+                    transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0f, _yaw, 0f), Mathf.Clamp01(dt * 4f));
+                    if (p.y <= ty + 0.08f)
+                    {
+                        transform.position = new Vector3(p.x, ty, p.z);
+                        transform.rotation = Quaternion.Euler(0f, _yaw, 0f);
+                        _landingGlide = false;
+                        Airborne = false;
+                        SetFlying(false);
+                    }
+                }
                 return;
             }
 
             bool modal = AetheriaHUDManager.Instance != null && AetheriaHUDManager.Instance.IsModalOpen;
-            if (modal) { SetBreath(false); return; }
+            if (modal || (_rider != null && _rider.IsDead))
+            {
+                if (BreathingFire)
+                {
+                    BreathingFire = false;
+                    SetBreath(false);
+                    if (_anim != null) _anim.SetBool(TBreath, false);
+                }
+                if (_mouthLight != null) _mouthLight.intensity = 0f;
+                if (_rider != null && _rider.IsDead) Dismount();
+                return;
+            }
 
             if (Input.GetKeyDown(KeyCode.F)) { Dismount(); return; }
 
@@ -317,11 +367,19 @@ namespace Aetheria
                 if (_mouthLight != null) _mouthLight.intensity = Mathf.Lerp(_mouthLight.intensity, 0f, dt * 10f);
             }
 
-            // Chase camera with speed feel
+            // Chase camera with obstacle + terrain clearance
             if (Camera.main != null)
             {
+                Vector3 anchor = transform.position + Vector3.up * 2.2f;
                 Vector3 camDesired = transform.position - transform.forward * (13f + FlightSpeed * 0.14f)
                                     + transform.up * 5.2f + transform.right * (_roll * 0.035f);
+                if (Physics.Linecast(anchor, camDesired, out RaycastHit camHit, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    if (!camHit.collider.transform.IsChildOf(transform) && (_rider == null || !camHit.collider.transform.IsChildOf(_rider.transform)))
+                        camDesired = camHit.point + camHit.normal * 0.6f;
+                }
+                float minCamY = AetheriaWorld.SampleHeight(camDesired) + 2.5f;
+                if (camDesired.y < minCamY) camDesired.y = minCamY;
                 Camera.main.transform.position = Vector3.Lerp(Camera.main.transform.position, camDesired, Mathf.Clamp01(dt * 7f));
                 Camera.main.transform.LookAt(transform.position + transform.forward * 10f + Vector3.up * 1.5f);
                 var fx = AetheriaFx.Instance;
@@ -339,22 +397,33 @@ namespace Aetheria
 
         private void ApplyFireSweep(float dmg)
         {
-            Vector3 orig = MouthPoint.position;
-            Vector3 fwd = transform.forward;
-            Vector3 ground = orig + fwd * 13f;
+            Vector3 orig = MouthPoint != null ? MouthPoint.position : transform.position + transform.forward * 3f + Vector3.up * 1.8f;
+            Vector3 beamDir = (MouthPoint != null && MouthPoint.forward.sqrMagnitude > 0.01f) ? MouthPoint.forward : transform.forward;
+            Vector3 ground = orig + beamDir * 13f;
             ground.y = AetheriaWorld.SampleHeight(ground) + 0.2f;
-            if (ground.y > orig.y) ground = orig + fwd * 11f;
+            if (ground.y > orig.y) ground = orig + beamDir * 11f;
 
             AetheriaWorldGenerator.Instance?.RegisterSpellTerrainScar(ground, 7f, OrbType.Exort);
             AetheriaFx.Puff(ground, new Color(0.30f, 0.20f, 0.16f, 0.6f), 6, 3f, 3.4f, 1.6f, 1.6f);
             AetheriaFx.Burst(ground, new Color(1f, 0.55f, 0.12f), 14, 3f, 9f, 0.10f, 0.22f, 0.7f, 0.5f, 1.4f, new Color(0.7f, 0.12f, 0.02f, 0f));
 
-            foreach (var c in Physics.OverlapSphere(ground, 9f))
+            _breathEnemies.Clear();
+            _breathProps.Clear();
+            GameObject instigator = _rider != null ? _rider.gameObject : gameObject;
+            float[] sampleDistances = { 4.5f, 10f, 15.5f };
+            for (int i = 0; i < sampleDistances.Length; i++)
             {
-                var enemy = c.GetComponentInParent<EnemyAndBossAI>();
-                if (enemy != null) enemy.TakeDamage(dmg, _rider != null ? _rider.gameObject : gameObject, fwd * 6f, OrbType.Exort);
-                var prop = c.GetComponentInParent<BreakableProp>();
-                if (prop != null) prop.ApplyDamage(dmg * 1.5f, ground, false, true);
+                Vector3 samplePos = orig + beamDir * sampleDistances[i];
+                foreach (var c in Physics.OverlapSphere(samplePos, 4.5f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    if (c.transform.IsChildOf(transform) || (_rider != null && c.transform.IsChildOf(_rider.transform))) continue;
+                    var enemy = c.GetComponentInParent<EnemyAndBossAI>();
+                    if (enemy != null && _breathEnemies.Add(enemy))
+                        enemy.TakeDamage(dmg, instigator, beamDir * 6f, OrbType.Exort);
+                    var prop = c.GetComponentInParent<BreakableProp>();
+                    if (prop != null && _breathProps.Add(prop))
+                        prop.ApplyDamage(dmg * 1.5f, samplePos, false, true);
+                }
             }
             AudioAndQualityService.Instance?.PlaySfxAt("SFX_Fireball_Boom", ground, 0.35f);
         }

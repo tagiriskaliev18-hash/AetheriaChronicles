@@ -28,7 +28,7 @@ namespace Aetheria
 
         public static void Ensure()
         {
-            if (Ready) return;
+            if (Ready && Glow != null) return;
             Ready = true;
             Glow = Radial(128, 1.15f, softEdge: 0.0f, core: 0.42f);
             Spark = Radial(64, 1.0f, softEdge: 0.35f, core: 0.0f);
@@ -227,6 +227,13 @@ namespace Aetheria
         public Vector3 ShakeOffset => _shakeOffset;
         public float ShakeRoll => _shakeRoll;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            _quitting = false;
+            _instance = null;
+        }
+
         private void OnApplicationQuit() => _quitting = true;
         private void OnDestroy() { if (_instance == this) _instance = null; }
 
@@ -235,6 +242,8 @@ namespace Aetheria
         public static void Shake(float amplitude = 0.25f, float duration = 0.35f)
         {
             var fx = Instance;
+            amplitude = Mathf.Clamp(amplitude, 0f, 1.5f);
+            duration = Mathf.Max(0.01f, duration);
             if (amplitude > fx._shakeAmp || fx._shakeTime <= 0f)
             {
                 fx._shakeAmp = amplitude;
@@ -300,7 +309,7 @@ namespace Aetheria
             l.transform.position = pos;
             AetheriaRender.StyleFxLight(l, color, range, intensity);
             l.enabled = true;
-            fx._active.Add(new Flash { Light = l, Age = 0f, Duration = Mathf.Max(0.05f, duration), Peak = intensity });
+            fx._active.Add(new Flash { Light = l, Age = 0f, Duration = Mathf.Max(0.05f, duration), Peak = l.intensity });
         }
 
         // ------------------------------------------------------------------ particle bursts
@@ -534,12 +543,17 @@ namespace Aetheria
                 mr.shadowCastingMode = ShadowCastingMode.Off;
                 float s = size * Random.Range(0.55f, 1.35f);
                 go.transform.localScale = Vector3.one * s;
+                if (go.GetComponent<Collider>() == null)
+                {
+                    var col = go.AddComponent<SphereCollider>();
+                    col.radius = 0.45f;
+                }
                 var rb = go.AddComponent<Rigidbody>();
                 rb.mass = 1.2f;
-                rb.drag = 0.4f;
+                rb.linearDamping = 0.4f;
                 Vector3 dir = (go.transform.position - impulseOrigin);
                 dir.y = Mathf.Abs(dir.y) + 0.6f;
-                rb.velocity = dir.normalized * Random.Range(force * 0.45f, force) + Vector3.up * Random.Range(1.5f, 5.5f);
+                rb.linearVelocity = dir.normalized * Random.Range(force * 0.45f, force) + Vector3.up * Random.Range(1.5f, 5.5f);
                 rb.angularVelocity = Random.insideUnitSphere * 9f;
                 Object.Destroy(go, Random.Range(2.6f, 4.2f));
             }
@@ -585,7 +599,7 @@ namespace Aetheria
 
         public void Setup(Vector3 from, Vector3 to, Color color, float duration, float width, int segments, float jitter)
         {
-            _from = from; _to = to; _color = color; _duration = duration; _width = width; _segments = segments; _jitter = jitter;
+            _from = from; _to = to; _color = color; _duration = Mathf.Max(0.05f, duration); _width = width; _segments = segments; _jitter = jitter;
             _mesh = new Mesh { name = "FxLightning" };
             _mesh.MarkDynamic();
             GetComponent<MeshFilter>().sharedMesh = _mesh;
@@ -622,7 +636,7 @@ namespace Aetheria
                     Vector3 axis = (_to - _from).normalized;
                     Vector3 side = Vector3.Cross(axis, viewDir).normalized;
                     Vector3 up = Vector3.Cross(side, axis).normalized;
-                    p += side * ((AetheriaWorld.Hash(i, Mathf.FloorToInt(Time.time * 1000f)) - 0.5f) * 2f * _jitter)
+                    p += side * ((AetheriaWorld.Hash(i, Mathf.FloorToInt(Time.unscaledTime * 1000f)) - 0.5f) * 2f * _jitter)
                        + up * ((AetheriaWorld.Hash(i, 77, 5) - 0.5f) * 2f * _jitter);
                 }
                 Vector3 local = transform.InverseTransformPoint(p);

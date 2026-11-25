@@ -18,6 +18,7 @@ namespace AetheriaTools
             string root = "Assets/_AAA_Imported";
 
             // ---------- 1. Animation FBX ----------
+            if (AssetDatabase.IsValidFolder(root))
             foreach (string fbx in AssetDatabase.FindAssets("t:Model", new[] { root })
                          .Select(AssetDatabase.GUIDToAssetPath)
                          .Where(p => p.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) && p.Contains("/Animations/"))
@@ -83,7 +84,7 @@ namespace AetheriaTools
                 sb.AppendLine("   BONES: " + string.Join(",", transforms.Select(t => t.name).Take(90)));
                 foreach (var r in rends)
                 {
-                    string kind = r is SkinnedMeshRenderer s ? $"Skinned verts={s.sharedMesh.vertexCount} bones={s.bones.Length}" : $"Mesh verts={(r.GetComponent<MeshFilter>()?.sharedMesh?.vertexCount ?? 0)}";
+                    string kind = r is SkinnedMeshRenderer s ? $"Skinned verts={(s.sharedMesh != null ? s.sharedMesh.vertexCount : 0)} bones={s.bones.Length}" : $"Mesh verts={(r.GetComponent<MeshFilter>()?.sharedMesh?.vertexCount ?? 0)}";
                     sb.AppendLine($"   RENDERER '{r.name}' {kind} bounds={r.bounds.size}");
                     var mats = r.sharedMaterials;
                     for (int i = 0; i < mats.Length; i++)
@@ -91,9 +92,12 @@ namespace AetheriaTools
                         var m = mats[i];
                         if (m == null) { sb.AppendLine($"      [{i}] NULL MATERIAL"); continue; }
                         string tex = "";
-                        foreach (string prop in new[] { "_BaseMap", "_MainTex", "baseColorTexture" })
+                        foreach (string prop in new[] { "_BaseColorMap", "_BaseMap", "_MainTex", "baseColorTexture" })
                             if (m.HasProperty(prop) && m.GetTexture(prop) != null) { tex = m.GetTexture(prop).name; break; }
-                        sb.AppendLine($"      [{i}] mat='{m.name}' shader='{m.shader?.name}' baseTex='{tex}' color={m.color}");
+                        Color col = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor")
+                                  : m.HasProperty("_UnlitColor") ? m.GetColor("_UnlitColor")
+                                  : m.HasProperty("_Color") ? m.color : Color.white;
+                        sb.AppendLine($"      [{i}] mat='{m.name}' shader='{m.shader?.name}' baseTex='{tex}' color={col}");
                     }
                 }
             }

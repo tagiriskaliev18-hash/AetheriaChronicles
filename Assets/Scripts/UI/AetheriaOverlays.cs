@@ -15,12 +15,21 @@ namespace Aetheria
         private string _consoleInput = "";
         private string _consoleLog = "Aetheria Arcane Console ready. Type /help or /godmode";
         private Vector2 _scrollPos;
-        private GUIStyle _panelStyle, _cardStyle, _titleStyle, _bodyStyle, _goldBtnStyle;
+        private GUIStyle _panelStyle, _cardStyle, _titleStyle, _heroTitleStyle, _bodyStyle, _crimsonBodyStyle, _smallSecondaryStyle, _goldBtnStyle;
+        private readonly System.Collections.Generic.List<Texture2D> _styleTextures = new System.Collections.Generic.List<Texture2D>();
         private Texture2D _mapTexture;
         private Texture2D _dotTex;
         private Vector2 _mapScroll;
         private Texture2D[] _grimoirePages;
         private int _grimoireIdx = 0;
+
+        // Settings state
+        private bool _showMainSettings = false;
+        private bool _showPauseSettings = false;
+        private bool _upscalerEnabled = true;
+        private float _savedSfxVol = 0.80f;
+        private float _mouseSensitivity = 1.0f;
+        private float _cameraFov = 60f;
 
         // The panels are authored for a 1920x1080 canvas and scaled to whatever the game view is,
         // so a small Game view window and a 4K player show the same layout instead of oversized boxes.
@@ -34,6 +43,20 @@ namespace Aetheria
         {
             Instance = this;
             _grimoirePages = Resources.LoadAll<Texture2D>("Grimoire");
+            if (AudioAndQualityService.Instance != null)
+            {
+                _upscalerEnabled = AudioAndQualityService.Instance.ActiveTier == RenderTier.CrimsonHdrpUltra;
+                _savedSfxVol = AudioAndQualityService.Instance.SfxVolume;
+            }
+            if (Camera.main != null) _cameraFov = Mathf.Clamp(Camera.main.fieldOfView, 50f, 90f);
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var t in _styleTextures) if (t != null) Destroy(t);
+            _styleTextures.Clear();
+            if (_mapTexture != null) Destroy(_mapTexture);
+            if (_dotTex != null) Destroy(_dotTex);
         }
 
         public void SetDialogueTarget(AetheriaNPC npc) => _dialogueNPC = npc;
@@ -41,18 +64,36 @@ namespace Aetheria
         public void OnOverlayChanged(OverlayMode mode)
         {
             if (mode == OverlayMode.WorldMap) RebuildWorldMapTexture();
+            if (mode == OverlayMode.MainMenu) _showMainSettings = false;
+            if (mode == OverlayMode.PauseMenu) _showPauseSettings = false;
         }
 
         private void EnsureStyles()
         {
             if (_panelStyle != null) return;
-            Texture2D MakeTex(Color c) { var t = new Texture2D(1, 1); t.SetPixel(0, 0, c); t.Apply(); return t; }
+            Texture2D MakeTex(Color c)
+            {
+                var t = new Texture2D(1, 1);
+                t.SetPixel(0, 0, c);
+                t.Apply();
+                _styleTextures.Add(t);
+                return t;
+            }
 
             _panelStyle = new GUIStyle(GUI.skin.box) { normal = { background = MakeTex(AetheriaPalette.PanelBgDeep) } };
             _cardStyle = new GUIStyle(GUI.skin.box) { normal = { background = MakeTex(AetheriaPalette.CardBg) }, padding = new RectOffset(10, 10, 8, 8) };
             _titleStyle = new GUIStyle(GUI.skin.label) { fontSize = 24, fontStyle = FontStyle.Bold, normal = { textColor = AetheriaPalette.TextGold } };
+            _heroTitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 40, fontStyle = FontStyle.Bold, normal = { textColor = AetheriaPalette.TextGold } };
             _bodyStyle = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, normal = { textColor = AetheriaPalette.TextPrimary } };
+            _crimsonBodyStyle = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true, fontStyle = FontStyle.Bold, normal = { textColor = AetheriaPalette.TextCrimson } };
+            _smallSecondaryStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = true, normal = { textColor = AetheriaPalette.TextSecondary } };
             _goldBtnStyle = new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, normal = { textColor = AetheriaPalette.TextGold } };
+        }
+
+        private void Update()
+        {
+            if (Camera.main != null && Mathf.Abs(Camera.main.fieldOfView - _cameraFov) > 0.05f)
+                Camera.main.fieldOfView = _cameraFov;
         }
 
         private void OnGUI()
@@ -77,48 +118,89 @@ namespace Aetheria
             }
         }
 
+        private void StartNewGame(AetheriaHUDManager hud)
+        {
+            var hero = HeroController.Instance;
+            if (hero != null && hero.HasEnteredWorld)
+            {
+                AetheriaWorldGenerator.Instance?.RestoreAllScarsAndPropsNow();
+                if (DragonController.Instance != null)
+                {
+                    DragonController.Instance.ForceBreathForDemo = false;
+                    if (DragonController.Instance.Mounted) DragonController.Instance.Dismount();
+                }
+                EnemyAndBossAI.ActiveBoss?.ResetBoss();
+
+                QuestAndMapService.Instance?.ResetProgress();
+                foreach (var sh in AetheriaShrine.All)
+                    if (sh != null) sh.RefreshFromSave();
+
+                hero.SkillTree?.ResetProgress();
+                hero.HasEnteredWorld = false;
+                hero.PrologueStage = 4;
+                hero.SetGodMode(false);
+                hero.Customization?.ResetToDefault();
+                hero.ResetHeroForNewGame();
+            }
+            else
+            {
+                hero?.SetGodMode(false);
+            }
+            hud.SetOverlay(OverlayMode.HeroCustomizer);
+        }
+
         private void DrawMainMenu(AetheriaHUDManager hud)
         {
-            GUI.Box(new Rect(48, Vh * 0.16f, 440, 440), "", _panelStyle);
-            GUILayout.BeginArea(new Rect(72, Vh * 0.19f, 392, 400));
-            GUILayout.Label("AETHERIA", new GUIStyle(_titleStyle) { fontSize = 40 });
+            float panelH = _showMainSettings ? 580f : 440f;
+            GUI.Box(new Rect(48, Vh * 0.14f, 460, panelH), "", _panelStyle);
+            GUILayout.BeginArea(new Rect(72, Vh * 0.17f, 412, panelH - 44f));
+            GUILayout.Label("AETHERIA", _heroTitleStyle);
             GUILayout.Label("CHRONICLES OF THE DRAKE · UNITY 6 HDRP", _bodyStyle);
-            GUILayout.Space(24);
-            if (GUILayout.Button("NEW GAME (HERO CREATOR & PROLOGUE)", _goldBtnStyle, GUILayout.Height(46)))
+            GUILayout.Space(18);
+
+            if (_showMainSettings)
             {
-                HeroController.Instance.SetGodMode(false);
-                hud.SetOverlay(OverlayMode.HeroCustomizer);
+                DrawSettingsSection();
+                GUILayout.Space(12);
+                if (GUILayout.Button("НАЗАД / BACK", _goldBtnStyle, GUILayout.Height(38)))
+                    _showMainSettings = false;
             }
-            GUILayout.Space(10);
-            if (SkillTreeAndSaveService.HasSaveFile() && GUILayout.Button("CONTINUE SAVED JOURNEY", _goldBtnStyle, GUILayout.Height(42)))
+            else
             {
-                HeroController.Instance.SkipToOpenWorld(true);
-                hud.SetOverlay(OverlayMode.None);
+                if (GUILayout.Button("NEW GAME (HERO CREATOR & PROLOGUE)", _goldBtnStyle, GUILayout.Height(46)))
+                    StartNewGame(hud);
+                GUILayout.Space(10);
+                if (SkillTreeAndSaveService.HasSaveFile() && GUILayout.Button("CONTINUE SAVED JOURNEY", _goldBtnStyle, GUILayout.Height(42)))
+                {
+                    HeroController.Instance?.SkipToOpenWorld(true);
+                    hud.SetOverlay(OverlayMode.None);
+                }
+                GUILayout.Space(10);
+                if (GUILayout.Button("ENTER OAKHAVEN DIRECTLY", _goldBtnStyle, GUILayout.Height(42)))
+                {
+                    HeroController.Instance?.SkipToOpenWorld(false);
+                    hud.SetOverlay(OverlayMode.None);
+                }
+                GUILayout.Space(10);
+                if (GUILayout.Button("НАСТРОЙКИ / SETTINGS", GUILayout.Height(38)))
+                    _showMainSettings = true;
+                GUILayout.Space(10);
+                if (GUILayout.Button("EXIT TO DESKTOP", GUILayout.Height(36)))
+                    Application.Quit();
             }
-            GUILayout.Space(10);
-            if (GUILayout.Button("ENTER OAKHAVEN DIRECTLY", _goldBtnStyle, GUILayout.Height(42)))
-            {
-                HeroController.Instance.SkipToOpenWorld(false);
-                hud.SetOverlay(OverlayMode.None);
-            }
-            GUILayout.Space(10);
-            if (GUILayout.Button($"GRAPHICS: {AudioAndQualityService.Instance?.ActiveTier} [F10]", GUILayout.Height(36)))
-                AudioAndQualityService.Instance?.ToggleRenderTier();
-            GUILayout.Space(10);
-            if (GUILayout.Button("EXIT TO DESKTOP", GUILayout.Height(36)))
-                Application.Quit();
             GUILayout.EndArea();
         }
 
         private void DrawHeroCustomizer(AetheriaHUDManager hud)
         {
             var hero = HeroController.Instance;
+            if (hero == null || hero.Customization == null) return;
             var cust = hero.Customization;
             var p = cust.Profile;
 
             // Left panel: Race, Stature (1.10m .. 3.00m), Appearance (center kept clean for 3D Hero Preview!)
-            GUI.Box(new Rect(20, 20, 390, Vh - 40), "", _panelStyle);
-            GUILayout.BeginArea(new Rect(34, 34, 362, Vh - 68));
+            GUI.Box(new Rect(20, 20, 410, Vh - 40), "", _panelStyle);
+            GUILayout.BeginArea(new Rect(34, 34, 382, Vh - 68));
             GUILayout.Label("HERO CREATOR STUDIO", _titleStyle);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button($"GENDER: {p.Gender}", _goldBtnStyle, GUILayout.Height(32)))
@@ -133,12 +215,12 @@ namespace Aetheria
                 cust.SetRace((HeroRace)(((int)p.Race + 1) % 6));
             GUILayout.Label(cust.Derived.RacePassiveSummary ?? "", _bodyStyle);
 
-            GUILayout.Space(8);
+            GUILayout.Space(6);
             GUILayout.Label($"PHYSICAL STATURE: {cust.Derived.StatureSummary}", _bodyStyle);
             float nh = GUILayout.HorizontalSlider(p.HeightMeters, 1.10f, 3.00f);
             if (Mathf.Abs(nh - p.HeightMeters) > 0.005f) { p.HeightMeters = nh; cust.Recalculate(); }
             if (!cust.Derived.CanCastSpells)
-                GUILayout.Label("STATURE < 1.45m: SPELLS LOCKED (AGILE MELEE)", new GUIStyle(_bodyStyle) { normal = { textColor = AetheriaPalette.TextCrimson } });
+                GUILayout.Label("STATURE < 1.45m: SPELLS LOCKED (AGILE MELEE)", _crimsonBodyStyle);
 
             GUILayout.Label($"MUSCULATURE: {(p.Musculature * 100):F0}%", _bodyStyle);
             float nm = GUILayout.HorizontalSlider(p.Musculature, 0f, 1f);
@@ -149,14 +231,46 @@ namespace Aetheria
             if (Mathf.Abs(ns - p.ShoulderWidth) > 0.01f) { p.ShoulderWidth = ns; cust.Recalculate(); }
 
             GUILayout.Space(6);
-            if (GUILayout.Button($"HAIR: {p.HairStyle} ({HeroCustomizationService.HairColorNames[p.HairColorIndex]})"))
-            { p.HairStyle = (HeroHairStyle)(((int)p.HairStyle + 1) % 8); p.HairColorIndex = (p.HairColorIndex + 1) % 8; cust.Recalculate(); }
-            if (GUILayout.Button($"BEARD: {p.BeardStyle} · MUSTACHE: {p.MustacheStyle}"))
-            { p.BeardStyle = (HeroBeardStyle)(((int)p.BeardStyle + 1) % 7); p.MustacheStyle = (HeroMustacheStyle)(((int)p.MustacheStyle + 1) % 6); cust.Recalculate(); }
-            if (GUILayout.Button($"EYES: {p.EyeStyle} · TATTOO: {p.TattooStyle}"))
-            { p.EyeStyle = (HeroEyeStyle)(((int)p.EyeStyle + 1) % 8); p.TattooStyle = (HeroTattooStyle)(((int)p.TattooStyle + 1) % 7); cust.Recalculate(); }
-            if (GUILayout.Button($"OUTFIT: {p.OutfitStyle} · QUALITY: {p.DetailQuality}"))
-            { p.OutfitStyle = (HeroOutfitStyle)(((int)p.OutfitStyle + 1) % 6); p.DetailQuality = (HeroDetailQuality)(((int)p.DetailQuality + 1) % 5); cust.Recalculate(); }
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button($"HAIR: {p.HairStyle}"))
+            { p.HairStyle = (HeroHairStyle)(((int)p.HairStyle + 1) % 8); cust.Recalculate(); }
+            int hcLen = HeroCustomizationService.HairColorNames.Length;
+            if (GUILayout.Button($"COLOR: {HeroCustomizationService.HairColorNames[Mathf.Clamp(p.HairColorIndex, 0, hcLen - 1)]}"))
+            { p.HairColorIndex = (p.HairColorIndex + 1) % hcLen; cust.Recalculate(); }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button($"BEARD: {p.BeardStyle}"))
+            { p.BeardStyle = (HeroBeardStyle)(((int)p.BeardStyle + 1) % 7); cust.Recalculate(); }
+            if (GUILayout.Button($"MUSTACHE: {p.MustacheStyle}"))
+            { p.MustacheStyle = (HeroMustacheStyle)(((int)p.MustacheStyle + 1) % 6); cust.Recalculate(); }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button($"EYES: {p.EyeStyle}"))
+            { p.EyeStyle = (HeroEyeStyle)(((int)p.EyeStyle + 1) % 8); cust.Recalculate(); }
+            if (GUILayout.Button($"TATTOO: {p.TattooStyle}"))
+            { p.TattooStyle = (HeroTattooStyle)(((int)p.TattooStyle + 1) % 7); cust.Recalculate(); }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button($"OUTFIT: {p.OutfitStyle}"))
+            { p.OutfitStyle = (HeroOutfitStyle)(((int)p.OutfitStyle + 1) % 6); cust.Recalculate(); }
+            int atLen = HeroCustomizationService.ArmorTints.Length;
+            if (GUILayout.Button($"ARMOR TINT: #{Mathf.Clamp(p.ArmorTintIndex, 0, atLen - 1) + 1}"))
+            { p.ArmorTintIndex = (p.ArmorTintIndex + 1) % atLen; cust.Recalculate(); }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button($"TATTOO COL: #{(p.TattooColorIndex % HeroCustomizationService.TattooColors.Length) + 1}"))
+            { p.TattooColorIndex = (p.TattooColorIndex + 1) % HeroCustomizationService.TattooColors.Length; cust.Recalculate(); }
+            if (GUILayout.Button($"QUALITY: {p.DetailQuality}"))
+            { p.DetailQuality = (HeroDetailQuality)(((int)p.DetailQuality + 1) % 5); cust.Recalculate(); }
+            GUILayout.EndHorizontal();
+
+            GUILayout.FlexibleSpace();
+            if (!hero.HasEnteredWorld && GUILayout.Button("BACK TO TITLE [ESC]", GUILayout.Height(32)))
+                hud.SetOverlay(OverlayMode.MainMenu);
             GUILayout.EndArea();
 
             // Right panel: 6 RPG Attributes + Live Stats + Awaken Button
@@ -170,16 +284,16 @@ namespace Aetheria
                 if (GUILayout.Button("-", GUILayout.Width(36))) cust.ModifyAttribute(attr, -1);
                 if (GUILayout.Button("+", GUILayout.Width(36))) cust.ModifyAttribute(attr, 1);
                 GUILayout.EndHorizontal();
-                GUILayout.Label(HeroCustomizationService.GetAttributeHint(attr), new GUIStyle(_bodyStyle) { fontSize = 11, normal = { textColor = AetheriaPalette.TextSecondary } });
+                GUILayout.Label(HeroCustomizationService.GetAttributeHint(attr), _smallSecondaryStyle);
             }
 
             GUILayout.Space(10);
             var d = cust.Derived;
             GUILayout.Label($"HP {d.MaxHP:F0} · MANA {d.MaxMana:F0} · STAM {d.MaxStamina:F0}\nMelee x{d.MeleeDamageMultiplier:F2} · Spell x{d.SpellPowerMultiplier:F2} · Crit {d.CritChance * 100:F0}%\nMove {d.MoveSpeedMetersPerSec:F1}m/s · Turn {d.TurnRateDegPerSec:F0}°/s", _bodyStyle);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button(hero.HasEnteredWorld ? "APPLY & RESUME ADVENTURE [C]" : "AWAKEN IN AETHERIA (PROLOGUE)", _goldBtnStyle, GUILayout.Height(48)))
+            if (GUILayout.Button(hero.HasEnteredWorld ? "APPLY & RESUME ADVENTURE [ESC]" : "AWAKEN IN AETHERIA (PROLOGUE)", _goldBtnStyle, GUILayout.Height(48)))
             {
-                hero.SkillTree.SaveProgress(hero);
+                hero.SkillTree?.SaveProgress(hero);
                 if (!hero.HasEnteredWorld) hero.StartPrologueAwakening();
                 hud.SetOverlay(OverlayMode.None);
             }
@@ -304,7 +418,7 @@ namespace Aetheria
                 {
                     GUILayout.BeginVertical(_panelStyle);
                     GUILayout.Label($"T{n.Tier}: {n.Title} ({n.CurrentRank}/{n.MaxRank})", _bodyStyle);
-                    GUILayout.Label(n.Description, new GUIStyle(_bodyStyle) { fontSize = 12, normal = { textColor = AetheriaPalette.TextSecondary } });
+                    GUILayout.Label(n.Description, _smallSecondaryStyle);
                     GUI.enabled = st.CanUpgrade(n.NodeId);
                     if (GUILayout.Button(GUI.enabled ? "UPGRADE (+1)" : (n.CurrentRank >= n.MaxRank ? "MAXED" : "LOCKED")))
                         st.UpgradeNode(n.NodeId);
@@ -363,7 +477,7 @@ namespace Aetheria
                 bool unl = sp.IsSpellUnlocked(d.Id);
                 GUILayout.BeginVertical(_cardStyle);
                 GUILayout.Label($"[{d.ComboKey}] {d.DisplayName} {(unl ? "· UNLOCKED" : "· LOCKED")}", _bodyStyle);
-                GUILayout.Label($"{d.Description} (Mana {d.ManaCost:F0} · Dmg {d.BaseDamage:F0})", new GUIStyle(_bodyStyle) { fontSize = 12, normal = { textColor = AetheriaPalette.TextSecondary } });
+                GUILayout.Label($"{d.Description} (Mana {d.ManaCost:F0} · Dmg {d.BaseDamage:F0})", _smallSecondaryStyle);
                 GUILayout.EndVertical();
                 GUILayout.Space(4);
             }
@@ -444,8 +558,12 @@ namespace Aetheria
             }
             else if (cmd.StartsWith("/gold"))
             {
-                hero?.SkillTree?.AddGold(500);
-                _consoleLog = "[GOLD] +500 Gold added.";
+                int amount = 500;
+                string[] parts = cmd.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2 && int.TryParse(parts[1], out int parsed))
+                    amount = Mathf.Clamp(parsed, -100000, 1000000);
+                hero?.SkillTree?.AddGold(amount);
+                _consoleLog = $"[GOLD] {(amount >= 0 ? "+" : "")}{amount} Gold applied.";
             }
             else if (cmd.StartsWith("/time"))
             {
@@ -454,24 +572,123 @@ namespace Aetheria
             }
             else
             {
-                _consoleLog = "Commands: /godmode, /restore, /heal, /gold, /time, /help";
+                _consoleLog = "Commands: /godmode, /restore, /heal, /gold <amount>, /time, /help";
             }
+        }
+
+        private void DrawSettingsSection()
+        {
+            var audio = AudioAndQualityService.Instance;
+            GUILayout.Label("НАСТРОЙКИ / SETTINGS", _titleStyle);
+            GUILayout.Space(4);
+
+            if (audio != null)
+            {
+                if (GUILayout.Button($"ГРАФИКА: {audio.ActiveTier} [F10]", GUILayout.Height(34)))
+                {
+                    var next = audio.ActiveTier == RenderTier.CrimsonHdrpUltra ? RenderTier.ClassicPerformance : RenderTier.CrimsonHdrpUltra;
+                    audio.ApplyRenderTier(next);
+                    _upscalerEnabled = next == RenderTier.CrimsonHdrpUltra;
+                }
+
+                if (GUILayout.Button($"DLSS / UPSCALER: {(_upscalerEnabled ? "ON" : "OFF")}", GUILayout.Height(32)))
+                {
+                    _upscalerEnabled = !_upscalerEnabled;
+                    AetheriaRender.SetUpscalerEnabled(_upscalerEnabled);
+                }
+
+                GUILayout.Space(4);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"МУЗЫКА: {(audio.MusicMuted ? "MUTE" : $"{audio.MusicVolume * 100f:F0}%")}", _bodyStyle, GUILayout.Width(130));
+                float newMus = GUILayout.HorizontalSlider(audio.MusicVolume, 0f, 1f);
+                if (Mathf.Abs(newMus - audio.MusicVolume) > 0.01f)
+                    audio.SetMusicVolume(newMus);
+                if (GUILayout.Button(audio.MusicMuted ? "UNMUTE" : "MUTE", GUILayout.Width(74)))
+                    audio.SetMuted(!audio.MusicMuted);
+                GUILayout.EndHorizontal();
+
+                GUILayout.BeginHorizontal();
+                bool sfxMuted = audio.SfxMuted;
+                GUILayout.Label($"ЗВУКИ (SFX): {(sfxMuted ? "MUTE" : $"{audio.SfxVolume * 100f:F0}%")}", _bodyStyle, GUILayout.Width(130));
+                float shownSfx = sfxMuted ? 0f : audio.SfxVolume;
+                float newSfx = GUILayout.HorizontalSlider(shownSfx, 0f, 1f);
+                if (Mathf.Abs(newSfx - shownSfx) > 0.01f)
+                {
+                    bool muteNow = newSfx <= 0.001f;
+                    audio.SetSfxMuted(muteNow);
+                    if (!muteNow)
+                    {
+                        _savedSfxVol = newSfx;
+                        audio.SetSfxVolume(newSfx);
+                    }
+                }
+                if (GUILayout.Button(sfxMuted ? "UNMUTE" : "MUTE", GUILayout.Width(74)))
+                {
+                    if (!sfxMuted)
+                    {
+                        _savedSfxVol = Mathf.Max(0.1f, audio.SfxVolume);
+                        audio.SetSfxMuted(true);
+                    }
+                    else
+                    {
+                        audio.SetSfxMuted(false);
+                        if (audio.SfxVolume <= 0.001f) audio.SetSfxVolume(_savedSfxVol);
+                    }
+                }
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"ЧУВСТВ. МЫШИ: {_mouseSensitivity:F2}x", _bodyStyle, GUILayout.Width(155));
+            float newSens = GUILayout.HorizontalSlider(_mouseSensitivity, 0.3f, 3.0f);
+            if (Mathf.Abs(newSens - _mouseSensitivity) > 0.01f)
+            {
+                _mouseSensitivity = newSens;
+                if (HeroController.Instance != null) HeroController.Instance.MouseSensitivity = _mouseSensitivity;
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"УГОЛ ОБЗОРА (FOV): {_cameraFov:F0}°", _bodyStyle, GUILayout.Width(155));
+            float nfov = GUILayout.HorizontalSlider(_cameraFov, 50f, 90f);
+            if (Mathf.Abs(nfov - _cameraFov) > 0.1f)
+            {
+                _cameraFov = nfov;
+                if (Camera.main != null) Camera.main.fieldOfView = _cameraFov;
+            }
+            GUILayout.EndHorizontal();
         }
 
         private void DrawPauseMenu(AetheriaHUDManager hud)
         {
-            Rect r = new Rect(Vw * 0.5f - 190, Vh * 0.3f, 380, 290);
+            float w = _showPauseSettings ? 440f : 380f;
+            float h = _showPauseSettings ? 470f : 330f;
+            Rect r = new Rect(Vw * 0.5f - w * 0.5f, Vh * 0.5f - h * 0.5f, w, h);
             GUI.Box(r, "", _panelStyle);
             GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, r.width - 48, r.height - 40));
-            GUILayout.Label("PAUSED", _titleStyle);
-            if (GUILayout.Button("RESUME ADVENTURE", _goldBtnStyle, GUILayout.Height(40))) hud.SetOverlay(OverlayMode.None);
-            GUILayout.Space(8);
-            if (GUILayout.Button("SAVE PROGRESS NOW", _goldBtnStyle, GUILayout.Height(36)))
-            { HeroController.Instance?.SkillTree?.SaveProgress(HeroController.Instance); QuestAndMapService.Instance?.PushNotification("Progress Saved!"); }
-            GUILayout.Space(8);
-            if (GUILayout.Button("RETURN TO TITLE SCREEN", GUILayout.Height(36))) hud.SetOverlay(OverlayMode.MainMenu);
-            GUILayout.Space(8);
-            if (GUILayout.Button("QUIT GAME", GUILayout.Height(36))) Application.Quit();
+
+            if (_showPauseSettings)
+            {
+                DrawSettingsSection();
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("НАЗАД / BACK", _goldBtnStyle, GUILayout.Height(38)))
+                    _showPauseSettings = false;
+            }
+            else
+            {
+                GUILayout.Label("PAUSED", _titleStyle);
+                if (GUILayout.Button("RESUME ADVENTURE", _goldBtnStyle, GUILayout.Height(40))) hud.SetOverlay(OverlayMode.None);
+                GUILayout.Space(8);
+                if (GUILayout.Button("SAVE PROGRESS NOW", _goldBtnStyle, GUILayout.Height(36)))
+                { HeroController.Instance?.SkillTree?.SaveProgress(HeroController.Instance); QuestAndMapService.Instance?.PushNotification("Progress Saved!"); }
+                GUILayout.Space(8);
+                if (GUILayout.Button("НАСТРОЙКИ / SETTINGS", GUILayout.Height(36)))
+                    _showPauseSettings = true;
+                GUILayout.Space(8);
+                if (GUILayout.Button("RETURN TO TITLE SCREEN", GUILayout.Height(36))) hud.SetOverlay(OverlayMode.MainMenu);
+                GUILayout.Space(8);
+                if (GUILayout.Button("QUIT GAME", GUILayout.Height(36))) Application.Quit();
+            }
             GUILayout.EndArea();
         }
     }

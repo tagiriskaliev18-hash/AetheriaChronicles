@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -133,7 +135,9 @@ namespace Aetheria.Editor
                 if (hasEmission)
                 {
                     WriteColor(mat, "_EmissiveColor", emission);
-                    mat.SetFloat("_EmissiveColorMode", 0f);
+                    WriteColor(mat, "_EmissiveColorLDR", emission);
+                    WriteFloat(mat, "_EmissiveColorMode", 0f);
+                    WriteFloat(mat, "_UseEmissiveIntensity", 0f);
                     mat.EnableKeyword("_EMISSIVE_COLOR");
                     mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
                 }
@@ -148,6 +152,11 @@ namespace Aetheria.Editor
                     mat.SetTextureScale("_BaseColorMap", tiling);
                     mat.SetTextureOffset("_BaseColorMap", offset);
                 }
+                if (mat.HasProperty("_NormalMap"))
+                {
+                    mat.SetTextureScale("_NormalMap", tiling);
+                    mat.SetTextureOffset("_NormalMap", offset);
+                }
 
                 if (shader.name == "HDRP/Lit")
                 {
@@ -155,8 +164,13 @@ namespace Aetheria.Editor
                     mat.SetFloat("_SurfaceType", transparent ? 1f : 0f);
                     mat.SetFloat("_BlendMode", 0f);
                     mat.SetFloat("_ZWrite", transparent ? 0f : 1f);
+                    mat.SetFloat("_SrcBlend", transparent ? (float)BlendMode.SrcAlpha : (float)BlendMode.One);
+                    mat.SetFloat("_DstBlend", transparent ? (float)BlendMode.OneMinusSrcAlpha : (float)BlendMode.Zero);
+                    mat.SetFloat("_AlphaSrcBlend", 1f);
+                    mat.SetFloat("_AlphaDstBlend", transparent ? (float)BlendMode.OneMinusSrcAlpha : 0f);
                     mat.SetFloat("_AlphaCutoffEnable", 0f);
                     mat.SetFloat("_EnableBlendModePreserveSpecularLighting", transparent ? 1f : 0f);
+                    mat.SetFloat("_EnableFogOnTransparent", 1f);
                     mat.SetFloat("_DoubleSidedEnable", 0f);
                     mat.SetFloat("_ReceivesSSR", 1f);
                     mat.SetFloat("_SupportDecals", 1f);
@@ -165,13 +179,28 @@ namespace Aetheria.Editor
                 }
                 else if (shader.name == "HDRP/Unlit")
                 {
-                    mat.SetFloat("_SurfaceType", 1f);
+                    mat.SetFloat("_SurfaceType", transparent ? 1f : 0f);
                     mat.SetFloat("_BlendMode", 0f);
-                    mat.SetFloat("_ZWrite", 0f);
+                    mat.SetFloat("_ZWrite", transparent ? 0f : 1f);
+                    mat.SetFloat("_SrcBlend", transparent ? (float)BlendMode.SrcAlpha : (float)BlendMode.One);
+                    mat.SetFloat("_DstBlend", transparent ? (float)BlendMode.OneMinusSrcAlpha : (float)BlendMode.Zero);
+                    mat.SetFloat("_EnableFogOnTransparent", 1f);
                 }
 
-                if (transparent) mat.renderQueue = (int)RenderQueue.Transparent;
+                if (transparent)
+                {
+                    mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    mat.SetOverrideTag("RenderType", "Transparent");
+                    mat.renderQueue = (int)RenderQueue.Transparent;
+                }
+                else
+                {
+                    mat.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    mat.SetOverrideTag("RenderType", "Opaque");
+                    mat.renderQueue = (int)RenderQueue.Geometry;
+                }
                 mat.SetFloat("_StencilRef", 0f);
+                ValidateHdMaterial(mat);
 
                 EditorUtility.SetDirty(mat);
                 converted++;
@@ -226,6 +255,36 @@ namespace Aetheria.Editor
             if (m.HasProperty(prop)) m.SetFloat(prop, v);
         }
 
+        private static MethodInfo _validateMaterialMethod;
+        private static bool _validateMaterialLookupDone;
+
+        public static void ValidateHdMaterial(Material mat)
+        {
+            if (mat == null || mat.shader == null || !mat.shader.name.StartsWith("HDRP/")) return;
+            if (!_validateMaterialLookupDone)
+            {
+                _validateMaterialLookupDone = true;
+                var hdMatType = Type.GetType("UnityEditor.Rendering.HighDefinition.HDMaterial, Unity.RenderPipelines.HighDefinition.Editor");
+                _validateMaterialMethod = hdMatType?.GetMethod("ValidateMaterial", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static, null, new[] { typeof(Material) }, null);
+            }
+            _validateMaterialMethod?.Invoke(null, new object[] { mat });
+        }
+
+        private static void RemoveComponentByTypeName(GameObject go, string fullTypeName)
+        {
+            if (go == null) return;
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var t = asm.GetType(fullTypeName, false);
+                if (t != null && typeof(Component).IsAssignableFrom(t))
+                {
+                    var comp = go.GetComponent(t);
+                    if (comp != null) UnityEngine.Object.DestroyImmediate(comp, true);
+                    return;
+                }
+            }
+        }
+
         // ------------------------------------------------------------------ scene
 
         public static void ConvertOpenScene()
@@ -247,25 +306,24 @@ namespace Aetheria.Editor
         {
             // Lights: physical units and HDRP data. A light converted by an earlier pass of this
             // tool may sit at the clamp ceiling (20 x scale); bring the sun back to its authored 2.8.
-            foreach (var light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+            foreach (var light in UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
             {
                 AetheriaRenderImpl.ConfigureSceneLight(light, true);
                 var hd = light.GetComponent<HDAdditionalLightData>();
-                if (light.type == LightType.Directional)
+                if (hd != null && light.type == LightType.Directional)
                 {
                     if (!hd.useRayTracedShadows) hd.useRayTracedShadows = true;
                     if (light.intensity >= 19.99f * AetheriaRenderImpl.SunUnitScale)
                         light.intensity = 2.8f * AetheriaRenderImpl.SunUnitScale;
                     hd.SetShadowResolution(2048);
                 }
-                var urpLight = light.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
-                if (urpLight != null) Object.DestroyImmediate(urpLight, true);
+                RemoveComponentByTypeName(light.gameObject, "UnityEngine.Rendering.Universal.UniversalAdditionalLightData");
                 EditorUtility.SetDirty(light);
             }
 
             // Cameras: swap URP camera data for HDRP camera data, DLSS on the main one.
             var mainCam = Camera.main;
-            foreach (var cam in Object.FindObjectsByType<Camera>(FindObjectsSortMode.None))
+            foreach (var cam in UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsSortMode.None))
             {
                 var hd = cam.GetComponent<HDAdditionalCameraData>() ?? cam.gameObject.AddComponent<HDAdditionalCameraData>();
                 hd.clearColorMode = HDAdditionalCameraData.ClearColorMode.Sky;
@@ -286,14 +344,13 @@ namespace Aetheria.Editor
                 cam.allowHDR = true;
                 cam.allowMSAA = false;
 
-                var urpCam = cam.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
-                if (urpCam != null) Object.DestroyImmediate(urpCam, true);
+                RemoveComponentByTypeName(cam.gameObject, "UnityEngine.Rendering.Universal.UniversalAdditionalCameraData");
                 EditorUtility.SetDirty(cam);
             }
 
             // Volume: the URP profile cannot drive HDRP, so point the volume at the HDRP profile.
             var hdrpProfile = AssetDatabase.LoadAssetAtPath<VolumeProfile>("Assets/HDRPDefaultResources/AetheriaGlobalVolume.asset");
-            foreach (var vol in Object.FindObjectsByType<Volume>(FindObjectsSortMode.None))
+            foreach (var vol in UnityEngine.Object.FindObjectsByType<Volume>(FindObjectsSortMode.None))
             {
                 vol.isGlobal = true;
                 vol.priority = 0f;
@@ -303,11 +360,12 @@ namespace Aetheria.Editor
 
             // Terrain: the scene was authored with URP's terrain shader, which HDRP draws with the error shader.
             var terrainMat = EnsureTerrainMaterial();
-            foreach (var terrain in Object.FindObjectsByType<Terrain>(FindObjectsSortMode.None))
+            foreach (var terrain in UnityEngine.Object.FindObjectsByType<Terrain>(FindObjectsSortMode.None))
             {
                 var current = terrain.materialTemplate;
                 if (terrainMat != null && (current == null || current.shader == null || current.shader.name != "HDRP/TerrainLit"))
                     terrain.materialTemplate = terrainMat;
+                terrain.renderingLayerMask |= RenderingLayerMask.defaultRenderingLayerMask;
                 EditorUtility.SetDirty(terrain);
             }
 
@@ -319,8 +377,9 @@ namespace Aetheria.Editor
             // Report every shader still drawn by a renderer here, so a non-HDRP one cannot hide.
             var shaderUse = new Dictionary<string, int>();
             var offenders = new List<string>();
-            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
             {
+                r.renderingLayerMask |= RenderingLayerMask.defaultRenderingLayerMask;
                 foreach (var m in r.sharedMaterials)
                 {
                     string n = m == null || m.shader == null ? "<missing>" : m.shader.name;

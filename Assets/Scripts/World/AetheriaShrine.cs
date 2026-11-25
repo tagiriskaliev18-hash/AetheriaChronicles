@@ -76,6 +76,11 @@ namespace Aetheria
             return true;
         }
 
+        private void OnDestroy()
+        {
+            if (_crystalMat != null) Destroy(_crystalMat);
+        }
+
         private void SetLit(bool lit, bool celebrate)
     {
         if (_lit && lit) return;
@@ -94,7 +99,7 @@ namespace Aetheria
             }
             _fire.gameObject.SetActive(true);
             _embers.gameObject.SetActive(true);
-            if (Crystal != null) AetheriaRender.SetEmission(_crystalMat, FlameColor * 9f);
+            if (_crystalMat != null) AetheriaRender.SetEmission(_crystalMat, FlameColor * 9f);
 
             if (celebrate)
             {
@@ -108,12 +113,12 @@ namespace Aetheria
                 AudioAndQualityService.Instance?.PlaySfxAt("SFX_BeaconCapture", at, 0.9f);
             }
         }
-        else if (_light != null)
+        else
         {
-            _light.enabled = false;
+            if (_light != null) _light.enabled = false;
             if (_fire != null) _fire.gameObject.SetActive(false);
             if (_embers != null) _embers.gameObject.SetActive(false);
-            if (Crystal != null) AetheriaRender.SetEmission(_crystalMat, FlameColor * 0.35f);
+            if (_crystalMat != null) AetheriaRender.SetEmission(_crystalMat, FlameColor * 0.35f);
         }
     }
 

@@ -26,12 +26,15 @@ namespace Aetheria
         public float ExortPowerScale = 1f;
         public float WexSpeedScale = 1f;
         public float QuasControlScale = 1f;
+        public float WexPowerScale => WexSpeedScale;
+        public float QuasPowerScale => QuasControlScale;
         public float ManaCostMultiplier = 1f;
         public float CooldownMultiplier = 1f;
         public float ManaRegenPerSec = 9f;
 
         public float InvokeCooldownRemaining { get; private set; }
         private readonly Dictionary<SpellId, float> _cooldowns = new Dictionary<SpellId, float>();
+        private readonly List<SpellId> _cooldownKeysBuffer = new List<SpellId>(10);
 
         public event Action OnSpellStateChanged;
         public event Action<SpellId> OnSpellCast;
@@ -85,12 +88,17 @@ namespace Aetheria
             if (InvokeCooldownRemaining > 0f) InvokeCooldownRemaining = Mathf.Max(0f, InvokeCooldownRemaining - dt);
             Mana = GodModeActive ? MaxMana : Mathf.Min(MaxMana, Mana + ManaRegenPerSec * dt);
 
-            var keys = new List<SpellId>(_cooldowns.Keys);
-            foreach (var k in keys)
+            if (_cooldowns.Count > 0)
             {
-                float rem = Mathf.Max(0f, _cooldowns[k] - dt);
-                if (rem <= 0f) _cooldowns.Remove(k);
-                else _cooldowns[k] = rem;
+                _cooldownKeysBuffer.Clear();
+                foreach (var k in _cooldowns.Keys) _cooldownKeysBuffer.Add(k);
+                for (int i = 0; i < _cooldownKeysBuffer.Count; i++)
+                {
+                    SpellId k = _cooldownKeysBuffer[i];
+                    float rem = Mathf.Max(0f, _cooldowns[k] - dt);
+                    if (rem <= 0f) _cooldowns.Remove(k);
+                    else _cooldowns[k] = rem;
+                }
             }
         }
 
@@ -131,6 +139,17 @@ namespace Aetheria
         }
 
         public float GetCooldownRemaining(SpellId id) => GodModeActive ? 0f : (_cooldowns.TryGetValue(id, out var v) ? v : 0f);
+        public bool IsOnCooldown(SpellId id) => !GodModeActive && GetCooldownRemaining(id) > 0f;
+
+        public float GetSpellPowerScale(SpellId id) => id switch
+        {
+            SpellId.SunStrike or SpellId.ChaosMeteor or SpellId.EmberConduit => ExortPowerScale,
+            SpellId.StormAlacrity or SpellId.StormEMP                        => WexPowerScale,
+            SpellId.ColdSnap or SpellId.ChronoBlink or SpellId.IcePrismWall  => QuasPowerScale,
+            SpellId.GravityTornado                                           => (QuasPowerScale + WexPowerScale * 2f) / 3f,
+            SpellId.PrimalBlast                                              => (ExortPowerScale + WexPowerScale + QuasPowerScale) / 3f,
+            _                                                                => ExortPowerScale
+        };
 
         public void SetGodMode(bool on)
         {
@@ -163,7 +182,19 @@ namespace Aetheria
 
             if (Mode == CastMode.InstantCombo && ActiveOrbs.Count == 3)
             {
-                InvokeCurrentSpell();
+                SpellId resolved = ResolveCurrentCombo();
+                if (resolved != SpellId.None && !IsOnCooldown(resolved))
+                {
+                    if (InvokeCurrentSpell())
+                    {
+                        var hero = HeroController.Instance;
+                        Vector3 origin = transform.position + Vector3.up * 1.4f;
+                        Vector3 dir = hero != null && hero.MainCam != null ? hero.MainCam.transform.forward : transform.forward;
+                        Vector3 target = origin + dir * 16f;
+                        target.y = AetheriaWorld.SampleHeight(target);
+                        CastSpecificSpell(resolved, origin, dir, target);
+                    }
+                }
             }
             return true;
         }
@@ -237,7 +268,7 @@ namespace Aetheria
             var def = GetSpellDef(spell);
             if (def == null) return false;
 
-            if (!GodModeActive && GetCooldownRemaining(spell) > 0f) return false;
+            if (IsOnCooldown(spell)) return false;
             float cost = GodModeActive ? 0f : def.ManaCost * ManaCostMultiplier;
             if (Mana < cost)
             {
@@ -248,8 +279,9 @@ namespace Aetheria
             Mana -= cost;
             if (!GodModeActive) _cooldowns[spell] = def.Cooldown * CooldownMultiplier;
 
-            float dmg = def.BaseDamage * ExortPowerScale;
-            SpellVfxExecutor.SpawnSpell(def, gameObject, origin, dir, target, dmg, ExortPowerScale, WexSpeedScale, QuasControlScale);
+            float powerScale = GetSpellPowerScale(spell);
+            float dmg = def.BaseDamage * powerScale;
+            SpellVfxExecutor.SpawnSpell(def, gameObject, origin, dir, target, dmg, powerScale, WexSpeedScale, QuasControlScale);
             OnSpellCast?.Invoke(spell);
             OnSpellStateChanged?.Invoke();
             AudioAndQualityService.Instance?.NotifyCombat();

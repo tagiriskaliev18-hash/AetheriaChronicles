@@ -70,7 +70,6 @@ namespace AetheriaTools
             if (segments.Count == 0)
                 foreach (var kv in pos) segments.Add((kv.Value, kv.Value));
 
-            var shader = Shader.Find("Unlit/Color");
             for (int s = 0; s < subCount; s++)
             {
                 int[] tris = mesh.GetTriangles(s);
@@ -159,7 +158,8 @@ namespace AetheriaTools
             var bg = new Color(0.16f, 0.17f, 0.20f);
             for (int y = 0; y < sheet.height; y++) for (int x = 0; x < sheet.width; x++) sheet.SetPixel(x, y, bg);
 
-            var unlit = Shader.Find("Unlit/Color");
+            var unlit = Shader.Find("HDRP/Unlit") ?? Shader.Find("Unlit/Color");
+            if (unlit == null) return "MISSING UNLIT SHADER";
             for (int m = 0; m < models.Length; m++)
             {
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(root + models[m]);
@@ -167,6 +167,12 @@ namespace AetheriaTools
                 var inst = UnityEngine.Object.Instantiate(prefab);
                 inst.hideFlags = HideFlags.HideAndDontSave;
                 var smr = inst.GetComponentInChildren<SkinnedMeshRenderer>(true);
+                if (smr == null || smr.sharedMesh == null)
+                {
+                    sb.AppendLine($"MISSING SkinnedMeshRenderer in {models[m]}");
+                    UnityEngine.Object.DestroyImmediate(inst);
+                    continue;
+                }
                 var slots = Classify(inst);
                 sb.AppendLine($"### {models[m]}  scale-of-instance={inst.transform.lossyScale}");
                 foreach (var s in slots)
@@ -199,9 +205,14 @@ namespace AetheriaTools
                     GL.LoadProjectionMatrix(util.camera.projectionMatrix);
                     for (int s = 0; s < baked.subMeshCount && s < slots.Count; s++)
                     {
-                        var mat = new Material(unlit) { color = ClassColor[(int)slots[s].Class] };
+                        var col = ClassColor[(int)slots[s].Class];
+                        var mat = new Material(unlit);
+                        if (mat.HasProperty("_UnlitColor")) mat.SetColor("_UnlitColor", col);
+                        if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", col);
+                        if (mat.HasProperty("_Color")) mat.SetColor("_Color", col);
                         mat.SetPass(0);
                         Graphics.DrawMeshNow(baked, matrix, s);
+                        UnityEngine.Object.DestroyImmediate(mat);
                     }
                     GL.PopMatrix();
                     var shot = util.EndStaticPreview();

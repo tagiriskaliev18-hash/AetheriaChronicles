@@ -18,7 +18,7 @@ namespace Aetheria
 
         public List<QuestDef> Quests = new List<QuestDef>();
         public List<MapPinInfo> MapPins = new List<MapPinInfo>();
-        public string TrackedQuestId = "Q_AwakenExort";
+        public string TrackedQuestId = "Q_PrologueAwakening";
         public byte[] FogGrid { get; private set; } = new byte[TotalCells];
         public readonly HashSet<string> KindledShrines = new HashSet<string>();
 
@@ -28,6 +28,7 @@ namespace Aetheria
         private readonly int[] _biomeExplored = new int[AetheriaWorld.BiomeCount];
         public int TotalLandCells { get; private set; }
         public int TotalExploredCells { get; private set; }
+        public int LandExploredCells { get; private set; }
         public int LandmarkCount => MapPins.Count;
 
         public event Action OnQuestOrMapUpdated;
@@ -169,7 +170,7 @@ namespace Aetheria
                 MapPins.Add(new MapPinInfo
                 {
                     PinId = s.Id, Label = s.Label, WorldLocation = s.Position, Biome = s.Biome,
-                    Color = PinColor(s.Kind), Discovered = s.StartDiscovered, FastTravel = s.Kind == SiteKind.Shrine
+                    Color = PinColor(s.Kind), Discovered = s.StartDiscovered, FastTravel = s.Id == "Shrine_Oakhaven"
                 });
             }
         }
@@ -231,7 +232,9 @@ namespace Aetheria
                     {
                         FogGrid[idx] = 1;
                         TotalExploredCells++;
-                        _biomeExplored[(int)_cellBiomeCache[idx]]++;
+                        var b = _cellBiomeCache[idx];
+                        _biomeExplored[(int)b]++;
+                        if (b != BiomeId.AetherianSea) LandExploredCells++;
                     }
                 }
             }
@@ -258,10 +261,13 @@ namespace Aetheria
                 {
                     FogGrid[i] = 1;
                     TotalExploredCells++;
-                    _biomeExplored[(int)_cellBiomeCache[i]]++;
+                    var b = _cellBiomeCache[i];
+                    _biomeExplored[(int)b]++;
+                    if (b != BiomeId.AetherianSea) LandExploredCells++;
                 }
             }
             foreach (var pin in MapPins) pin.Discovered = true;
+            OnQuestOrMapUpdated?.Invoke();
         }
 
         public Vector2 CellCenter(int x, int y)
@@ -292,7 +298,7 @@ namespace Aetheria
         /// <summary>True when the point is inside the playable continent (not open sea far offshore).</summary>
         public static bool IsLandAt(float x, float z) => AetheriaWorld.BiomeAt(x, z) != BiomeId.AetherianSea;
 
-        public float GetExplorationPercent() => TotalLandCells > 0 ? Mathf.Clamp((TotalExploredCells / (float)TotalLandCells) * 100f, 0f, 100f) : 0f;
+        public float GetExplorationPercent() => TotalLandCells > 0 ? Mathf.Clamp((LandExploredCells / (float)TotalLandCells) * 100f, 0f, 100f) : 0f;
 
         public float GetBiomeExplorationPercent(BiomeId b)
         {
@@ -327,15 +333,47 @@ namespace Aetheria
             Array.Clear(FogGrid, 0, FogGrid.Length);
             if (loaded != null) Array.Copy(loaded, FogGrid, Mathf.Min(loaded.Length, FogGrid.Length));
             TotalExploredCells = 0;
+            LandExploredCells = 0;
             Array.Clear(_biomeExplored, 0, _biomeExplored.Length);
             for (int i = 0; i < TotalCells; i++)
             {
-                if (FogGrid[i] != 0) { TotalExploredCells++; _biomeExplored[(int)_cellBiomeCache[i]]++; }
+                if (FogGrid[i] != 0)
+                {
+                    TotalExploredCells++;
+                    var b = _cellBiomeCache[i];
+                    _biomeExplored[(int)b]++;
+                    if (b != BiomeId.AetherianSea) LandExploredCells++;
+                }
             }
+            OnQuestOrMapUpdated?.Invoke();
+        }
+
+        public void ResetProgress()
+        {
+            PopulateStoryQuests();
+            SeedMapPins();
+            KindledShrines.Clear();
+            KindledShrines.Add("Shrine_Oakhaven");
+            Array.Clear(FogGrid, 0, FogGrid.Length);
+            TotalExploredCells = 0;
+            LandExploredCells = 0;
+            Array.Clear(_biomeExplored, 0, _biomeExplored.Length);
+            TrackedQuestId = "Q_PrologueAwakening";
+            _notifications.Clear();
+            RevealAround(new Vector3(0f, 0f, 20f), 95f, suppressToast: true);
+            OnQuestOrMapUpdated?.Invoke();
         }
 
         public QuestDef FindQuest(string id) => Quests.Find(q => q.QuestId == id);
-        public QuestDef GetTrackedQuest() => FindQuest(TrackedQuestId) ?? Quests.Find(q => q.State != QuestState.Completed);
+        public QuestDef GetTrackedQuest()
+        {
+            var tracked = FindQuest(TrackedQuestId);
+            if (tracked != null && tracked.State != QuestState.Completed) return tracked;
+            var next = Quests.Find(q => q.State == QuestState.Active || q.State == QuestState.ReadyToTurnIn)
+                       ?? Quests.Find(q => q.State != QuestState.Completed);
+            if (next != null) TrackedQuestId = next.QuestId;
+            return next;
+        }
 
         public QuestDef FindQuestForGiver(string giverId)
         {

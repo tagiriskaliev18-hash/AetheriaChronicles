@@ -11,6 +11,8 @@ namespace Aetheria
     public static class AetheriaRenderImpl
     {
         private static bool _prepared;
+        private static bool _upscalerUltra = true;
+        private static Volume _cachedSkyVolume;
 
         private static void Prepare()
         {
@@ -18,6 +20,34 @@ namespace Aetheria
             _prepared = true;
             // HDRP reads the light's unit and colour temperature; the engine defaults are fine.
             GraphicsSettings.lightsUseLinearIntensity = true;
+        }
+
+        internal static Volume FindHighestPriorityGlobalVolume(bool requireGradientSky = false)
+        {
+            if (requireGradientSky && _cachedSkyVolume != null && _cachedSkyVolume.isActiveAndEnabled && _cachedSkyVolume.isGlobal)
+            {
+                var p = Application.isPlaying ? _cachedSkyVolume.profile : _cachedSkyVolume.sharedProfile;
+                if (p != null && p.Has<GradientSky>()) return _cachedSkyVolume;
+            }
+
+            Volume best = null;
+            float bestPri = float.NegativeInfinity;
+            var volumes = Object.FindObjectsByType<Volume>(FindObjectsSortMode.None);
+            for (int i = 0; i < volumes.Length; i++)
+            {
+                var v = volumes[i];
+                if (v == null || !v.isActiveAndEnabled || !v.isGlobal) continue;
+                var p = v.sharedProfile != null ? v.sharedProfile : v.profile;
+                if (p == null) continue;
+                if (requireGradientSky && !p.Has<GradientSky>()) continue;
+                if (best == null || v.priority > bestPri)
+                {
+                    best = v;
+                    bestPri = v.priority;
+                }
+            }
+            if (requireGradientSky && best != null) _cachedSkyVolume = best;
+            return best;
         }
 
         // ------------------------------------------------------------------ lights
@@ -36,7 +66,9 @@ namespace Aetheria
 
         /// <summary>True once the render pipeline exists. It is created after the scene's Start,
         /// so the sky of the opening moment may have to wait for its first frame.</summary>
-        public static bool SkyReady => VolumeManager.instance != null && VolumeManager.instance.stack != null;
+        public static bool SkyReady =>
+            FindHighestPriorityGlobalVolume(requireGradientSky: true) != null ||
+            (VolumeManager.instance != null && VolumeManager.instance.stack != null);
 
         /// <summary>
         /// Retints the sky gradient; the fog takes the colour of the horizon so land fades into its own sky.
@@ -44,29 +76,68 @@ namespace Aetheria
         /// </summary>
         public static bool SetSkyColors(Color top, Color middle, Color bottom, Color fogAlbedo)
         {
-            var manager = VolumeManager.instance;
-            if (manager == null) return false;
-            var stack = manager.stack;
-            if (stack == null) return false;   // the pipeline builds the global stack on its first frame
-            var sky = stack.GetComponent<GradientSky>();
-            if (sky == null) return false;
-            sky.top.value = top;
-            sky.middle.value = middle;
-            sky.bottom.value = bottom;
-            var fog = stack.GetComponent<Fog>();
-            if (fog != null) fog.albedo.value = fogAlbedo;
-            return true;
+            bool updated = false;
+            var vol = FindHighestPriorityGlobalVolume(requireGradientSky: true);
+            if (vol != null)
+            {
+                var prof = Application.isPlaying ? vol.profile : vol.sharedProfile;
+                if (prof != null)
+                {
+                    if (prof.TryGet<GradientSky>(out var sky))
+                    {
+                        sky.top.Override(top);
+                        sky.middle.Override(middle);
+                        sky.bottom.Override(bottom);
+                        updated = true;
+                    }
+                    if (prof.TryGet<Fog>(out var fog))
+                    {
+                        fog.albedo.Override(fogAlbedo);
+                    }
+                    VolumeManager.instance?.OnVolumeProfileChanged(prof);
+                }
+            }
+
+            var stack = VolumeManager.instance?.stack;
+            if (stack != null)
+            {
+                var sky = stack.GetComponent<GradientSky>();
+                if (sky != null)
+                {
+                    sky.top.value = top;
+                    sky.middle.value = middle;
+                    sky.bottom.value = bottom;
+                    updated = true;
+                }
+                var fog = stack.GetComponent<Fog>();
+                if (fog != null) fog.albedo.value = fogAlbedo;
+            }
+            return updated;
+        }
+
+        private static void ApplyUpscaler(HDAdditionalCameraData hd, bool ultra)
+        {
+            if (hd == null) return;
+            hd.allowDynamicResolution = true;
+            bool useDlss = ultra && HDDynamicResolutionPlatformCapabilities.DLSSDetected;
+            bool useFsr2 = !useDlss && HDDynamicResolutionPlatformCapabilities.FSR2Detected;
+            hd.allowDeepLearningSuperSampling = useDlss;
+            hd.deepLearningSuperSamplingUseCustomQualitySettings = false;
+            hd.deepLearningSuperSamplingUseOptimalSettings = true;
+            hd.allowFidelityFX2SuperResolution = useFsr2;
+            hd.fidelityFX2SuperResolutionUseCustomQualitySettings = false;
+            hd.fidelityFX2SuperResolutionUseOptimalSettings = true;
         }
 
         /// <summary>Ultra lets DLSS reconstruct the frame; the performance tier falls back to the lighter upscaler.</summary>
         public static void SetUpscalerEnabled(bool ultra)
         {
+            _upscalerUltra = ultra;
             var cam = Camera.main;
             if (cam == null) return;
             var hd = cam.GetComponent<HDAdditionalCameraData>();
             if (hd == null) return;
-            hd.allowDynamicResolution = true;
-            hd.allowDeepLearningSuperSampling = ultra;
+            ApplyUpscaler(hd, ultra);
         }
 
         public static void PrepareFxLight(Light l)
@@ -82,6 +153,7 @@ namespace Aetheria
             hd.affectsVolumetric = true;
             hd.lightDimmer = 1f;
             hd.shadowDimmer = 1f;
+            hd.useContactShadow.useOverride = true;
             hd.useContactShadow.@override = false;
         }
 
@@ -111,17 +183,18 @@ namespace Aetheria
             l.range = range;
             var hd = go.AddComponent<HDAdditionalLightData>();
             hd.affectsVolumetric = true;
+            hd.useContactShadow.useOverride = true;
+            hd.useContactShadow.@override = false;
             if (shadows)
             {
                 hd.shadowUpdateMode = ShadowUpdateMode.EveryFrame;
-                hd.useContactShadow.@override = false;
             }
             return l;
         }
 
         /// <summary>
         /// Turns an authored scene light (sun, torches) into an HDRP light with sane units.
-        /// Only a light that has never been converted is rescaled, so repeated calls are harmless.
+        /// Lights with unscaled intensity (&lt;50) are converted even if HDAdditionalLightData already exists.
         /// </summary>
         public static void ConfigureSceneLight(Light l, bool rayTracedShadows)
         {
@@ -132,7 +205,7 @@ namespace Aetheria
             if (l.type == LightType.Directional)
             {
                 l.lightUnit = LightUnit.Lux;
-                if (fresh) l.intensity = Mathf.Clamp(l.intensity, 1f, 20f) * SunUnitScale;   // 2.8 -> 28 000 lx (golden hour)
+                if (fresh || l.intensity < 50f) l.intensity = Mathf.Clamp(l.intensity, 1f, 20f) * SunUnitScale;   // 2.8 -> 28 000 lx (golden hour)
                 hd.affectsVolumetric = true;
                 hd.useScreenSpaceShadows = rayTracedShadows;
                 hd.useRayTracedShadows = rayTracedShadows;
@@ -141,7 +214,7 @@ namespace Aetheria
             else
             {
                 l.lightUnit = LightUnit.Lumen;
-                if (fresh) l.intensity = Mathf.Clamp(l.intensity, 0.5f, 20f) * 220f;
+                if (fresh || l.intensity < 50f) l.intensity = Mathf.Clamp(l.intensity, 0.5f, 20f) * 220f;
                 hd.affectsVolumetric = true;
             }
         }
@@ -161,11 +234,7 @@ namespace Aetheria
             hd.stopNaNs = true;
             if (main)
             {
-                hd.allowDynamicResolution = true;              // DLSS input
-                hd.allowDeepLearningSuperSampling = true;
-                hd.deepLearningSuperSamplingUseCustomQualitySettings = false;
-                hd.deepLearningSuperSamplingUseOptimalSettings = true;
-                hd.allowFidelityFX2SuperResolution = true;
+                ApplyUpscaler(hd, _upscalerUltra);
             }
             cam.allowHDR = true;
             cam.allowMSAA = false;

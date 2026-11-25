@@ -21,7 +21,15 @@ namespace Aetheria
         public List<string> QuestIds = new List<string>();
         public List<int> QuestProgress = new List<int>();
         public List<int> QuestStates = new List<int>();
-        public byte[] FogOfWarGrid = new byte[4096];
+        public string TrackedQuestId = "Q_PrologueAwakening";
+        public List<string> KindledShrines = new List<string>();
+        public List<string> DiscoveredPins = new List<string>();
+        public byte[] FogOfWarGrid = new byte[QuestAndMapService.TotalCells];
+        public float HP = 120f;
+        public float MaxHP = 120f;
+        public float Mana = 120f;
+        public float Stamina = 100f;
+        public float TimeOfDay = 0.68f;
         public Vector3 LastHeroPosition;
         public HeroCustomizationProfile HeroProfile = new HeroCustomizationProfile();
     }
@@ -171,6 +179,30 @@ namespace Aetheria
 
         public static bool HasSaveFile() => File.Exists(SaveFilePath);
 
+        public void ResetProgress()
+        {
+            Level = 1;
+            CurrentXP = 0;
+            UnspentSkillPoints = 1;
+            Gold = 0;
+            BuildDefaultNodes();
+            OnSkillTreeChanged?.Invoke();
+        }
+
+        private static void RelockOrSyncOrbs(SpellSystem spells, bool exort, bool wex, bool quas)
+        {
+            if (spells == null) return;
+            spells.UnlockedExort = false;
+            spells.UnlockedWex = false;
+            spells.UnlockedQuas = false;
+            spells.ActiveOrbs.Clear();
+            spells.SlotD = SpellId.None;
+            spells.SlotF = SpellId.None;
+            if (exort) spells.UnlockOrb(OrbType.Exort);
+            if (wex) spells.UnlockOrb(OrbType.Wex);
+            if (quas) spells.UnlockOrb(OrbType.Quas);
+        }
+
         public void SaveProgress(HeroController hero)
         {
             var payload = new AetheriaSavePayload
@@ -179,19 +211,24 @@ namespace Aetheria
                 CurrentXP = CurrentXP,
                 UnspentSkillPoints = UnspentSkillPoints,
                 Gold = Gold,
-                LastHeroPosition = hero != null ? hero.transform.position : Vector3.zero
+                LastHeroPosition = hero != null ? hero.transform.position : Vector3.zero,
+                TimeOfDay = AetheriaWorldGenerator.Instance != null ? AetheriaWorldGenerator.Instance.TimeOfDay : 0.68f
             };
 
             if (hero != null)
             {
                 payload.UnlockedDragonMount = hero.DragonUnlocked;
+                payload.HP = hero.HP;
+                payload.MaxHP = hero.MaxHP;
+                payload.Stamina = hero.Stamina;
                 if (hero.Spells != null)
                 {
                     payload.UnlockedExort = hero.Spells.UnlockedExort;
                     payload.UnlockedWex = hero.Spells.UnlockedWex;
                     payload.UnlockedQuas = hero.Spells.UnlockedQuas;
+                    payload.Mana = hero.Spells.Mana;
                 }
-                if (hero.Customization != null)
+                if (hero.Customization != null && hero.Customization.Profile != null)
                     payload.HeroProfile = hero.Customization.Profile.Clone();
             }
 
@@ -201,24 +238,47 @@ namespace Aetheria
                 payload.SkillNodeRanks.Add(n.CurrentRank);
             }
 
-            if (QuestAndMapService.Instance != null)
+            var qm = QuestAndMapService.Instance;
+            if (qm != null)
             {
-                foreach (var q in QuestAndMapService.Instance.Quests)
+                payload.TrackedQuestId = qm.TrackedQuestId;
+                foreach (var q in qm.Quests)
                 {
                     payload.QuestIds.Add(q.QuestId);
                     payload.QuestProgress.Add(q.Progress);
                     payload.QuestStates.Add((int)q.State);
                 }
-                payload.FogOfWarGrid = (byte[])QuestAndMapService.Instance.FogGrid.Clone();
+                foreach (var s in qm.KindledShrines)
+                    payload.KindledShrines.Add(s);
+                foreach (var pin in qm.MapPins)
+                    if (pin.Discovered) payload.DiscoveredPins.Add(pin.PinId);
+                payload.FogOfWarGrid = (byte[])qm.FogGrid.Clone();
             }
 
-            File.WriteAllText(SaveFilePath, JsonUtility.ToJson(payload, true));
+            try
+            {
+                File.WriteAllText(SaveFilePath, JsonUtility.ToJson(payload, true));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SkillTreeAndSaveService] SaveProgress failed: {ex.Message}");
+            }
         }
 
         public bool LoadProgress(HeroController hero)
         {
             if (!File.Exists(SaveFilePath)) return false;
-            var payload = JsonUtility.FromJson<AetheriaSavePayload>(File.ReadAllText(SaveFilePath));
+
+            AetheriaSavePayload payload;
+            try
+            {
+                payload = JsonUtility.FromJson<AetheriaSavePayload>(File.ReadAllText(SaveFilePath));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SkillTreeAndSaveService] LoadProgress failed: {ex.Message}");
+                return false;
+            }
             if (payload == null) return false;
 
             Level = Mathf.Max(1, payload.PlayerLevel);
@@ -226,43 +286,77 @@ namespace Aetheria
             UnspentSkillPoints = Mathf.Max(0, payload.UnspentSkillPoints);
             Gold = Mathf.Max(0, payload.Gold);
 
-            for (int i = 0; i < Mathf.Min(payload.SkillNodeIds.Count, payload.SkillNodeRanks.Count); i++)
+            foreach (var n in Nodes) n.CurrentRank = 0;
+            if (payload.SkillNodeIds != null && payload.SkillNodeRanks != null)
             {
-                var node = Nodes.Find(x => x.NodeId == payload.SkillNodeIds[i]);
-                if (node != null) node.CurrentRank = Mathf.Clamp(payload.SkillNodeRanks[i], 0, node.MaxRank);
+                int count = Mathf.Min(payload.SkillNodeIds.Count, payload.SkillNodeRanks.Count);
+                for (int i = 0; i < count; i++)
+                {
+                    var node = Nodes.Find(x => x.NodeId == payload.SkillNodeIds[i]);
+                    if (node != null) node.CurrentRank = Mathf.Clamp(payload.SkillNodeRanks[i], 0, node.MaxRank);
+                }
             }
+
+            if (AetheriaWorldGenerator.Instance != null && payload.TimeOfDay >= 0f)
+                AetheriaWorldGenerator.Instance.ApplyTimeOfDay(payload.TimeOfDay);
 
             if (hero != null)
             {
                 hero.DragonUnlocked = payload.UnlockedDragonMount;
-                if (hero.Spells != null)
-                {
-                    if (payload.UnlockedExort) hero.Spells.UnlockOrb(OrbType.Exort);
-                    if (payload.UnlockedWex)   hero.Spells.UnlockOrb(OrbType.Wex);
-                    if (payload.UnlockedQuas)  hero.Spells.UnlockOrb(OrbType.Quas);
-                }
+                RelockOrSyncOrbs(hero.Spells, payload.UnlockedExort, payload.UnlockedWex, payload.UnlockedQuas);
+
                 if (hero.Customization != null && payload.HeroProfile != null)
                 {
                     hero.Customization.Profile = payload.HeroProfile.Clone();
                     hero.Customization.Recalculate();
                 }
+
+                if (payload.MaxHP > 1f) hero.MaxHP = Mathf.Max(hero.MaxHP, payload.MaxHP);
+                if (payload.HP > 0f) hero.HP = Mathf.Clamp(payload.HP, 1f, hero.MaxHP);
+                if (payload.Stamina >= 0f) hero.Stamina = Mathf.Clamp(payload.Stamina, 0f, hero.MaxStamina);
+                if (hero.Spells != null && payload.Mana >= 0f)
+                    hero.Spells.Mana = Mathf.Clamp(payload.Mana, 0f, hero.Spells.MaxMana);
+
                 if (payload.LastHeroPosition.sqrMagnitude > 1f)
                     hero.TeleportSafe(payload.LastHeroPosition);
             }
 
-            if (QuestAndMapService.Instance != null)
+            var qm = QuestAndMapService.Instance;
+            if (qm != null)
             {
-                for (int i = 0; i < Mathf.Min(payload.QuestIds.Count, payload.QuestStates.Count); i++)
+                if (payload.QuestIds != null && payload.QuestStates != null && payload.QuestProgress != null)
                 {
-                    var q = QuestAndMapService.Instance.FindQuest(payload.QuestIds[i]);
-                    if (q != null)
+                    int qCount = Mathf.Min(payload.QuestIds.Count, Mathf.Min(payload.QuestStates.Count, payload.QuestProgress.Count));
+                    for (int i = 0; i < qCount; i++)
                     {
-                        q.Progress = payload.QuestProgress[i];
-                        q.State = (QuestState)payload.QuestStates[i];
+                        var q = qm.FindQuest(payload.QuestIds[i]);
+                        if (q != null)
+                        {
+                            q.Progress = Mathf.Clamp(payload.QuestProgress[i], 0, q.TargetCount);
+                            q.State = (QuestState)payload.QuestStates[i];
+                        }
                     }
                 }
-                if (payload.FogOfWarGrid != null && payload.FogOfWarGrid.Length == 4096)
-                    QuestAndMapService.Instance.LoadFogGrid(payload.FogOfWarGrid);
+
+                if (!string.IsNullOrEmpty(payload.TrackedQuestId))
+                    qm.TrackedQuestId = payload.TrackedQuestId;
+
+                if (payload.KindledShrines != null && payload.KindledShrines.Count > 0)
+                {
+                    qm.KindledShrines.Clear();
+                    foreach (var s in payload.KindledShrines) qm.KindledShrines.Add(s);
+                }
+
+                var discSet = payload.DiscoveredPins != null ? new HashSet<string>(payload.DiscoveredPins) : null;
+                foreach (var pin in qm.MapPins)
+                {
+                    if (discSet != null && discSet.Contains(pin.PinId))
+                        pin.Discovered = true;
+                    pin.FastTravel = qm.KindledShrines.Contains(pin.PinId);
+                }
+
+                if (payload.FogOfWarGrid != null && payload.FogOfWarGrid.Length == QuestAndMapService.TotalCells)
+                    qm.LoadFogGrid(payload.FogOfWarGrid);
             }
 
             OnSkillTreeChanged?.Invoke();

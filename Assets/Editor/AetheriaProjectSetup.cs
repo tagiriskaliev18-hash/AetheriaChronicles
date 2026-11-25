@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using UnityEditor;
+using UnityEditor.Animations;
 using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -12,26 +16,27 @@ using UnityEngine.SceneManagement;
 namespace Aetheria.Editor
 {
     /// <summary>
-    /// End-to-end Editor Setup for Aetheria: Chronicles of the Drake (Unity 6.3 URP).
-    /// Configures Normal Maps & Sobel derivations, builds URP PBR Materials & 5 TerrainLayers,
-    /// stages Hero/Weapon/Cosmetic prefabs into Resources/, sculpts the 4km 5-biome Terrain,
-    /// populates Oakhaven, Prologue Cave, Mirror Lake, Dragon Aerie, Sapphire Woods, Ember Crypt,
-    /// Crystal Glacier & Highkeep Citadel (Malakor Boss), and builds the Windows Standalone .exe.
+    /// End-to-end Editor Setup for Aetheria: Chronicles of the Drake (Unity 6.3 HDRP 17.3).
+    /// Configures Normal Maps & Sobel derivations, builds HDRP PBR Materials & 5 TerrainLayers,
+    /// builds AnimatorControllers & stages Hero/Weapon/Cosmetic/Creature prefabs into Resources/,
+    /// sculpts the 4km 5-biome Terrain, populates landmarks & quests, and builds the Windows Standalone .exe.
     /// </summary>
     public static class AetheriaProjectSetup
     {
         private const string ScenePath = "Assets/Scenes/AetheriaMain.unity";
-        private const string BuildExePath = "D:/AetheriaUnity/Build/Aetheria.exe";   // the one Windows player; see Build/README.txt
+        private const string BuildExePath = "Build/Aetheria.exe";
+        private const string AnimatorsFolder = "Assets/Generated/Animators";
 
         [MenuItem("Aetheria/1. Setup Project, Assets & Scene")]
         public static void SetupProjectAndScene()
         {
-            Debug.Log("[AetheriaSetup] Starting full URP project & scene assembly...");
+            Debug.Log("[AetheriaSetup] Starting full HDRP project & scene assembly...");
             EnsureFolders();
             EnsureShaderTemplates();
             ConfigureNormalMapImporters();
             var materials = BuildPbrMaterials();
             var layers = BuildTerrainLayers(materials);
+            BuildAnimatorControllers();
             StageResourcesPrefabs(materials);
             BuildMainScene(materials, layers);
             Debug.Log("[AetheriaSetup] Scene & Resources setup complete!");
@@ -41,7 +46,18 @@ namespace Aetheria.Editor
         public static void BuildWindowsExecutable()
         {
             if (EditorApplication.isPlaying) throw new InvalidOperationException("Leave Play Mode before building.");
-            Directory.CreateDirectory(Path.GetDirectoryName(BuildExePath)!);
+            if (!File.Exists(ScenePath))
+                throw new FileNotFoundException($"Main scene not found at '{ScenePath}'. Run 'Aetheria/1. Setup Project, Assets & Scene' first.", ScenePath);
+
+            string fullExePath = Path.GetFullPath(BuildExePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullExePath)!);
+
+            // Configure DX12 first for HDRP Windows Standalone
+            PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.StandaloneWindows64, false);
+            var apis = new List<GraphicsDeviceType> { GraphicsDeviceType.Direct3D12 };
+            foreach (var api in PlayerSettings.GetGraphicsAPIs(BuildTarget.StandaloneWindows64))
+                if (api != GraphicsDeviceType.Direct3D12) apis.Add(api);
+            PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64, apis.ToArray());
 
             // IL2CPP needs its Windows player module installed in the Editor; without it the build
             // aborts outright, so fall back to Mono rather than shipping nothing.
@@ -56,17 +72,33 @@ namespace Aetheria.Editor
             }
 
             var scenes = new[] { ScenePath };
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             var opts = new BuildPlayerOptions
             {
                 scenes = scenes,
-                locationPathName = BuildExePath,
+                locationPathName = fullExePath,
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None
             };
             var report = BuildPipeline.BuildPlayer(opts);
-            Debug.Log($"[AetheriaSetup] Build finished: result={report.summary.result} errors={report.summary.totalErrors} size={report.summary.totalSize / (1024 * 1024)}MB backend={PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone)} -> {BuildExePath}");
-            if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
-                throw new Exception($"Windows64 build failed with {report.summary.totalErrors} errors!");
+            Debug.Log($"[AetheriaSetup] Build finished: result={report.summary.result} errors={report.summary.totalErrors} size={report.summary.totalSize / (1024 * 1024)}MB backend={PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone)} -> {fullExePath}");
+            if (report.summary.result != BuildResult.Succeeded)
+            {
+                var errSb = new StringBuilder();
+                errSb.AppendLine($"Windows64 build failed: result={report.summary.result}, errors={report.summary.totalErrors}, warnings={report.summary.totalWarnings}");
+                if (report.steps != null)
+                {
+                    foreach (var step in report.steps)
+                    {
+                        foreach (var msg in step.messages)
+                        {
+                            if (msg.type == LogType.Error || msg.type == LogType.Exception || msg.type == LogType.Assert)
+                                errSb.AppendLine($"  [{step.name}] {msg.content}");
+                        }
+                    }
+                }
+                throw new Exception(errSb.ToString());
+            }
         }
 
         /// <summary>The HDRP Windows player: Scenes/AetheriaMain.unity -> Build/Aetheria.exe (release, IL2CPP, DX12).</summary>
@@ -87,6 +119,7 @@ namespace Aetheria.Editor
                 "Assets/Generated/Normals",
                 "Assets/Generated/Materials",
                 "Assets/Generated/TerrainLayers",
+                AnimatorsFolder,
                 "Assets/Resources/Materials",
                 "Assets/Resources/Heroes",
                 "Assets/Resources/Weapons",
@@ -117,6 +150,7 @@ namespace Aetheria.Editor
             if (litMat.HasProperty("_BaseColor")) litMat.SetColor("_BaseColor", Color.white);
             if (litMat.HasProperty("_Smoothness")) litMat.SetFloat("_Smoothness", 0.36f);
             if (litMat.HasProperty("_SmoothnessRemapMax")) litMat.SetFloat("_SmoothnessRemapMax", 0.36f);
+            AetheriaHdrpConvert.ValidateHdMaterial(litMat);
             SaveOrReplaceAsset(litMat, "Assets/Resources/Materials/URP_Lit_Template.mat");
 
             // Soft volumetric radial falloff baked into BOTH RGB and Alpha so Additive (One, One) NEVER draws hard square edges
@@ -167,17 +201,22 @@ namespace Aetheria.Editor
             if (pMat.HasProperty("_ZWrite")) pMat.SetFloat("_ZWrite", 0f);
             if (pMat.HasProperty("_SurfaceType")) pMat.SetFloat("_SurfaceType", 1f);   // HDRP: transparent
             if (pMat.HasProperty("_BlendMode")) pMat.SetFloat("_BlendMode", 1f);       // HDRP: additive
+            if (pMat.HasProperty("_AlphaSrcBlend")) pMat.SetFloat("_AlphaSrcBlend", (float)BlendMode.One);
+            if (pMat.HasProperty("_AlphaDstBlend")) pMat.SetFloat("_AlphaDstBlend", (float)BlendMode.One);
+            if (pMat.HasProperty("_EnableFogOnTransparent")) pMat.SetFloat("_EnableFogOnTransparent", 0f);
             pMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
             pMat.EnableKeyword("_BLENDMODE_ADD");
             pMat.DisableKeyword("_ALPHATEST_ON");
             pMat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             pMat.SetOverrideTag("RenderType", "Transparent");
             pMat.renderQueue = 3000;
+            AetheriaHdrpConvert.ValidateHdMaterial(pMat);
             SaveOrReplaceAsset(pMat, "Assets/Resources/Materials/URP_Particles_Unlit_Template.mat");
         }
 
         private static void ConfigureNormalMapImporters()
         {
+            if (!AssetDatabase.IsValidFolder("Assets/_AAA_Imported")) return;
             string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets/_AAA_Imported" });
             bool dirty = false;
             foreach (var g in guids)
@@ -223,7 +262,9 @@ namespace Aetheria.Editor
                 if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", metal);
                 if (mat.HasProperty("_MetallicRemapMax")) mat.SetFloat("_MetallicRemapMax", metal);
                 mat.mainTextureScale = new Vector2(tiling, tiling);
-                if (mat.HasProperty("_BaseColorMap")) mat.SetTextureScale("_BaseColorMap", new Vector2(tiling, tiling));
+                var tileVec = new Vector2(tiling, tiling);
+                if (mat.HasProperty("_BaseColorMap")) mat.SetTextureScale("_BaseColorMap", tileVec);
+                if (mat.HasProperty("_NormalMap")) mat.SetTextureScale("_NormalMap", tileVec);
 
                 Texture2D nrm = !string.IsNullOrEmpty(existingNormalPath)
                     ? AssetDatabase.LoadAssetAtPath<Texture2D>(existingNormalPath)
@@ -238,19 +279,27 @@ namespace Aetheria.Editor
                     mat.EnableKeyword("_NORMALMAP");
                     if (mat.HasProperty("_BumpMap")) mat.SetTexture("_BumpMap", nrm);
                     if (mat.HasProperty("_BumpScale")) mat.SetFloat("_BumpScale", normalStr);
-                    if (mat.HasProperty("_NormalMap")) mat.SetTexture("_NormalMap", nrm);
+                    if (mat.HasProperty("_NormalMap"))
+                    {
+                        mat.SetTexture("_NormalMap", nrm);
+                        mat.SetTextureScale("_NormalMap", tileVec);
+                    }
+                    if (mat.HasProperty("_NormalScale")) mat.SetFloat("_NormalScale", normalStr);
                     if (mat.HasProperty("_NormalMapSpace")) mat.SetFloat("_NormalMapSpace", 0f);
                 }
 
                 if (emission.HasValue)
                 {
                     mat.EnableKeyword("_EMISSION");
-                    mat.SetColor("_EmissionColor", emission.Value);
+                    if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", emission.Value);
                     if (mat.HasProperty("_EmissiveColor")) mat.SetColor("_EmissiveColor", emission.Value);
+                    if (mat.HasProperty("_EmissiveColorLDR")) mat.SetColor("_EmissiveColorLDR", emission.Value);
                     if (mat.HasProperty("_EmissiveColorMode")) mat.SetFloat("_EmissiveColorMode", 0f);
+                    if (mat.HasProperty("_UseEmissiveIntensity")) mat.SetFloat("_UseEmissiveIntensity", 0f);
                     mat.EnableKeyword("_EMISSIVE_COLOR");
                 }
 
+                AetheriaHdrpConvert.ValidateHdMaterial(mat);
                 SaveOrReplaceAsset(mat, $"Assets/Generated/Materials/{key}.mat");
                 dict[key] = AssetDatabase.LoadAssetAtPath<Material>($"Assets/Generated/Materials/{key}.mat");
                 return dict[key];
@@ -405,35 +454,67 @@ namespace Aetheria.Editor
             waterfall.color = new Color(0.58f, 0.88f, 1.0f, 0.90f);
             if (waterfall.HasProperty("_BaseColor")) waterfall.SetColor("_BaseColor", waterfall.color);
             if (waterfall.HasProperty("_Smoothness")) waterfall.SetFloat("_Smoothness", 0.92f);
+            if (waterfall.HasProperty("_SmoothnessRemapMax")) waterfall.SetFloat("_SmoothnessRemapMax", 0.92f);
+            if (waterfall.HasProperty("_SurfaceType")) waterfall.SetFloat("_SurfaceType", 1f);
+            if (waterfall.HasProperty("_BlendMode")) waterfall.SetFloat("_BlendMode", 1f);
+            if (waterfall.HasProperty("_ZWrite")) waterfall.SetFloat("_ZWrite", 0f);
+            if (waterfall.HasProperty("_SrcBlend")) waterfall.SetFloat("_SrcBlend", (float)BlendMode.One);
+            if (waterfall.HasProperty("_DstBlend")) waterfall.SetFloat("_DstBlend", (float)BlendMode.One);
+            if (waterfall.HasProperty("_AlphaSrcBlend")) waterfall.SetFloat("_AlphaSrcBlend", (float)BlendMode.One);
+            if (waterfall.HasProperty("_AlphaDstBlend")) waterfall.SetFloat("_AlphaDstBlend", (float)BlendMode.One);
+            if (waterfall.HasProperty("_EnableFogOnTransparent")) waterfall.SetFloat("_EnableFogOnTransparent", 1f);
+            waterfall.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            waterfall.EnableKeyword("_BLENDMODE_ADD");
+            waterfall.SetOverrideTag("RenderType", "Transparent");
+            waterfall.renderQueue = (int)RenderQueue.Transparent;
             waterfall.EnableKeyword("_EMISSION");
-            waterfall.SetColor("_EmissionColor", new Color(0.18f, 0.45f, 0.72f));
+            if (waterfall.HasProperty("_EmissionColor")) waterfall.SetColor("_EmissionColor", new Color(0.18f, 0.45f, 0.72f));
+            if (waterfall.HasProperty("_EmissiveColor")) waterfall.SetColor("_EmissiveColor", new Color(0.18f, 0.45f, 0.72f));
+            if (waterfall.HasProperty("_EmissiveColorLDR")) waterfall.SetColor("_EmissiveColorLDR", new Color(0.18f, 0.45f, 0.72f));
+            if (waterfall.HasProperty("_EmissiveColorMode")) waterfall.SetFloat("_EmissiveColorMode", 0f);
+            if (waterfall.HasProperty("_UseEmissiveIntensity")) waterfall.SetFloat("_UseEmissiveIntensity", 0f);
+            waterfall.EnableKeyword("_EMISSIVE_COLOR");
+            AetheriaHdrpConvert.ValidateHdMaterial(waterfall);
             SaveOrReplaceAsset(waterfall, "Assets/Generated/Materials/WaterfallMist.mat");
             dict["WaterfallMist"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/WaterfallMist.mat");
+
+            void ConfigureHdrpEmission(Material m, Color col)
+            {
+                m.EnableKeyword("_EMISSION");
+                if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", col);
+                if (m.HasProperty("_EmissiveColor")) m.SetColor("_EmissiveColor", col);
+                if (m.HasProperty("_EmissiveColorLDR")) m.SetColor("_EmissiveColorLDR", col);
+                if (m.HasProperty("_EmissiveColorMode")) m.SetFloat("_EmissiveColorMode", 0f);
+                if (m.HasProperty("_UseEmissiveIntensity")) m.SetFloat("_UseEmissiveIntensity", 0f);
+                m.EnableKeyword("_EMISSIVE_COLOR");
+            }
 
             // Stylized emissive & liquid environment materials
             var ice = new Material(litSh);
             ice.color = new Color(0.45f, 0.88f, 1.0f);
             if (ice.HasProperty("_BaseColor")) ice.SetColor("_BaseColor", ice.color);
             if (ice.HasProperty("_Smoothness")) ice.SetFloat("_Smoothness", 0.86f);
+            if (ice.HasProperty("_SmoothnessRemapMax")) ice.SetFloat("_SmoothnessRemapMax", 0.86f);
             if (ice.HasProperty("_Metallic")) ice.SetFloat("_Metallic", 0.12f);
-            ice.EnableKeyword("_EMISSION");
-            ice.SetColor("_EmissionColor", new Color(0.05f, 0.42f, 0.65f));
+            if (ice.HasProperty("_MetallicRemapMax")) ice.SetFloat("_MetallicRemapMax", 0.12f);
+            ConfigureHdrpEmission(ice, new Color(0.05f, 0.42f, 0.65f));
+            AetheriaHdrpConvert.ValidateHdMaterial(ice);
             SaveOrReplaceAsset(ice, "Assets/Generated/Materials/CrystalIce.mat");
             dict["CrystalIce"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/CrystalIce.mat");
 
             var sunCrystal = new Material(litSh);
             sunCrystal.color = new Color(1.0f, 0.44f, 0.08f);
             if (sunCrystal.HasProperty("_BaseColor")) sunCrystal.SetColor("_BaseColor", sunCrystal.color);
-            sunCrystal.EnableKeyword("_EMISSION");
-            sunCrystal.SetColor("_EmissionColor", new Color(2.4f, 0.72f, 0.12f));
+            ConfigureHdrpEmission(sunCrystal, new Color(2.4f, 0.72f, 0.12f));
+            AetheriaHdrpConvert.ValidateHdMaterial(sunCrystal);
             SaveOrReplaceAsset(sunCrystal, "Assets/Generated/Materials/BindCrystalGlow.mat");
             dict["BindCrystalGlow"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/BindCrystalGlow.mat");
 
             var wexBeacon = new Material(litSh);
             wexBeacon.color = new Color(0.62f, 0.34f, 1.0f);
             if (wexBeacon.HasProperty("_BaseColor")) wexBeacon.SetColor("_BaseColor", wexBeacon.color);
-            wexBeacon.EnableKeyword("_EMISSION");
-            wexBeacon.SetColor("_EmissionColor", new Color(1.3f, 0.55f, 2.5f));
+            ConfigureHdrpEmission(wexBeacon, new Color(1.3f, 0.55f, 2.5f));
+            AetheriaHdrpConvert.ValidateHdMaterial(wexBeacon);
             SaveOrReplaceAsset(wexBeacon, "Assets/Generated/Materials/WexConductorGlow.mat");
             dict["WexConductorGlow"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/WexConductorGlow.mat");
 
@@ -441,17 +522,19 @@ namespace Aetheria.Editor
             obsidian.color = new Color(0.10f, 0.07f, 0.12f);
             if (obsidian.HasProperty("_BaseColor")) obsidian.SetColor("_BaseColor", obsidian.color);
             if (obsidian.HasProperty("_Smoothness")) obsidian.SetFloat("_Smoothness", 0.68f);
+            if (obsidian.HasProperty("_SmoothnessRemapMax")) obsidian.SetFloat("_SmoothnessRemapMax", 0.68f);
             if (obsidian.HasProperty("_Metallic")) obsidian.SetFloat("_Metallic", 0.45f);
-            obsidian.EnableKeyword("_EMISSION");
-            obsidian.SetColor("_EmissionColor", new Color(1.4f, 0.22f, 0.05f));
+            if (obsidian.HasProperty("_MetallicRemapMax")) obsidian.SetFloat("_MetallicRemapMax", 0.45f);
+            ConfigureHdrpEmission(obsidian, new Color(1.4f, 0.22f, 0.05f));
+            AetheriaHdrpConvert.ValidateHdMaterial(obsidian);
             SaveOrReplaceAsset(obsidian, "Assets/Generated/Materials/ObsidianSeal.mat");
             dict["ObsidianSeal"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/ObsidianSeal.mat");
 
             var lava = new Material(litSh);
             lava.color = new Color(0.95f, 0.28f, 0.04f);
             if (lava.HasProperty("_BaseColor")) lava.SetColor("_BaseColor", lava.color);
-            lava.EnableKeyword("_EMISSION");
-            lava.SetColor("_EmissionColor", new Color(3.6f, 0.88f, 0.12f));
+            ConfigureHdrpEmission(lava, new Color(3.6f, 0.88f, 0.12f));
+            AetheriaHdrpConvert.ValidateHdMaterial(lava);
             SaveOrReplaceAsset(lava, "Assets/Generated/Materials/EmberLava.mat");
             dict["EmberLava"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/EmberLava.mat");
 
@@ -459,15 +542,31 @@ namespace Aetheria.Editor
             lake.color = new Color(0.06f, 0.24f, 0.38f, 0.92f);
             if (lake.HasProperty("_BaseColor")) lake.SetColor("_BaseColor", lake.color);
             if (lake.HasProperty("_Smoothness")) lake.SetFloat("_Smoothness", 0.95f);
+            if (lake.HasProperty("_SmoothnessRemapMax")) lake.SetFloat("_SmoothnessRemapMax", 0.95f);
             if (lake.HasProperty("_Metallic")) lake.SetFloat("_Metallic", 0.35f);
+            if (lake.HasProperty("_MetallicRemapMax")) lake.SetFloat("_MetallicRemapMax", 0.35f);
+            if (lake.HasProperty("_SurfaceType")) lake.SetFloat("_SurfaceType", 1f);
+            if (lake.HasProperty("_BlendMode")) lake.SetFloat("_BlendMode", 0f);
+            if (lake.HasProperty("_ZWrite")) lake.SetFloat("_ZWrite", 0f);
+            if (lake.HasProperty("_SrcBlend")) lake.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            if (lake.HasProperty("_DstBlend")) lake.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            if (lake.HasProperty("_AlphaSrcBlend")) lake.SetFloat("_AlphaSrcBlend", (float)BlendMode.One);
+            if (lake.HasProperty("_AlphaDstBlend")) lake.SetFloat("_AlphaDstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            if (lake.HasProperty("_EnableFogOnTransparent")) lake.SetFloat("_EnableFogOnTransparent", 1f);
+            if (lake.HasProperty("_ReceivesSSRTransparent")) lake.SetFloat("_ReceivesSSRTransparent", 1f);
+            lake.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            lake.DisableKeyword("_DISABLE_SSR_TRANSPARENT");
+            lake.SetOverrideTag("RenderType", "Transparent");
+            lake.renderQueue = (int)RenderQueue.Transparent;
+            AetheriaHdrpConvert.ValidateHdMaterial(lake);
             SaveOrReplaceAsset(lake, "Assets/Generated/Materials/MirrorLakeWater.mat");
             dict["MirrorLakeWater"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/MirrorLakeWater.mat");
 
             var sapphireLeaf = new Material(litSh);
             sapphireLeaf.color = new Color(0.16f, 0.46f, 0.88f);
             if (sapphireLeaf.HasProperty("_BaseColor")) sapphireLeaf.SetColor("_BaseColor", sapphireLeaf.color);
-            sapphireLeaf.EnableKeyword("_EMISSION");
-            sapphireLeaf.SetColor("_EmissionColor", new Color(0.12f, 0.42f, 0.95f));
+            ConfigureHdrpEmission(sapphireLeaf, new Color(0.12f, 0.42f, 0.95f));
+            AetheriaHdrpConvert.ValidateHdMaterial(sapphireLeaf);
             SaveOrReplaceAsset(sapphireLeaf, "Assets/Generated/Materials/SapphireCanopy.mat");
             dict["SapphireCanopy"] = AssetDatabase.LoadAssetAtPath<Material>("Assets/Generated/Materials/SapphireCanopy.mat");
 
@@ -541,10 +640,14 @@ namespace Aetheria.Editor
             for (int i = 0; i < keys.Length; i++)
             {
                 var mat = mats[keys[i]];
+                Texture2D diffuse = (mat.HasProperty("_BaseColorMap") ? mat.GetTexture("_BaseColorMap") as Texture2D : null)
+                                 ?? (mat.HasProperty("_BaseMap") ? mat.GetTexture("_BaseMap") as Texture2D : null);
+                Texture2D normal = (mat.HasProperty("_NormalMap") ? mat.GetTexture("_NormalMap") as Texture2D : null)
+                                ?? (mat.HasProperty("_BumpMap") ? mat.GetTexture("_BumpMap") as Texture2D : null);
                 var layer = new TerrainLayer
                 {
-                    diffuseTexture = mat.GetTexture("_BaseMap") as Texture2D,
-                    normalMapTexture = mat.GetTexture("_BumpMap") as Texture2D,
+                    diffuseTexture = diffuse,
+                    normalMapTexture = normal,
                     normalScale = 1.25f,
                     tileSize = i == 0 ? new Vector2(10f, 10f) : new Vector2(18f, 18f),
                     smoothness = i == 3 ? 0.42f : 0.18f,
@@ -557,9 +660,245 @@ namespace Aetheria.Editor
             return layers;
         }
 
+        [MenuItem("Aetheria/4. Build Animator Controllers")]
+        public static void BuildAnimatorControllers()
+        {
+            if (!Directory.Exists(AnimatorsFolder)) Directory.CreateDirectory(AnimatorsFolder);
+
+            var allClips = new List<(string path, AnimationClip clip)>();
+            if (AssetDatabase.IsValidFolder("Assets/_AAA_Imported"))
+            {
+                foreach (string guid in AssetDatabase.FindAssets("t:Model", new[] { "Assets/_AAA_Imported" }))
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!path.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) &&
+                        !path.EndsWith(".glb", StringComparison.OrdinalIgnoreCase)) continue;
+                    foreach (var obj in AssetDatabase.LoadAllAssetsAtPath(path))
+                    {
+                        if (obj is AnimationClip clip && !clip.name.StartsWith("__preview__", StringComparison.OrdinalIgnoreCase))
+                            allClips.Add((path, clip));
+                    }
+                }
+            }
+
+            if (allClips.Count == 0)
+            {
+                Debug.Log("[AetheriaSetup] No source FBX/GLB AnimationClips found under Assets/_AAA_Imported; skipping AnimatorController generation.");
+                return;
+            }
+
+            AnimationClip FindClip(string folderFilter, bool requireHuman, params string[] keywords)
+            {
+                foreach (var kw in keywords)
+                {
+                    foreach (var entry in allClips)
+                    {
+                        if (requireHuman && !entry.clip.humanMotion) continue;
+                        if (!string.IsNullOrEmpty(folderFilter) &&
+                            entry.path.IndexOf(folderFilter, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        if (entry.clip.name.IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            entry.path.IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0)
+                            return entry.clip;
+                    }
+                }
+                return null;
+            }
+
+            AnimatorController BuildController(string assetName, string folderFilter, bool requireHuman, bool isDragon)
+            {
+                string ctrlPath = $"{AnimatorsFolder}/{assetName}.controller";
+                if (File.Exists(ctrlPath)) AssetDatabase.DeleteAsset(ctrlPath);
+                var ctrl = AnimatorController.CreateAnimatorControllerAtPath(ctrlPath);
+                var sm = ctrl.layers[0].stateMachine;
+
+                // Shared + Hero + Creature + Dragon parameters
+                ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
+                ctrl.AddParameter("CombatSpeed", AnimatorControllerParameterType.Float);
+                ctrl.AddParameter("Grounded", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("InAttack", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("InStun", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("Dead", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("Moving", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("Blocking", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("Action", AnimatorControllerParameterType.Int);
+                ctrl.AddParameter("AttackIndex", AnimatorControllerParameterType.Int);
+                ctrl.AddParameter("DoAction", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Attack1", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Attack2", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Attack3", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Cast", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Parry", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Dash", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("HitReact", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Hit", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Die", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Respawn", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Revive", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Slam", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("Breath", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("Flying", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("Scream", AnimatorControllerParameterType.Trigger);
+                ctrl.AddParameter("DragonMounted", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("DragonFlying", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("DragonBreath", AnimatorControllerParameterType.Bool);
+
+                var ps = ctrl.parameters;
+                for (int i = 0; i < ps.Length; i++)
+                {
+                    if (ps[i].name == "CombatSpeed") ps[i].defaultFloat = 1f;
+                    if (ps[i].name == "Grounded") ps[i].defaultBool = true;
+                }
+                ctrl.parameters = ps;
+
+                AnimationClip idle = FindClip(folderFilter, requireHuman, "idle", "stand", "hover") ?? FindClip(null, requireHuman, "idle");
+                AnimationClip walk = FindClip(folderFilter, requireHuman, "walk", "jog", "move", "fly") ?? idle;
+                AnimationClip run = FindClip(folderFilter, requireHuman, "run", "sprint", "fly", "jog") ?? walk;
+                AnimationClip atk1 = FindClip(folderFilter, requireHuman, "attack1", "attack_1", "primary", "bite", "slash", "attack") ?? idle;
+                AnimationClip atk2 = FindClip(folderFilter, requireHuman, "attack2", "attack_2", "combo", "claw", "swing") ?? atk1;
+                AnimationClip atk3 = FindClip(folderFilter, requireHuman, "attack3", "attack_3", "heavy", "spin") ?? atk1;
+                AnimationClip atk4 = FindClip(folderFilter, requireHuman, "attack4", "attack_4", "finisher", "slam") ?? atk3;
+                AnimationClip heavy = FindClip(folderFilter, requireHuman, "heavy", "slam", "smash") ?? atk3;
+                AnimationClip cast = FindClip(folderFilter, requireHuman, "cast", "ability", "spell", "breath") ?? atk2;
+                AnimationClip parry = FindClip(folderFilter, requireHuman, "block", "parry", "guard") ?? idle;
+                AnimationClip dash = FindClip(folderFilter, requireHuman, "dash", "dodge", "roll") ?? run;
+                AnimationClip stun = FindClip(folderFilter, requireHuman, "stun", "dizzy") ?? idle;
+                AnimationClip hit = FindClip(folderFilter, requireHuman, "hit", "impact", "hurt") ?? idle;
+                AnimationClip death = FindClip(folderFilter, requireHuman, "death", "die", "dead") ?? idle;
+
+                var locoState = ctrl.CreateBlendTreeInController("Idle_Walk_Run", out var locoTree, 0);
+                locoTree.blendParameter = "Speed";
+                locoTree.blendType = BlendTreeType.Simple1D;
+                if (idle != null) locoTree.AddChild(idle, 0f);
+                if (walk != null) locoTree.AddChild(walk, 3.0f);
+                if (run != null) locoTree.AddChild(run, 6.2f);
+                sm.defaultState = locoState;
+
+                AnimatorState AddActionState(string stateName, AnimationClip clip, bool speedMult = false, bool exitToLoco = true)
+                {
+                    var st = sm.AddState(stateName);
+                    st.motion = clip;
+                    if (speedMult)
+                    {
+                        st.speedParameterActive = true;
+                        st.speedParameter = "CombatSpeed";
+                    }
+                    if (exitToLoco)
+                    {
+                        var back = st.AddTransition(locoState);
+                        back.hasExitTime = true;
+                        back.exitTime = 0.9f;
+                        back.duration = 0.12f;
+                    }
+                    return st;
+                }
+
+                var sAtk1 = AddActionState("Attack1", atk1, true);
+                var sAtk2 = AddActionState("Attack2", atk2, true);
+                var sAtk3 = AddActionState("Attack3", atk3, true);
+                var sAtk4 = AddActionState("Attack4", atk4, true);
+                var sHeavy = AddActionState("HeavyAttack", heavy, true);
+                var sSlam = AddActionState("Slam", heavy, true);
+                var sCast = AddActionState("Cast", cast, true);
+                var sParry = AddActionState("Parry", parry, false);
+                var sDash = AddActionState("Dash", dash, false);
+                var sStun = AddActionState("Stun", stun, false);
+                var sHit = AddActionState("Hit", hit, false);
+                var sDeath = AddActionState("Death", death, false, exitToLoco: false);
+
+                void AnyTrigger(AnimatorState target, string trig)
+                {
+                    var t = sm.AddAnyStateTransition(target);
+                    t.hasExitTime = false;
+                    t.duration = 0.08f;
+                    t.AddCondition(AnimatorConditionMode.If, 0f, trig);
+                }
+
+                void AnyIndexedTrigger(AnimatorState target, string trig, string intParam, int val)
+                {
+                    var t = sm.AddAnyStateTransition(target);
+                    t.hasExitTime = false;
+                    t.duration = 0.08f;
+                    t.AddCondition(AnimatorConditionMode.If, 0f, trig);
+                    t.AddCondition(AnimatorConditionMode.Equals, val, intParam);
+                }
+
+                AnyIndexedTrigger(sAtk1, "Attack", "AttackIndex", 1);
+                AnyIndexedTrigger(sAtk2, "Attack", "AttackIndex", 2);
+                AnyIndexedTrigger(sAtk3, "Attack", "AttackIndex", 3);
+                AnyIndexedTrigger(sAtk4, "Attack", "AttackIndex", 4);
+                AnyIndexedTrigger(sAtk1, "DoAction", "Action", 1);
+                AnyIndexedTrigger(sAtk2, "DoAction", "Action", 2);
+                AnyIndexedTrigger(sAtk3, "DoAction", "Action", 3);
+                AnyIndexedTrigger(sAtk4, "DoAction", "Action", 4);
+                AnyIndexedTrigger(sCast, "DoAction", "Action", 5);
+                AnyIndexedTrigger(sStun, "DoAction", "Action", 6);
+                AnyTrigger(sAtk1, "Attack1");
+                AnyTrigger(sAtk2, "Attack2");
+                AnyTrigger(sAtk3, "Attack3");
+                AnyTrigger(sCast, "Cast");
+                AnyTrigger(sParry, "Parry");
+                AnyTrigger(sDash, "Dash");
+                AnyTrigger(sSlam, "Slam");
+                AnyTrigger(sHit, "HitReact");
+                AnyTrigger(sHit, "Hit");
+                AnyTrigger(sDeath, "Die");
+
+                var reviveT1 = sDeath.AddTransition(locoState);
+                reviveT1.hasExitTime = false;
+                reviveT1.duration = 0.1f;
+                reviveT1.AddCondition(AnimatorConditionMode.If, 0f, "Respawn");
+
+                var reviveT2 = sDeath.AddTransition(locoState);
+                reviveT2.hasExitTime = false;
+                reviveT2.duration = 0.1f;
+                reviveT2.AddCondition(AnimatorConditionMode.If, 0f, "Revive");
+
+                if (isDragon)
+                {
+                    var sFly = sm.AddState("Fly");
+                    sFly.motion = run ?? walk ?? idle;
+                    var toFly = locoState.AddTransition(sFly);
+                    toFly.hasExitTime = false;
+                    toFly.duration = 0.2f;
+                    toFly.AddCondition(AnimatorConditionMode.If, 0f, "Flying");
+                    var toGround = sFly.AddTransition(locoState);
+                    toGround.hasExitTime = false;
+                    toGround.duration = 0.2f;
+                    toGround.AddCondition(AnimatorConditionMode.IfNot, 0f, "Flying");
+
+                    var sBreath = AddActionState("Breath", FindClip(folderFilter, false, "breath", "fire", "scream") ?? cast);
+                    var toBreath = sm.AddAnyStateTransition(sBreath);
+                    toBreath.hasExitTime = false;
+                    toBreath.duration = 0.1f;
+                    toBreath.AddCondition(AnimatorConditionMode.If, 0f, "Breath");
+
+                    var sScream = AddActionState("Scream", FindClip(folderFilter, false, "scream", "roar") ?? cast);
+                    AnyTrigger(sScream, "Scream");
+                }
+
+                EditorUtility.SetDirty(ctrl);
+                return ctrl;
+            }
+
+            BuildController("Hero_Animator", "/Heroes/", requireHuman: true, isDragon: false);
+            BuildController("Creature_Animator", "/Enemies/", requireHuman: false, isDragon: false);
+            BuildController("Boss_Animator", "/Boss_Sevarog/", requireHuman: false, isDragon: false);
+            BuildController("Dragon_Animator", "/Dragon/", requireHuman: false, isDragon: true);
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void AssignControllerIfAvailable(GameObject inst, string controllerName)
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>($"{AnimatorsFolder}/{controllerName}.controller");
+            if (ctrl == null) return;
+            var anim = inst.GetComponentInChildren<Animator>(true);
+            if (anim != null) anim.runtimeAnimatorController = ctrl;
+        }
+
         private static void StageResourcesPrefabs(Dictionary<string, Material> mats)
         {
-            void StageHeroPrefab(string srcAssetPath, string dstResPath, Material armorMat, Material clothMat, Material trimMat)
+            void StageHeroPrefab(string srcAssetPath, string dstResPath, Material armorMat, Material clothMat, Material trimMat, string animatorName = "Hero_Animator")
             {
                 var src = AssetDatabase.LoadAssetAtPath<GameObject>(srcAssetPath);
                 if (src == null)
@@ -575,7 +914,8 @@ namespace Aetheria.Editor
                     for (int i = 0; i < shared.Length; i++)
                     {
                         bool hasTex = shared[i] != null &&
-                                      ((shared[i].HasProperty("_BaseMap") && shared[i].GetTexture("_BaseMap") != null) ||
+                                      ((shared[i].HasProperty("_BaseColorMap") && shared[i].GetTexture("_BaseColorMap") != null) ||
+                                       (shared[i].HasProperty("_BaseMap") && shared[i].GetTexture("_BaseMap") != null) ||
                                        (shared[i].HasProperty("baseColorTexture") && shared[i].GetTexture("baseColorTexture") != null));
                         if (hasTex) continue;
                         shared[i] = (i % 4) switch
@@ -588,11 +928,12 @@ namespace Aetheria.Editor
                     }
                     r.sharedMaterials = shared;
                 }
+                AssignControllerIfAvailable(inst, animatorName);
                 PrefabUtility.SaveAsPrefabAsset(inst, dstResPath);
                 UnityEngine.Object.DestroyImmediate(inst);
             }
 
-            void StagePrefab(string srcAssetPath, string dstResPath, Material fallbackMat = null, bool forceAllSlots = false)
+            void StagePrefab(string srcAssetPath, string dstResPath, Material fallbackMat = null, bool forceAllSlots = false, string animatorName = null)
             {
                 var src = AssetDatabase.LoadAssetAtPath<GameObject>(srcAssetPath);
                 if (src == null)
@@ -615,6 +956,8 @@ namespace Aetheria.Editor
                 {
                     EnsureValidRenderMaterials(inst, fallbackMat ?? mats["RomanStoneFloor"]);
                 }
+                if (!string.IsNullOrEmpty(animatorName))
+                    AssignControllerIfAvailable(inst, animatorName);
                 PrefabUtility.SaveAsPrefabAsset(inst, dstResPath);
                 UnityEngine.Object.DestroyImmediate(inst);
             }
@@ -655,33 +998,39 @@ namespace Aetheria.Editor
             StagePrefab("Assets/_AAA_Imported/WizardRaw/Meshes/SM_Head_BoneCrown.fbx", "Assets/Resources/Cosmetics/BoneCrown.prefab", mats["StatueMat"]);
 
             // Boss, Dragon & Enemies with Real PBR Textures!
-            StagePrefab("Assets/_AAA_Imported/Dragon/Meshes/DragonTheUsurperSK.glb", "Assets/Resources/Creatures/IgnisDragon.prefab", mats["DragonRedMat"], forceAllSlots: true);
-            StageHeroPrefab("Assets/_AAA_Imported/Boss_Sevarog/Meshes/SevarogBloodred.glb", "Assets/Resources/Creatures/MalakorBoss.prefab", mats["Boss_CrimsonIron"], mats["Boss_Carapace"], mats["Char_GildedBrass"]);
-            StagePrefab("Assets/_AAA_Imported/Enemies/Whisper/Meshes/SK_Whisper.glb", "Assets/Resources/Creatures/Whisper.prefab", mats["WhisperEnemyMat"], forceAllSlots: true);
-            StagePrefab("Assets/_AAA_Imported/Enemies/Rampage/Meshes/Rampage.glb", "Assets/Resources/Creatures/Rampage.prefab", mats["Mob_BruiserMat"], forceAllSlots: true);
-            StagePrefab("Assets/_AAA_Imported/Enemies/Minions/Meshes/Minion_Lane_Melee_Dusk.glb", "Assets/Resources/Creatures/MinionMelee.prefab", mats["Mob_SwarmMat"], forceAllSlots: true);
-            StagePrefab("Assets/_AAA_Imported/Enemies/Minions/Meshes/Minion_Lane_Ranged_Core_Dusk.glb", "Assets/Resources/Creatures/MinionRanged.prefab", mats["Mob_RangedMat"], forceAllSlots: true);
+            StagePrefab("Assets/_AAA_Imported/Dragon/Meshes/DragonTheUsurperSK.glb", "Assets/Resources/Creatures/IgnisDragon.prefab", mats["DragonRedMat"], forceAllSlots: true, animatorName: "Dragon_Animator");
+            StageHeroPrefab("Assets/_AAA_Imported/Boss_Sevarog/Meshes/SevarogBloodred.glb", "Assets/Resources/Creatures/MalakorBoss.prefab", mats["Boss_CrimsonIron"], mats["Boss_Carapace"], mats["Char_GildedBrass"], animatorName: "Boss_Animator");
+            StagePrefab("Assets/_AAA_Imported/Enemies/Whisper/Meshes/SK_Whisper.glb", "Assets/Resources/Creatures/Whisper.prefab", mats["WhisperEnemyMat"], forceAllSlots: true, animatorName: "Creature_Animator");
+            StagePrefab("Assets/_AAA_Imported/Enemies/Rampage/Meshes/Rampage.glb", "Assets/Resources/Creatures/Rampage.prefab", mats["Mob_BruiserMat"], forceAllSlots: true, animatorName: "Creature_Animator");
+            StagePrefab("Assets/_AAA_Imported/Enemies/Minions/Meshes/Minion_Lane_Melee_Dusk.glb", "Assets/Resources/Creatures/MinionMelee.prefab", mats["Mob_SwarmMat"], forceAllSlots: true, animatorName: "Creature_Animator");
+            StagePrefab("Assets/_AAA_Imported/Enemies/Minions/Meshes/Minion_Lane_Ranged_Core_Dusk.glb", "Assets/Resources/Creatures/MinionRanged.prefab", mats["Mob_RangedMat"], forceAllSlots: true, animatorName: "Creature_Animator");
         }
 
         private static void EnsureValidRenderMaterials(GameObject go, Material fallbackMat)
         {
-            var lit = Shader.Find("Universal Render Pipeline/Lit");
+            var lit = Shader.Find("HDRP/Lit");
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {
                 var shared = r.sharedMaterials;
                 bool changed = false;
                 for (int i = 0; i < shared.Length; i++)
                 {
-                    if (shared[i] == null || shared[i].shader == null ||
-                        shared[i].shader.name.Contains("Error") || shared[i].shader.name == "Standard")
+                    var m = shared[i];
+                    string shName = m != null && m.shader != null ? m.shader.name : string.Empty;
+                    bool needsUpgrade = m == null || m.shader == null || shName.Contains("Error") ||
+                                        shName == "Standard" || shName.StartsWith("Universal Render Pipeline/", StringComparison.Ordinal);
+                    if (needsUpgrade)
                     {
-                        if (shared[i] != null && shared[i].shader != null && shared[i].shader.name == "Standard" && lit != null)
+                        if (m != null && m.shader != null &&
+                            (shName == "Standard" || shName.StartsWith("Universal Render Pipeline/", StringComparison.Ordinal)) &&
+                            lit != null)
                         {
-                            var tex = shared[i].mainTexture;
-                            var col = shared[i].color;
+                            var tex = m.HasProperty("_BaseMap") ? m.GetTexture("_BaseMap") : (m.HasProperty("_MainTex") ? m.mainTexture : null);
+                            var col = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : (m.HasProperty("_Color") ? m.color : Color.white);
                             var cloned = new Material(lit);
-                            if (tex != null) cloned.SetTexture("_BaseMap", tex);
-                            cloned.SetColor("_BaseColor", col);
+                            if (tex != null && cloned.HasProperty("_BaseColorMap")) cloned.SetTexture("_BaseColorMap", tex);
+                            if (cloned.HasProperty("_BaseColor")) cloned.SetColor("_BaseColor", col);
+                            AetheriaHdrpConvert.ValidateHdMaterial(cloned);
                             shared[i] = cloned;
                         }
                         else

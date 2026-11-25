@@ -26,13 +26,14 @@ namespace Aetheria
         private Collider[] _colliders;
         private readonly List<Material> _materials = new List<Material>();
         private readonly List<Color> _baseColors = new List<Color>();
+        private readonly List<Color> _emissiveColors = new List<Color>();
         private float _flash;
-        private Material _focusMat;
-        private ParticleSystem _focusGlow;
-        private bool _frozen;
+        private Vector3 _initialScale = Vector3.one;
+        private Coroutine _regrowRoutine;
 
         private void Awake()
         {
+            _initialScale = transform.localScale;
             _renderers = GetComponentsInChildren<Renderer>(true);
             _colliders = GetComponentsInChildren<Collider>(true);
             AetheriaWorldGenerator.RegisterBreakable(this);
@@ -47,17 +48,37 @@ namespace Aetheria
                 {
                     mats[i] = src[i] != null ? new Material(src[i]) : null;
                     if (mats[i] == null) continue;
-                    if (mats[i].HasProperty("_BaseColor")) _baseColors.Add(mats[i].GetColor("_BaseColor")); else _baseColors.Add(mats[i].color);
+                    Color baseCol = mats[i].HasProperty("_BaseColor") ? mats[i].GetColor("_BaseColor") : mats[i].color;
+                    Color emisCol = mats[i].HasProperty("_EmissionColor") ? mats[i].GetColor("_EmissionColor") : Color.black;
+                    _baseColors.Add(baseCol);
+                    _emissiveColors.Add(emisCol);
                     _materials.Add(mats[i]);
                 }
                 r.sharedMaterials = mats;
             }
+            SetFocusActive(true);
         }
 
         private void OnDestroy()
         {
             AetheriaWorldGenerator.UnregisterBreakable(this);
             foreach (var m in _materials) if (m != null) Destroy(m);
+        }
+
+        private void SetFocusActive(bool active)
+        {
+            if (Focus == null) return;
+            Focus.gameObject.SetActive(active);
+            foreach (var r in Focus.GetComponentsInChildren<Renderer>(true))
+                if (r != null) r.enabled = active;
+            foreach (var l in Focus.GetComponentsInChildren<Light>(true))
+                if (l != null) l.enabled = active;
+            foreach (var ps in Focus.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                if (ps == null) continue;
+                if (active) ps.Play(true);
+                else ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
         }
 
         private void Update()
@@ -76,8 +97,19 @@ namespace Aetheria
             {
                 _flash -= Time.deltaTime;
                 float k = Mathf.Clamp01(_flash / 0.14f);
-                for (int i = 0; i < _materials.Count; i++) AetheriaRender.SetEmission(_materials[i], Color.white * k * 2.5f);
-                if (_flash <= 0f) for (int i = 0; i < _materials.Count; i++) AetheriaRender.SetEmission(_materials[i], Color.black);
+                for (int i = 0; i < _materials.Count; i++)
+                {
+                    Color origEm = i < _emissiveColors.Count ? _emissiveColors[i] : Color.black;
+                    AetheriaRender.SetEmission(_materials[i], Color.Lerp(origEm, Color.white * 2.5f, k));
+                }
+                if (_flash <= 0f)
+                {
+                    for (int i = 0; i < _materials.Count; i++)
+                    {
+                        Color origEm = i < _emissiveColors.Count ? _emissiveColors[i] : Color.black;
+                        AetheriaRender.SetEmission(_materials[i], origEm);
+                    }
+                }
             }
 
             // Cracks show how close the prop is to breaking
@@ -94,12 +126,12 @@ namespace Aetheria
             bool god = hero != null && hero.GodMode;
             if (RequiresSunStrike && !isSunStrike && !god)
             {
-                if (_flash <= 0f) QuestAndMapService.Instance?.PushNotification("Расколоть может только Солнечная Катастрофа (Z Z Z → R)");
+                if (_flash <= 0f) QuestAndMapService.Instance?.PushNotification("Расколоть может только Солнечная Катастрофа (Z-Z-Z → R)");
                 return false;
             }
             if (RequiresMeteor && !isMeteor && !god)
             {
-                if (_flash <= 0f) QuestAndMapService.Instance?.PushNotification("Обсидиан поддастся только Хаос-метеору (Z Z X → R)");
+                if (_flash <= 0f) QuestAndMapService.Instance?.PushNotification("Обсидиан поддастся только Хаос-метеору (Z-Z-X → R)");
                 return false;
             }
 
@@ -127,7 +159,9 @@ namespace Aetheria
             if (Broken) return;
             Broken = true;
             _restoreTimer = RestoreDelaySeconds;
+            if (_regrowRoutine != null) { StopCoroutine(_regrowRoutine); _regrowRoutine = null; }
 
+            SetFocusActive(false);
             foreach (var r in _renderers) if (r != null) r.enabled = false;
             foreach (var c in _colliders) if (c != null) c.enabled = false;
 
@@ -155,24 +189,42 @@ namespace Aetheria
 
         public void RestoreNow()
         {
-            if (!Broken) return;
+            bool wasBroken = Broken;
+            if (!wasBroken && HP >= MaxHP && _flash <= 0f) return;
+
+            if (_regrowRoutine != null) { StopCoroutine(_regrowRoutine); _regrowRoutine = null; }
             Broken = false;
             _questNotified = false;
+            _restoreTimer = 0f;
+            _flash = 0f;
             HP = MaxHP;
+            transform.localScale = _initialScale;
+
             foreach (var r in _renderers) if (r != null) r.enabled = true;
             foreach (var c in _colliders) if (c != null) c.enabled = true;
-            for (int i = 0; i < _materials.Count && i < _baseColors.Count; i++) AetheriaRender.SetBaseColor(_materials[i], _baseColors[i]);
-            Vector3 at = transform.position + Vector3.up * 1.0f;
-            AetheriaFx.FlashLight(at, AetheriaPalette.TextEmerald, 26f, 12f, 0.7f);
-            AetheriaFx.Shockwave(transform.position + Vector3.up * 0.2f, AetheriaPalette.TextEmerald, 3.6f, 0.8f);
-            AetheriaFx.Burst(at, AetheriaPalette.TextEmerald, 44, 1.2f, 4.5f, 0.07f, 0.16f, 1.1f, -0.2f, new Color(0.2f, 0.9f, 0.6f, 0f));
-            AudioAndQualityService.Instance?.PlaySfxAt("SFX_BeaconCapture", at, 0.5f);
-            StartCoroutine(Regrow());
+            SetFocusActive(true);
+
+            for (int i = 0; i < _materials.Count; i++)
+            {
+                if (i < _baseColors.Count) AetheriaRender.SetBaseColor(_materials[i], _baseColors[i]);
+                Color origEm = i < _emissiveColors.Count ? _emissiveColors[i] : Color.black;
+                AetheriaRender.SetEmission(_materials[i], origEm);
+            }
+
+            if (wasBroken)
+            {
+                Vector3 at = transform.position + Vector3.up * 1.0f;
+                AetheriaFx.FlashLight(at, AetheriaPalette.TextEmerald, 26f, 12f, 0.7f);
+                AetheriaFx.Shockwave(transform.position + Vector3.up * 0.2f, AetheriaPalette.TextEmerald, 3.6f, 0.8f);
+                AetheriaFx.Burst(at, AetheriaPalette.TextEmerald, 44, 1.2f, 4.5f, 0.07f, 0.16f, 1.1f, -0.2f, new Color(0.2f, 0.9f, 0.6f, 0f));
+                AudioAndQualityService.Instance?.PlaySfxAt("SFX_BeaconCapture", at, 0.5f);
+                _regrowRoutine = StartCoroutine(Regrow());
+            }
         }
 
         private IEnumerator Regrow()
         {
-            Vector3 full = transform.localScale;
+            Vector3 full = _initialScale;
             float t = 0f;
             while (t < 1f)
             {
@@ -182,6 +234,7 @@ namespace Aetheria
                 yield return null;
             }
             transform.localScale = full;
+            _regrowRoutine = null;
         }
     }
 }

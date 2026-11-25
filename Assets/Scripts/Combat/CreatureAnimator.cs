@@ -20,10 +20,11 @@ namespace Aetheria
 
         public Animator Animator { get; private set; }
         public bool Valid => Animator != null && Animator.isActiveAndEnabled && Animator.runtimeAnimatorController != null;
+        public bool HasController => Valid;
         public bool InAttack { get; private set; }
         public bool InStun { get; private set; }
         public bool Dead { get; private set; }
-        /// <summary>Normalized time (seconds) spent in the current action.</summary>
+        /// <summary>Time (seconds) spent in the current action.</summary>
         public float ActionTime { get; private set; }
         public int CurrentAction { get; private set; }
 
@@ -54,24 +55,38 @@ namespace Aetheria
             Animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         }
 
+        private static bool MatchesActionHash(int action, int shortNameHash) => action switch
+        {
+            1 => shortNameHash == SAttack1,
+            2 => shortNameHash == SAttack2,
+            3 => shortNameHash == SAttack3,
+            4 => shortNameHash == SAttack4,
+            5 => shortNameHash == SCast,
+            6 => shortNameHash == SStun,
+            _ => false
+        };
+
         /// <summary>True while the base layer is in the given action's state.</summary>
         public bool InActionState(int action, out float normalizedTime)
         {
             normalizedTime = 0f;
             if (!Valid) return false;
             var st = Animator.GetCurrentAnimatorStateInfo(0);
-            normalizedTime = st.normalizedTime % 1f;
-            if (st.normalizedTime >= 1f) normalizedTime = st.normalizedTime;
-            switch (action)
+            if (MatchesActionHash(action, st.shortNameHash))
             {
-                case 1: return st.shortNameHash == SAttack1;
-                case 2: return st.shortNameHash == SAttack2;
-                case 3: return st.shortNameHash == SAttack3;
-                case 4: return st.shortNameHash == SAttack4;
-                case 5: return st.shortNameHash == SCast;
-                case 6: return st.shortNameHash == SStun;
-                default: return false;
+                normalizedTime = st.normalizedTime >= 1f ? st.normalizedTime : st.normalizedTime % 1f;
+                return true;
             }
+            if (Animator.IsInTransition(0))
+            {
+                var next = Animator.GetNextAnimatorStateInfo(0);
+                if (MatchesActionHash(action, next.shortNameHash))
+                {
+                    normalizedTime = next.normalizedTime >= 1f ? next.normalizedTime : next.normalizedTime % 1f;
+                    return true;
+                }
+            }
+            return false;
         }
 
         public bool InDeathState => Valid && Animator.GetCurrentAnimatorStateInfo(0).shortNameHash == SDeath;
@@ -86,19 +101,22 @@ namespace Aetheria
         /// <summary>Starts an action (1..4 attack, 5 cast, 6 stun). Returns false if the creature cannot animate.</summary>
         public bool PlayAction(int action)
         {
-            if (!Valid || Dead) return false;
-            Animator.SetInteger(PAction, action);
-            Animator.SetTrigger(TDo);
+            if (Dead) return false;
             CurrentAction = action;
             ActionTime = 0f;
             InAttack = action >= 1 && action <= 4;
             InStun = action == 6;
+            if (!Valid) return false;
+            Animator.SetInteger(PAction, action);
+            Animator.SetTrigger(TDo);
             return true;
         }
 
         public void PlayHit()
         {
-            if (!Valid || Dead) return;
+            if (Dead) return;
+            ActionTime = 0f;
+            if (!Valid) return;
             Animator.SetTrigger(THit);
         }
 
@@ -107,6 +125,7 @@ namespace Aetheria
             Dead = true;
             InAttack = false;
             InStun = false;
+            ActionTime = 0f;
             if (!Valid) return;
             Animator.SetTrigger(TDie);
         }
@@ -117,24 +136,40 @@ namespace Aetheria
             InAttack = false;
             InStun = false;
             ActionTime = 0f;
+            CurrentAction = 0;
             if (!Valid) return;
-            Animator.Rebind();
+            if (Animator.avatar != null && Animator.avatar.isValid)
+                Animator.Rebind(false);
             Animator.Update(0f);
             Animator.SetTrigger(TRevive);
         }
 
         private void Update()
         {
-            if (InAttack || InStun) ActionTime += Time.deltaTime;
-            if ((InAttack || InStun) && Valid && !InActionState(CurrentAction, out _))
+            if (InAttack || InStun)
             {
-                // The action's state has been left (interrupted or finished)
-                var st = Animator.GetCurrentAnimatorStateInfo(0);
-                if (st.shortNameHash == SAttack1 || st.shortNameHash == SAttack2 || st.shortNameHash == SAttack3 ||
-                    st.shortNameHash == SAttack4 || st.shortNameHash == SStun || st.shortNameHash == SCast)
+                ActionTime += Time.deltaTime;
+                if (!Valid)
+                {
+                    float simDuration = InStun ? 2.5f : 0.85f;
+                    if (ActionTime >= simDuration)
+                    {
+                        InAttack = false;
+                        InStun = false;
+                    }
                     return;
-                InAttack = false;
-                InStun = false;
+                }
+                if (!InActionState(CurrentAction, out _))
+                {
+                    if (ActionTime < 0.25f || Animator.IsInTransition(0)) return;
+                    // The action's state has been left (interrupted or finished)
+                    var st = Animator.GetCurrentAnimatorStateInfo(0);
+                    if (st.shortNameHash == SAttack1 || st.shortNameHash == SAttack2 || st.shortNameHash == SAttack3 ||
+                        st.shortNameHash == SAttack4 || st.shortNameHash == SStun || st.shortNameHash == SCast)
+                        return;
+                    InAttack = false;
+                    InStun = false;
+                }
             }
         }
     }

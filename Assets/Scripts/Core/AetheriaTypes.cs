@@ -404,43 +404,11 @@ namespace Aetheria
             _             => OrbLocked
         };
 
-        private static Material _litTemplate;
-        private static Material _particleTemplate;
-
         public static Material GetLitMaterial(Color baseCol, Color? emissive = null)
-        {
-            if (_litTemplate == null) _litTemplate = Resources.Load<Material>("Materials/URP_Lit_Template");
-            Material m;
-            if (_litTemplate != null) m = new Material(_litTemplate);
-            else
-            {
-                var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Diffuse");
-                m = new Material(sh);
-            }
-            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", baseCol);
-            m.color = baseCol;
-            if (emissive.HasValue)
-            {
-                m.EnableKeyword("_EMISSION");
-                m.SetColor("_EmissionColor", emissive.Value);
-            }
-            return m;
-        }
+            => AetheriaRender.Lit(baseCol, 0.36f, 0f, emissive);
 
         public static Material GetParticleMaterial(Color col)
-        {
-            if (_particleTemplate == null) _particleTemplate = Resources.Load<Material>("Materials/URP_Particles_Unlit_Template");
-            Material m;
-            if (_particleTemplate != null) m = new Material(_particleTemplate);
-            else
-            {
-                var sh = Shader.Find("Universal Render Pipeline/Particles/Unlit") ?? Shader.Find("Particles/Standard Unlit") ?? Shader.Find("Sprites/Default");
-                m = new Material(sh);
-            }
-            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", col);
-            m.color = col;
-            return m;
-        }
+            => AetheriaRender.Particle(col, additive: true);
 
         public static void RelaxHumanoidArms(GameObject root)
         {

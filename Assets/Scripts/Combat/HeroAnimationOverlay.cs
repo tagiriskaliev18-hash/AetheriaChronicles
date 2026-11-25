@@ -18,13 +18,23 @@ namespace Aetheria
 
         public Transform VisualRoot;
 
+        private HeroController _hero;
+        private Animator _anim;
         private Transform _upperL, _lowerL, _upperR, _lowerR, _handL, _handR, _spine, _head, _thighL, _thighR, _calfL, _calfR;
+        private Quaternion _restUpperL, _restLowerL, _restUpperR, _restLowerR, _restHandL, _restHandR, _restSpine, _restHead, _restThighL, _restThighR, _restCalfL, _restCalfR;
         private bool _bound;
+
+        private void Awake()
+        {
+            _hero = GetComponent<HeroController>();
+        }
 
         public void Bind(GameObject model)
         {
             _bound = false;
+            _anim = null;
             if (model == null) return;
+            _anim = model.GetComponentInChildren<Animator>(true);
             _upperL = Find(model.transform, "upperarm_l");
             _lowerL = Find(model.transform, "lowerarm_l");
             _upperR = Find(model.transform, "upperarm_r");
@@ -37,18 +47,59 @@ namespace Aetheria
             _thighR = Find(model.transform, "thigh_r");
             _calfL = Find(model.transform, "calf_l");
             _calfR = Find(model.transform, "calf_r");
-            _bound = _upperL != null || _upperR != null;
+
+            if (_upperL != null) _restUpperL = _upperL.localRotation;
+            if (_lowerL != null) _restLowerL = _lowerL.localRotation;
+            if (_upperR != null) _restUpperR = _upperR.localRotation;
+            if (_lowerR != null) _restLowerR = _lowerR.localRotation;
+            if (_handL != null) _restHandL = _handL.localRotation;
+            if (_handR != null) _restHandR = _handR.localRotation;
+            if (_spine != null) _restSpine = _spine.localRotation;
+            if (_head != null) _restHead = _head.localRotation;
+            if (_thighL != null) _restThighL = _thighL.localRotation;
+            if (_thighR != null) _restThighR = _thighR.localRotation;
+            if (_calfL != null) _restCalfL = _calfL.localRotation;
+            if (_calfR != null) _restCalfR = _calfR.localRotation;
+
+            _bound = _upperL != null || _upperR != null || _head != null || _spine != null;
+        }
+
+        private void RestoreRestPose()
+        {
+            if (_upperL != null) _upperL.localRotation = _restUpperL;
+            if (_lowerL != null) _lowerL.localRotation = _restLowerL;
+            if (_upperR != null) _upperR.localRotation = _restUpperR;
+            if (_lowerR != null) _lowerR.localRotation = _restLowerR;
+            if (_handL != null) _handL.localRotation = _restHandL;
+            if (_handR != null) _handR.localRotation = _restHandR;
+            if (_spine != null) _spine.localRotation = _restSpine;
+            if (_head != null) _head.localRotation = _restHead;
+            if (_thighL != null) _thighL.localRotation = _restThighL;
+            if (_thighR != null) _thighR.localRotation = _restThighR;
+            if (_calfL != null) _calfL.localRotation = _restCalfL;
+            if (_calfR != null) _calfR.localRotation = _restCalfR;
         }
 
         private static Transform Find(Transform root, params string[] names) => AetheriaPalette.FindBoneAny(root, names);
 
         private void LateUpdate()
         {
+            if (_hero != null && _hero.IsDead)
+            {
+                if (VisualRoot != null)
+                {
+                    VisualRoot.localRotation = Quaternion.identity;
+                    VisualRoot.localPosition = Vector3.zero;
+                }
+                return;
+            }
+
             // Body lean of the whole visual: pitch around the chest height so the feet stay planted
             if (VisualRoot != null && (Mathf.Abs(LeanPitch) > 0.01f || Mathf.Abs(LeanRoll) > 0.01f))
             {
+                float yScale = Mathf.Max(0.4f, VisualRoot.localScale.y);
                 Quaternion rot = Quaternion.Euler(LeanPitch, 0f, LeanRoll);
-                Vector3 pivot = new Vector3(0f, 1.05f, 0f);
+                Vector3 pivot = new Vector3(0f, 1.05f * yScale, 0f);
                 VisualRoot.localRotation = rot;
                 VisualRoot.localPosition = pivot - rot * pivot;
             }
@@ -59,6 +110,9 @@ namespace Aetheria
             }
 
             if (!_bound) return;
+
+            bool hasController = _anim != null && _anim.isActiveAndEnabled && _anim.runtimeAnimatorController != null;
+            if (!hasController) RestoreRestPose();
 
             Vector3 fwd = transform.forward, up = Vector3.up, right = transform.right;
 
@@ -85,7 +139,14 @@ namespace Aetheria
                 Vector3 dir = LookTarget - _head.position;
                 if (dir.sqrMagnitude > 0.01f)
                 {
-                    Quaternion wanted = Quaternion.RotateTowards(_head.rotation, Quaternion.LookRotation(dir, up), 52f);
+                    Vector3 flatFwd = transform.forward;
+                    Vector3 dirNorm = dir.normalized;
+                    float ang = Vector3.Angle(flatFwd, dirNorm);
+                    Vector3 clampedDir = ang > 55f
+                        ? Vector3.RotateTowards(flatFwd, dirNorm, 55f * Mathf.Deg2Rad, 0f)
+                        : dirNorm;
+                    Quaternion targetHead = Quaternion.LookRotation(clampedDir, up);
+                    Quaternion wanted = Quaternion.RotateTowards(_head.rotation, targetHead, 55f);
                     _head.rotation = Quaternion.Slerp(_head.rotation, wanted, LookWeight);
                 }
             }

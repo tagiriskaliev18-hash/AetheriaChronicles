@@ -74,6 +74,7 @@ namespace Aetheria.Editor
             PlayerSettings.SetApiCompatibilityLevel(NamedBuildTarget.Standalone, ApiCompatibilityLevel.NET_Standard);
             QualitySettings.ForEach(() =>
             {
+                QualitySettings.renderPipeline = null;
                 QualitySettings.shadows = ShadowQuality.All;
                 QualitySettings.shadowmaskMode = ShadowmaskMode.DistanceShadowmask;
                 QualitySettings.vSyncCount = 0;
@@ -97,6 +98,7 @@ namespace Aetheria.Editor
                 profile = VolumeProfileFactory.CreateVolumeProfileAtPath(ProfilePath);
             }
             asset.volumeProfile = profile;
+            EditorUtility.SetDirty(asset);
 
             // Environment
             var env = Get<VisualEnvironment>(profile);
@@ -191,7 +193,8 @@ namespace Aetheria.Editor
             AssetDatabase.SaveAssets();
 
             VolumeProfileUtils.EnsureAllOverridesForDefaultProfile(profile);
-            VolumeManager.instance.SetGlobalDefaultProfile(profile);
+            if (VolumeManager.instance != null && VolumeManager.instance.isInitialized)
+                VolumeManager.instance.SetGlobalDefaultProfile(profile);
             Debug.Log("[HDRP] Look profile built (gradient sky, volumetric fog, RT reflections/GI/AO, ACES).");
         }
 

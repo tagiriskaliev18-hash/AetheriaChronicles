@@ -2,13 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 
 namespace Aetheria
 {
     public enum MusicState { None, Menu, Village, Field, Battle, Boss }
 
     /// <summary>
-    /// Auto-detects GPU hardware capabilities for UltraURP vs ClassicPerformance,
+    /// Auto-detects GPU hardware capabilities for UltraHDRP vs ClassicPerformance,
     /// manages dual-deck orchestral music crossfades + SFX, and drives Wukong-style micro HitStop.
     /// </summary>
     public class AudioAndQualityService : MonoBehaviour
@@ -18,9 +19,11 @@ namespace Aetheria
         public RenderTier ActiveTier { get; private set; } = RenderTier.CrimsonHdrpUltra;
         public string GPUName { get; private set; } = "Unknown GPU";
         public MusicState CurrentMusic { get; private set; } = MusicState.None;
+        public float MasterVolume = 1.0f;
         public float MusicVolume = 0.65f;
         public float SfxVolume = 0.80f;
         public bool MusicMuted = false;
+        public bool SfxMuted = false;
 
         private AudioSource _deckA;
         private AudioSource _deckB;
@@ -35,6 +38,7 @@ namespace Aetheria
         private readonly Dictionary<MusicState, AudioClip> _musicClips = new Dictionary<MusicState, AudioClip>();
         private readonly Dictionary<string, AudioClip> _sfxCache = new Dictionary<string, AudioClip>();
         private Coroutine _hitStopRoutine;
+        private Coroutine _crossfadeRoutine;
 
         private void Awake()
         {
@@ -67,8 +71,10 @@ namespace Aetheria
             GPUName = SystemInfo.graphicsDeviceName ?? "Generic GPU";
             string upper = GPUName.ToUpperInvariant();
             bool highEnd = SystemInfo.graphicsMemorySize >= 4096 &&
-                           (upper.Contains("RTX") || upper.Contains("RX 6") || upper.Contains("RX 7") ||
-                            upper.Contains("RX 8") || upper.Contains("GTX 16") || upper.Contains("ARC"));
+                           (upper.Contains("RTX") || upper.Contains("RX 5") || upper.Contains("RX 6") ||
+                            upper.Contains("RX 7") || upper.Contains("RX 8") || upper.Contains("RX 9") ||
+                            upper.Contains("GTX 10") || upper.Contains("GTX 16") || upper.Contains("ARC") ||
+                            upper.Contains("TITAN") || upper.Contains("QUADRO") || upper.Contains("APPLE"));
             ApplyRenderTier(highEnd ? RenderTier.CrimsonHdrpUltra : RenderTier.ClassicPerformance);
         }
 
@@ -83,10 +89,22 @@ namespace Aetheria
             ActiveTier = tier;
             bool ultra = tier == RenderTier.CrimsonHdrpUltra;
             QualitySettings.shadows = UnityEngine.ShadowQuality.All;
-            QualitySettings.shadowDistance = ultra ? 180f : 75f;
-            QualitySettings.shadowCascades = ultra ? 4 : 2;
             QualitySettings.lodBias = ultra ? 1.8f : 0.9f;
             QualitySettings.globalTextureMipmapLimit = ultra ? 0 : 1;
+
+            var vol = AetheriaRenderImpl.FindHighestPriorityGlobalVolume(requireGradientSky: false);
+            if (vol != null)
+            {
+                var prof = Application.isPlaying ? vol.profile : vol.sharedProfile;
+                if (prof != null)
+                {
+                    if (!prof.TryGet<HDShadowSettings>(out var shadows))
+                        shadows = prof.Add<HDShadowSettings>(true);
+                    shadows.maxShadowDistance.Override(ultra ? 180f : 75f);
+                    shadows.cascadeShadowSplitCount.Override(ultra ? 4 : 2);
+                    VolumeManager.instance?.OnVolumeProfileChanged(prof);
+                }
+            }
 
             AetheriaRender.SetUpscalerEnabled(ultra);
         }
@@ -120,7 +138,7 @@ namespace Aetheria
             if (amb != null)
             {
                 _ambientDeck.clip = amb;
-                _ambientDeck.volume = MusicMuted ? 0f : MusicVolume * 0.22f;
+                _ambientDeck.volume = MusicMuted ? 0f : MusicVolume * MasterVolume * 0.22f;
                 _ambientDeck.Play();
             }
         }
@@ -163,23 +181,58 @@ namespace Aetheria
                 TransitionMusic(active ? MusicState.Boss : (_inVillage ? MusicState.Village : MusicState.Field), 1.0f);
         }
 
+        public void SetMasterVolume(float volume)
+        {
+            MasterVolume = Mathf.Clamp01(volume);
+            ApplyMusicVolumes();
+        }
+
+        public void SetMusicVolume(float volume)
+        {
+            MusicVolume = Mathf.Clamp01(volume);
+            ApplyMusicVolumes();
+        }
+
+        public void SetSfxVolume(float volume)
+        {
+            SfxVolume = Mathf.Clamp01(volume);
+        }
+
+        public void ToggleSfxMute()
+        {
+            SfxMuted = !SfxMuted;
+        }
+
+        public void SetSfxMuted(bool mute)
+        {
+            SfxMuted = mute;
+        }
+
         public void SetMuted(bool mute)
         {
             MusicMuted = mute;
-            float vol = mute ? 0f : MusicVolume;
-            (_activeDeck == 0 ? _deckA : _deckB).volume = vol;
-            _ambientDeck.volume = mute ? 0f : MusicVolume * 0.22f;
+            ApplyMusicVolumes();
+        }
+
+        private void ApplyMusicVolumes()
+        {
+            float vol = MusicMuted ? 0f : MusicVolume * MasterVolume;
+            if (_deckA != null && _deckB != null)
+                (_activeDeck == 0 ? _deckA : _deckB).volume = vol;
+            if (_ambientDeck != null)
+                _ambientDeck.volume = vol * 0.22f;
         }
 
         public void TransitionMusic(MusicState next, float fadeSec)
         {
             if (CurrentMusic == next) return;
-            CurrentMusic = next;
             if (!_musicClips.TryGetValue(next, out var clip) || clip == null) return;
+            CurrentMusic = next;
+            if (_crossfadeRoutine != null) StopCoroutine(_crossfadeRoutine);
             var incoming = _activeDeck == 0 ? _deckB : _deckA;
             var outgoing = _activeDeck == 0 ? _deckA : _deckB;
             _activeDeck = 1 - _activeDeck;
-            StartCoroutine(CrossfadeRoutine(incoming, outgoing, clip, fadeSec));
+            _crossfadeRoutine = StartCoroutine(CrossfadeRoutine(incoming, outgoing, clip, fadeSec));
         }
 
         private IEnumerator CrossfadeRoutine(AudioSource inc, AudioSource outg, AudioClip clip, float dur)
@@ -187,45 +240,56 @@ namespace Aetheria
             inc.clip = clip;
             inc.volume = 0f;
             inc.Play();
-            float target = MusicMuted ? 0f : MusicVolume;
+            float target = MusicMuted ? 0f : MusicVolume * MasterVolume;
             float startOut = outg.volume;
             float t = 0f;
-            while (t < dur)
+            float safeDur = Mathf.Max(0.05f, dur);
+            while (t < safeDur)
             {
                 t += Time.unscaledDeltaTime;
-                float u = Mathf.Clamp01(t / Mathf.Max(0.05f, dur));
+                float u = Mathf.Clamp01(t / safeDur);
+                target = MusicMuted ? 0f : MusicVolume * MasterVolume;
                 inc.volume = Mathf.Lerp(0f, target, u);
                 outg.volume = Mathf.Lerp(startOut, 0f, u);
                 yield return null;
             }
             outg.Stop();
-            inc.volume = target;
+            inc.volume = MusicMuted ? 0f : MusicVolume * MasterVolume;
+            _crossfadeRoutine = null;
         }
 
         public void PlaySfx2D(string clipName, float vol = 1f)
         {
-            if (MusicMuted || string.IsNullOrEmpty(clipName)) return;
+            if (SfxMuted || string.IsNullOrEmpty(clipName)) return;
             if (!_sfxCache.TryGetValue(clipName, out var clip))
             {
                 clip = Resources.Load<AudioClip>("Audio/" + clipName);
                 _sfxCache[clipName] = clip;
             }
-            if (clip != null) _sfxSource.PlayOneShot(clip, vol * SfxVolume);
+            if (clip != null && _sfxSource != null) _sfxSource.PlayOneShot(clip, vol * SfxVolume * MasterVolume);
         }
 
         public void PlaySfxAt(string clipName, Vector3 pos, float vol = 0.9f)
         {
-            if (MusicMuted || string.IsNullOrEmpty(clipName)) return;
+            if (SfxMuted || string.IsNullOrEmpty(clipName)) return;
             if (!_sfxCache.TryGetValue(clipName, out var clip))
             {
                 clip = Resources.Load<AudioClip>("Audio/" + clipName);
                 _sfxCache[clipName] = clip;
             }
-            if (clip != null) AudioSource.PlayClipAtPoint(clip, pos, vol * SfxVolume);
+            if (clip != null) AudioSource.PlayClipAtPoint(clip, pos, vol * SfxVolume * MasterVolume);
+        }
+
+        private static bool IsGamePaused()
+        {
+            if (Time.timeScale <= 0.001f) return true;
+            var hud = AetheriaHUDManager.Instance;
+            return hud != null && hud.IsPaused;
         }
 
         public void RequestHitStop(float durationSec = 0.055f, float scale = 0.08f)
         {
+            if (IsGamePaused()) return;
             if (_hitStopRoutine != null) StopCoroutine(_hitStopRoutine);
             _hitStopRoutine = StartCoroutine(HitStopRoutine(durationSec, scale));
         }
@@ -234,7 +298,8 @@ namespace Aetheria
         {
             Time.timeScale = Mathf.Clamp(scale, 0.02f, 1f);
             yield return new WaitForSecondsRealtime(durationSec);
-            Time.timeScale = 1f;
+            if (Time.timeScale > 0.001f && (AetheriaHUDManager.Instance == null || !AetheriaHUDManager.Instance.IsPaused))
+                Time.timeScale = 1f;
             _hitStopRoutine = null;
         }
     }
