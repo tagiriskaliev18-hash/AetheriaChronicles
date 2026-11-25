@@ -114,6 +114,7 @@ namespace AetheriaWorldConst
 	static constexpr TCHAR MeshMWAMGrassA[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Plants/SM_MWAM_GrassA.SM_MWAM_GrassA");
 	static constexpr TCHAR MeshMWAMGrassB[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Plants/SM_MWAM_GrassB.SM_MWAM_GrassB");
 	static constexpr TCHAR MeshMWAMGrassC[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Plants/SM_MWAM_GrassC.SM_MWAM_GrassC");
+	static constexpr TCHAR MeshMWAMGrassD[]         = TEXT("/Game/MWLandscapeAutoMaterial/Meshes/Plants/SM_MWAM_GrassD.SM_MWAM_GrassD");
 	static constexpr TCHAR MeshFlowerHeliophila[]   = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_flower_heliophila_large_LP.SM_flower_heliophila_large_LP");
 	static constexpr TCHAR MeshFlowerGazania[]      = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_flower_gazania_a_LP.SM_flower_gazania_a_LP");
 	static constexpr TCHAR MeshWildRooibosBush[]    = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_wild_rooibos_bush_a_LP.SM_wild_rooibos_bush_a_LP");
@@ -138,6 +139,15 @@ namespace AetheriaWorldConst
 	static constexpr TCHAR MeshFlowerEmpodium[]     = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_flower_empodium_a_LP.SM_flower_empodium_a_LP");
 	static constexpr TCHAR MeshCrystalIceplant[]    = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_crystalline_iceplant_a_LP.SM_crystalline_iceplant_a_LP");
 	static constexpr TCHAR MeshSucculentRock[]      = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_cheiridopsis_succulent_a_LP.SM_cheiridopsis_succulent_a_LP");
+	// Ash Barrens desert district: sparse camelthorn-like quiver trees + rock-face/cliff bluffs
+	static constexpr TCHAR MeshQuiverTree01[]       = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_quiver_tree_01_LP.SM_quiver_tree_01_LP");
+	static constexpr TCHAR MeshQuiverTree02[]       = TEXT("/Game/Namaqualand/Meshes/Foliage/LP/SM_quiver_tree_02_LP.SM_quiver_tree_02_LP");
+	static constexpr TCHAR MeshNamaqualandRockA[]   = TEXT("/Game/Namaqualand/Meshes/General/LP/SM_namaqualand_rocks_01_a_LP.SM_namaqualand_rocks_01_a_LP");
+	static constexpr TCHAR MeshNamaqualandRockB[]   = TEXT("/Game/Namaqualand/Meshes/General/LP/SM_namaqualand_rocks_01_b_LP.SM_namaqualand_rocks_01_b_LP");
+	static constexpr TCHAR MeshNamaqualandRockC[]   = TEXT("/Game/Namaqualand/Meshes/General/LP/SM_namaqualand_rocks_01_c_LP.SM_namaqualand_rocks_01_c_LP");
+	static constexpr TCHAR MeshNamaqualandRockD[]   = TEXT("/Game/Namaqualand/Meshes/General/LP/SM_namaqualand_rocks_01_d_LP.SM_namaqualand_rocks_01_d_LP");
+	static constexpr TCHAR MeshNamaqualandCliff01[] = TEXT("/Game/Namaqualand/Meshes/General/LP/SM_namaqualand_cliff_01_LP.SM_namaqualand_cliff_01_LP");
+	static constexpr TCHAR MeshNamaqualandCliff02[] = TEXT("/Game/Namaqualand/Meshes/General/LP/SM_namaqualand_cliff_02_LP.SM_namaqualand_cliff_02_LP");
 
 	// Verified Cascade Fire & Waterfall VFX + Niagara Wind/Leaf/Petal/Restoration VFX + Ambient SFX
 	static constexpr TCHAR ParticleTorchFire[]      = TEXT("/Game/MedievalDungeon/Particles/P_Torch_Fire.P_Torch_Fire");
@@ -1844,9 +1854,11 @@ void AAetheriaWorldBuilder::SetupAtmosphereAndLighting()
 		{
 			FogComp->SetVisibility(true);
 			FogComp->SetHiddenInGame(false);
-			FogComp->SetFogDensity(0.0052f);
-			FogComp->SetFogHeightFalloff(0.20f);
-			FogComp->SetFogMaxOpacity(0.78f);
+			// Crimson Desert reads as deep, crisp air with real distance separation — not a flat haze sheet.
+			// Low density + far start distance keeps the 4km vista legible while fog still pools in valleys.
+			FogComp->SetFogDensity(0.0021f);
+			FogComp->SetFogHeightFalloff(0.28f);
+			FogComp->SetFogMaxOpacity(0.62f);
 			FogComp->SetStartDistance(350.0f);
 			FogComp->SetVolumetricFog(true);
 			FogComp->SetVolumetricFogScatteringDistribution(0.68f);
@@ -3189,6 +3201,8 @@ void AAetheriaWorldBuilder::BuildAllBiomes()
 	BuildHighkeepCitadel();
 	BuildAshCalderaAndEmberCrypt();
 	BuildCrystalGlacierPeaks();
+	BuildAshBarrensDesert();
+	BuildRockStrataOutcrops();
 	BuildSkyRuneRings();
 	BuildKingsRoadAndLanterns();
 	BuildLushMeadowFoliageAndWind();
@@ -4630,7 +4644,7 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 	TArray<FTransform> BoulderTransforms;
 	TArray<FTransform> BushTransforms;
 	BoulderTransforms.Reserve(110);
-	BushTransforms.Reserve(180);
+	BushTransforms.Reserve(300);
 
 	int32 ClustersPlaced = 0;
 	int32 Attempts = 0;
@@ -4674,16 +4688,16 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 		}
 	}
 
-	// 2. 170 Glowing Sapphire Blue-Leaf Full-Canopy Trees + Wildflower Understory
+	// 2. 320 Glowing Sapphire Blue-Leaf Full-Canopy Trees + Wildflower Understory
 	TArray<FTransform> LargeTreeTransforms;
 	TArray<FTransform> MedTreeTransforms;
 	TArray<FTransform> FlowerTransforms;
-	LargeTreeTransforms.Reserve(90);
-	MedTreeTransforms.Reserve(90);
-	FlowerTransforms.Reserve(260);
+	LargeTreeTransforms.Reserve(170);
+	MedTreeTransforms.Reserve(160);
+	FlowerTransforms.Reserve(450);
 
 	Attempts = 0;
-	while ((LargeTreeTransforms.Num() + MedTreeTransforms.Num()) < 170 && Attempts < 1400)
+	while ((LargeTreeTransforms.Num() + MedTreeTransforms.Num()) < 320 && Attempts < 3200)
 	{
 		++Attempts;
 		const bool bWest = ((LargeTreeTransforms.Num() + MedTreeTransforms.Num()) % 2 == 0);
@@ -4718,7 +4732,7 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 		}
 
 		// Understory violet-blue wildflowers & occasional bush around tree base
-		if (FlowerMesh && FlowerTransforms.Num() < 260)
+		if (FlowerMesh && FlowerTransforms.Num() < 450)
 		{
 			for (int32 FIdx = 0; FIdx < 2; ++FIdx)
 			{
@@ -4731,7 +4745,7 @@ void AAetheriaWorldBuilder::BuildSapphireWhisperingWoods()
 				FlowerTransforms.Emplace(FRotator(0.f, Rng.FRandRange(0.f, 360.f), 0.f), FVector(FX, FY, FZ), FVector(FS));
 			}
 		}
-		if (BushMesh && BushTransforms.Num() < 180 && Rng.FRand() < 0.45f)
+		if (BushMesh && BushTransforms.Num() < 300 && Rng.FRand() < 0.45f)
 		{
 			const float BAngle = Rng.FRandRange(0.f, UE_TWO_PI);
 			const float BX = X + FMath::Cos(BAngle) * Rng.FRandRange(145.f, 290.f);
@@ -5997,6 +6011,323 @@ void AAetheriaWorldBuilder::BuildKingsRoadAndLanterns()
 	BuildCurbedRoadSegment(TEXT("KingsRoad_EastTrailB"), FVector2D(5400.f, 1150.f), FVector2D(9350.f, -1150.f), 360.f, false, 1800.f);
 }
 
+// Ash Barrens — new dry desert district in the south-east corridor (between King's Road, the Eastern Trail
+// and the Ash Caldera approach, X 3800..9200 / Y -6800..-800). Sparse quiver trees, fossil rock mesas,
+// sun-bleached gravel and succulents: a Crimson Desert-style badlands stopover before the caldera.
+void AAetheriaWorldBuilder::BuildAshBarrensDesert()
+{
+	UMaterialInterface* GrassWindMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatMWAMPlantsGrass
+	});
+	// Dry-tan tint attempt on the grass MID; silently ignored if the master material lacks the parameter.
+	UMaterialInstanceDynamic* DryGrassMID = GrassWindMat ? UMaterialInstanceDynamic::Create(GrassWindMat, this) : nullptr;
+	if (DryGrassMID)
+	{
+		DryGrassMID->SetVectorParameterValue(TEXT("MW_GrassColorCorrection"), FLinearColor(1.45f, 1.12f, 0.46f, 1.0f));
+		DryGrassMID->SetScalarParameterValue(TEXT("MW_GrassRoughness"), 0.97f);
+	}
+	UMaterialInterface* DryGrassMat = DryGrassMID ? static_cast<UMaterialInterface*>(DryGrassMID) : GrassWindMat;
+
+	UHierarchicalInstancedStaticMeshComponent* QuiverTree01HISM = CreateFoliageHISM(
+		TEXT("AshBarrens_QuiverTree01_HISM"), AetheriaWorldConst::MeshQuiverTree01, nullptr, true, 15000, 24000, true);
+	UHierarchicalInstancedStaticMeshComponent* QuiverTree02HISM = CreateFoliageHISM(
+		TEXT("AshBarrens_QuiverTree02_HISM"), AetheriaWorldConst::MeshQuiverTree02, nullptr, true, 15000, 24000, true);
+	UHierarchicalInstancedStaticMeshComponent* RockAC_HISM = CreateFoliageHISM(
+		TEXT("AshBarrens_RocksAC_HISM"), AetheriaWorldConst::MeshNamaqualandRockA, nullptr, true, 14000, 22000, false);
+	UHierarchicalInstancedStaticMeshComponent* RockCC_HISM = CreateFoliageHISM(
+		TEXT("AshBarrens_RocksCC_HISM"), AetheriaWorldConst::MeshNamaqualandRockC, nullptr, true, 14000, 22000, false);
+	UHierarchicalInstancedStaticMeshComponent* BoulderHISM = CreateFoliageHISM(
+		TEXT("AshBarrens_BouldersAC_HISM"), AetheriaWorldConst::MeshNamaqualandBoulderA, nullptr, true, 16000, 24000, false);
+	UHierarchicalInstancedStaticMeshComponent* StonesAHISM = CreateFoliageHISM(
+		TEXT("AshBarrens_StonesAC_HISM"), AetheriaWorldConst::MeshPebbleStonesA, nullptr, false, 9000, 15000, false);
+	UHierarchicalInstancedStaticMeshComponent* StonesBHISM = CreateFoliageHISM(
+		TEXT("AshBarrens_StonesBC_HISM"), AetheriaWorldConst::MeshPebbleStonesB, nullptr, false, 9000, 15000, false);
+	UHierarchicalInstancedStaticMeshComponent* SucculentHISM = CreateFoliageHISM(
+		TEXT("AshBarrens_Succulent_HISM"), AetheriaWorldConst::MeshSucculentRock, nullptr, false, 9000, 15000, false);
+	UHierarchicalInstancedStaticMeshComponent* DryGrassAHISM = CreateFoliageHISM(
+		TEXT("AshBarrens_DryGrassAC_HISM"), AetheriaWorldConst::MeshMWAMGrassA, DryGrassMat, false, 7500, 11500, false);
+	UHierarchicalInstancedStaticMeshComponent* DryGrassBHISM = CreateFoliageHISM(
+		TEXT("AshBarrens_DryGrassBC_HISM"), AetheriaWorldConst::MeshMWAMGrassC, DryGrassMat, false, 7500, 11500, false);
+
+	UStaticMesh* QuiverTree01Mesh = LoadMeshSafe(AetheriaWorldConst::MeshQuiverTree01, nullptr);
+	UStaticMesh* QuiverTree02Mesh = LoadMeshSafe(AetheriaWorldConst::MeshQuiverTree02, nullptr);
+	UStaticMesh* RockAMesh = LoadMeshSafe(AetheriaWorldConst::MeshNamaqualandRockA, nullptr);
+	UStaticMesh* RockCMesh = LoadMeshSafe(AetheriaWorldConst::MeshNamaqualandRockC, nullptr);
+	UStaticMesh* BoulderMesh = LoadMeshSafe(AetheriaWorldConst::MeshNamaqualandBoulderA, nullptr);
+	UStaticMesh* StonesAMesh = LoadMeshSafe(AetheriaWorldConst::MeshPebbleStonesA, nullptr);
+	UStaticMesh* StonesBMesh = LoadMeshSafe(AetheriaWorldConst::MeshPebbleStonesB, nullptr);
+	UStaticMesh* SucculentMesh = LoadMeshSafe(AetheriaWorldConst::MeshSucculentRock, nullptr);
+	UStaticMesh* DryGrassAMesh = LoadMeshSafe(AetheriaWorldConst::MeshMWAMGrassA, nullptr);
+	UStaticMesh* DryGrassCMesh = LoadMeshSafe(AetheriaWorldConst::MeshMWAMGrassC, nullptr);
+
+	const float Tree01Unit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(QuiverTree01Mesh, 560.f, 0.25f, 2.2f);
+	const float Tree02Unit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(QuiverTree02Mesh, 430.f, 0.25f, 2.2f);
+	const float RockAUnit  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(RockAMesh, 210.f, 0.35f, 2.6f);
+	const float RockCUnit  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(RockCMesh, 165.f, 0.35f, 2.4f);
+	const float BoulderUnit= AetheriaWorldHelpers::ComputeUniformScaleForHeight(BoulderMesh, 320.f, 0.40f, 2.8f);
+	const float StonesAUnit= AetheriaWorldHelpers::ComputeUniformScaleForHeight(StonesAMesh, 34.f, 0.30f, 2.2f);
+	const float StonesBUnit= AetheriaWorldHelpers::ComputeUniformScaleForHeight(StonesBMesh, 28.f, 0.30f, 2.2f);
+	const float SucculentUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(SucculentMesh, 52.f, 0.25f, 2.4f);
+	const float DryGrassAUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(DryGrassAMesh, 46.f, 0.25f, 2.6f);
+	const float DryGrassCUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(DryGrassCMesh, 48.f, 0.25f, 2.6f);
+
+	FRandomStream BarrensRng(19770211);
+	int32 Attempts = 0;
+
+	// 1. ~140 sparse quiver (camelthorn) trees — the desert silhouette
+	TArray<FTransform> Quiver01Transforms, Quiver02Transforms;
+	Quiver01Transforms.Reserve(85);
+	Quiver02Transforms.Reserve(70);
+	Attempts = 0;
+	while ((Quiver01Transforms.Num() + Quiver02Transforms.Num()) < 140 && Attempts < 1800)
+	{
+		++Attempts;
+		const float X = BarrensRng.FRandRange(3900.f, 9100.f);
+		const float Y = BarrensRng.FRandRange(-6700.f, -900.f);
+		if (IsInsideNoGrassZone(X, Y))
+		{
+			continue;
+		}
+		const float TerrainZ = SampleGroundZ(X, Y, FallbackGroundZ);
+		const bool bTree01 = (BarrensRng.FRand() < 0.58f);
+		UStaticMesh* TMesh = bTree01 ? QuiverTree01Mesh : QuiverTree02Mesh;
+		if (!TMesh)
+		{
+			continue;
+		}
+		const float Unit = bTree01 ? Tree01Unit : Tree02Unit;
+		const float TS = Unit * BarrensRng.FRandRange(0.78f, 1.38f);
+		const float TSZ = TS * BarrensRng.FRandRange(0.90f, 1.18f);
+		const float TZ = AetheriaWorldHelpers::ComputeGroundedZ(TMesh, TerrainZ, TSZ, 14.f);
+		const FRotator Rot(BarrensRng.FRandRange(-3.f, 3.f), BarrensRng.FRandRange(0.f, 360.f), BarrensRng.FRandRange(-3.f, 3.f));
+		if (bTree01) Quiver01Transforms.Emplace(Rot, FVector(X, Y, TZ), FVector(TS, TS, TSZ));
+		else         Quiver02Transforms.Emplace(Rot, FVector(X, Y, TZ), FVector(TS, TS, TSZ));
+	}
+
+	// 2. ~260 fossil rocks & boulders, 35% sunk (3 layers)
+	TArray<FTransform> RockATransforms, RockCTransforms, BoulderTransforms;
+	RockATransforms.Reserve(95);
+	RockCTransforms.Reserve(85);
+	BoulderTransforms.Reserve(95);
+	Attempts = 0;
+	while ((RockATransforms.Num() + RockCTransforms.Num() + BoulderTransforms.Num()) < 260 && Attempts < 2400)
+	{
+		++Attempts;
+		const float X = BarrensRng.FRandRange(3800.f, 9200.f);
+		const float Y = BarrensRng.FRandRange(-6800.f, -800.f);
+		if (IsInsideNoGrassZone(X, Y))
+		{
+			continue;
+		}
+		const float Pick = BarrensRng.FRand();
+		const int32 Layer = (Pick < 0.36f) ? 0 : ((Pick < 0.70f) ? 1 : 2);
+		UStaticMesh* RMesh = (Layer == 0) ? RockAMesh : ((Layer == 1) ? RockCMesh : BoulderMesh);
+		if (!RMesh)
+		{
+			continue;
+		}
+		const float BaseU = (Layer == 0) ? RockAUnit : ((Layer == 1) ? RockCUnit : BoulderUnit);
+		const float RS = BaseU * BarrensRng.FRandRange(0.55f, 1.65f);
+		const float RSZ = RS * BarrensRng.FRandRange(0.75f, 1.05f);
+		const float TargetH = ((Layer == 2) ? 320.f : ((Layer == 0) ? 210.f : 165.f)) * (RS / BaseU);
+		const float GZ = AetheriaWorldHelpers::ComputeGroundedZ(RMesh, SampleGroundZ(X, Y, FallbackGroundZ), RSZ, TargetH * 0.35f);
+		const FRotator Rot(BarrensRng.FRandRange(-7.f, 7.f), BarrensRng.FRandRange(0.f, 360.f), BarrensRng.FRandRange(-7.f, 7.f));
+		const float WidthMult = BarrensRng.FRandRange(0.85f, 1.2f);
+		if (Layer == 0)      RockATransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(RS, RS * WidthMult, RSZ));
+		else if (Layer == 1) RockCTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(RS, RS * WidthMult, RSZ));
+		else                 BoulderTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(RS, RS * WidthMult, RSZ));
+	}
+
+	// 3. ~380 sun-bleached gravel stones (2 layers)
+	TArray<FTransform> StonesATransforms, StonesBTransforms;
+	StonesATransforms.Reserve(200);
+	StonesBTransforms.Reserve(200);
+	Attempts = 0;
+	while ((StonesATransforms.Num() + StonesBTransforms.Num()) < 380 && Attempts < 2200)
+	{
+		++Attempts;
+		const float X = BarrensRng.FRandRange(3800.f, 9200.f);
+		const float Y = BarrensRng.FRandRange(-6800.f, -800.f);
+		if (IsInsideNoGrassZone(X, Y))
+		{
+			continue;
+		}
+		const bool bStonesA = (BarrensRng.FRand() < 0.52f);
+		UStaticMesh* SMesh = bStonesA ? StonesAMesh : StonesBMesh;
+		if (!SMesh)
+		{
+			continue;
+		}
+		const float Unit = bStonesA ? StonesAUnit : StonesBUnit;
+		const float SS = Unit * BarrensRng.FRandRange(0.65f, 2.15f);
+		const float SZ = SS * BarrensRng.FRandRange(0.65f, 1.0f);
+		const float GZ = AetheriaWorldHelpers::ComputeGroundedZ(SMesh, SampleGroundZ(X, Y, FallbackGroundZ), SZ, 2.f);
+		const FRotator Rot(0.f, BarrensRng.FRandRange(0.f, 360.f), BarrensRng.FRandRange(-6.f, 6.f));
+		if (bStonesA) StonesATransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(SS, SS, SZ));
+		else          StonesBTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(SS, SS, SZ));
+	}
+
+	// 4. ~90 succulents clinging to the rocks
+	TArray<FTransform> SucculentTransforms;
+	SucculentTransforms.Reserve(100);
+	Attempts = 0;
+	while (SucculentTransforms.Num() < 90 && Attempts < 1400)
+	{
+		++Attempts;
+		const float X = BarrensRng.FRandRange(3800.f, 9200.f);
+		const float Y = BarrensRng.FRandRange(-6800.f, -800.f);
+		if (IsInsideNoGrassZone(X, Y) || !SucculentMesh)
+		{
+			continue;
+		}
+		const float SS = SucculentUnit * BarrensRng.FRandRange(0.7f, 1.7f);
+		const float GZ = AetheriaWorldHelpers::ComputeGroundedZ(SucculentMesh, SampleGroundZ(X, Y, FallbackGroundZ), SS, 2.f);
+		const FRotator Rot(0.f, BarrensRng.FRandRange(0.f, 360.f), 0.f);
+		SucculentTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(SS));
+	}
+
+	// 5. ~12,000 dry golden grass tufts clustered along the Eastern Trail verge & seasonal pans
+	TArray<FTransform> DryGrassATransforms, DryGrassCTransforms;
+	DryGrassATransforms.Reserve(7500);
+	DryGrassCTransforms.Reserve(7500);
+	Attempts = 0;
+	while ((DryGrassATransforms.Num() + DryGrassCTransforms.Num()) < 12000 && Attempts < 90000)
+	{
+		++Attempts;
+		// Bias toward the trail corridor (Y -1500..500 band) and scattered pans elsewhere
+		float X, Y;
+		if (BarrensRng.FRand() < 0.62f)
+		{
+			X = BarrensRng.FRandRange(3900.f, 9100.f);
+			Y = -1150.f + BarrensRng.FRandRange(-700.f, 700.f);
+		}
+		else
+		{
+			X = BarrensRng.FRandRange(3800.f, 9200.f);
+			Y = BarrensRng.FRandRange(-6800.f, -800.f);
+		}
+		if (IsInsideNoGrassZone(X, Y))
+		{
+			continue;
+		}
+		const bool bGrassA = (BarrensRng.FRand() < 0.5f);
+		UStaticMesh* GMesh = bGrassA ? DryGrassAMesh : DryGrassCMesh;
+		if (!GMesh)
+		{
+			continue;
+		}
+		const float BaseU = bGrassA ? DryGrassAUnit : DryGrassCUnit;
+		const float S = BaseU * BarrensRng.FRandRange(0.7f, 1.35f);
+		const float SZ = S * BarrensRng.FRandRange(0.8f, 1.25f);
+		const float Z = AetheriaWorldHelpers::ComputeGroundedZ(GMesh, SampleGroundZ(X, Y, FallbackGroundZ), SZ, 3.f);
+		const FRotator Rot(BarrensRng.FRandRange(-4.f, 4.f), BarrensRng.FRandRange(0.f, 360.f), BarrensRng.FRandRange(-4.f, 4.f));
+		if (bGrassA) DryGrassATransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
+		else         DryGrassCTransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
+	}
+
+	// 6. Two distant mesa bluff silhouettes framing the district edges
+	UMaterialInterface* CliffMat = LoadPBRMaterial({
+		AetheriaWorldConst::MatNamaqualandCliff
+	});
+	const FVector MesaOne(8950.f, -1350.f, SampleGroundZ(8950.f, -1350.f, FallbackGroundZ));
+	const FVector MesaTwo(4350.f, -6550.f, SampleGroundZ(4350.f, -6550.f, FallbackGroundZ));
+	AddWorldMesh(TEXT("AshBarrens_MesaBluff_East"), AetheriaWorldConst::MeshNamaqualandCliff01,
+		MesaOne + FVector(0.f, 0.f, -160.f), FRotator(0.f, 137.f, 0.f), FVector(2.6f, 2.6f, 2.1f),
+		CliffMat, AetheriaWorldConst::MeshNamaqualandCliff01, true);
+	AddWorldMesh(TEXT("AshBarrens_MesaBluff_South"), AetheriaWorldConst::MeshNamaqualandCliff02,
+		MesaTwo + FVector(0.f, 0.f, -140.f), FRotator(0.f, 63.f, 0.f), FVector(2.3f, 2.3f, 1.9f),
+		CliffMat, AetheriaWorldConst::MeshNamaqualandCliff02, true);
+
+	if (QuiverTree01HISM && Quiver01Transforms.Num() > 0) QuiverTree01HISM->AddInstances(Quiver01Transforms, false, true, false);
+	if (QuiverTree02HISM && Quiver02Transforms.Num() > 0) QuiverTree02HISM->AddInstances(Quiver02Transforms, false, true, false);
+	if (RockAC_HISM && RockATransforms.Num() > 0)         RockAC_HISM->AddInstances(RockATransforms, false, true, false);
+	if (RockCC_HISM && RockCTransforms.Num() > 0)         RockCC_HISM->AddInstances(RockCTransforms, false, true, false);
+	if (BoulderHISM && BoulderTransforms.Num() > 0)       BoulderHISM->AddInstances(BoulderTransforms, false, true, false);
+	if (StonesAHISM && StonesATransforms.Num() > 0)       StonesAHISM->AddInstances(StonesATransforms, false, true, false);
+	if (StonesBHISM && StonesBTransforms.Num() > 0)       StonesBHISM->AddInstances(StonesBTransforms, false, true, false);
+	if (SucculentHISM && SucculentTransforms.Num() > 0)   SucculentHISM->AddInstances(SucculentTransforms, false, true, false);
+	if (DryGrassAHISM && DryGrassATransforms.Num() > 0)   DryGrassAHISM->AddInstances(DryGrassATransforms, false, true, false);
+	if (DryGrassBHISM && DryGrassCTransforms.Num() > 0)   DryGrassBHISM->AddInstances(DryGrassCTransforms, false, true, false);
+}
+
+// Rock Strata Outcrops — geological backbone so the open world never reads as "flat lawn with props":
+// NW Prologue cliff rim, King's Road verges, Highkeep approach and the southern pasture rim.
+void AAetheriaWorldBuilder::BuildRockStrataOutcrops()
+{
+	UHierarchicalInstancedStaticMeshComponent* StoneAC_HISM = CreateFoliageHISM(
+		TEXT("Outcrops_MWAMStonesAC_HISM"), AetheriaWorldConst::MeshMWAMStoneA, nullptr, true, 14000, 22000, false);
+	UHierarchicalInstancedStaticMeshComponent* StoneCC_HISM = CreateFoliageHISM(
+		TEXT("Outcrops_MWAMStonesCC_HISM"), AetheriaWorldConst::MeshMWAMStoneC, nullptr, true, 14000, 22000, false);
+	UHierarchicalInstancedStaticMeshComponent* RockBHISM = CreateFoliageHISM(
+		TEXT("Outcrops_NamaqualandRockBC_HISM"), AetheriaWorldConst::MeshNamaqualandRockB, nullptr, true, 14000, 22000, false);
+
+	UStaticMesh* StoneAMesh = LoadMeshSafe(AetheriaWorldConst::MeshMWAMStoneA, nullptr);
+	UStaticMesh* StoneCMesh = LoadMeshSafe(AetheriaWorldConst::MeshMWAMStoneC, nullptr);
+	UStaticMesh* RockBMesh  = LoadMeshSafe(AetheriaWorldConst::MeshNamaqualandRockB, nullptr);
+
+	const float StoneAUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StoneAMesh, 260.f, 0.35f, 2.8f);
+	const float StoneCUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(StoneCMesh, 190.f, 0.35f, 2.5f);
+	const float RockBUnit  = AetheriaWorldHelpers::ComputeUniformScaleForHeight(RockBMesh, 175.f, 0.35f, 2.5f);
+
+	FRandomStream OutcropRng(90417263);
+	TArray<FTransform> StoneATransforms, StoneCTransforms, RockBTransforms;
+	StoneATransforms.Reserve(150);
+	StoneCTransforms.Reserve(150);
+	RockBTransforms.Reserve(80);
+
+	struct FOutcropZone { FVector2D Center; FVector2D HalfExtent; int32 Quota; };
+	const FOutcropZone Zones[] = {
+		// NW Prologue cliff rim — broken escarpment above the cave headland
+		{ FVector2D(-2700.f, -750.f), FVector2D(1450.f, 950.f), 70 },
+		// King's Road north verge strip
+		{ FVector2D(   0.f,  2310.f), FVector2D( 620.f, 780.f), 40 },
+		// King's Road south verge strip
+		{ FVector2D(   0.f, -5680.f), FVector2D( 700.f, 2400.f), 70 },
+		// Highkeep approach meadow fringe
+		{ FVector2D(   0.f, -7800.f), FVector2D(1600.f, 600.f), 80 },
+		// Southern pasture rim before the caldera road
+		{ FVector2D(2600.f, -4200.f), FVector2D(1700.f, 1200.f), 90 },
+	};
+
+	for (const FOutcropZone& Zone : Zones)
+	{
+		int32 Placed = 0;
+		int32 Attempts = 0;
+		while (Placed < Zone.Quota && Attempts < Zone.Quota * 30)
+		{
+			++Attempts;
+			const float X = Zone.Center.X + OutcropRng.FRandRange(-Zone.HalfExtent.X, Zone.HalfExtent.X);
+			const float Y = Zone.Center.Y + OutcropRng.FRandRange(-Zone.HalfExtent.Y, Zone.HalfExtent.Y);
+			if (IsInsideNoGrassZone(X, Y))
+			{
+				continue;
+			}
+			const float Pick = OutcropRng.FRand();
+			const int32 Layer = (Pick < 0.42f) ? 0 : ((Pick < 0.80f) ? 1 : 2);
+			UStaticMesh* RMesh = (Layer == 0) ? StoneAMesh : ((Layer == 1) ? StoneCMesh : RockBMesh);
+			if (!RMesh)
+			{
+				continue;
+			}
+			const float BaseU = (Layer == 0) ? StoneAUnit : ((Layer == 1) ? StoneCUnit : RockBUnit);
+			const float RS = BaseU * OutcropRng.FRandRange(0.5f, 1.7f);
+			const float RSZ = RS * OutcropRng.FRandRange(0.72f, 1.0f);
+			const float TargetH = ((Layer == 0) ? 260.f : ((Layer == 1) ? 190.f : 175.f)) * (RS / BaseU);
+			const float GZ = AetheriaWorldHelpers::ComputeGroundedZ(RMesh, SampleGroundZ(X, Y, FallbackGroundZ), RSZ, TargetH * 0.35f);
+			const FRotator Rot(OutcropRng.FRandRange(-8.f, 8.f), OutcropRng.FRandRange(0.f, 360.f), OutcropRng.FRandRange(-8.f, 8.f));
+			const float WidthMult = OutcropRng.FRandRange(0.8f, 1.25f);
+			if (Layer == 0)      StoneATransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(RS, RS * WidthMult, RSZ));
+			else if (Layer == 1) StoneCTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(RS, RS * WidthMult, RSZ));
+			else                 RockBTransforms.Emplace(Rot, FVector(X, Y, GZ), FVector(RS, RS * WidthMult, RSZ));
+			++Placed;
+		}
+	}
+
+	if (StoneAC_HISM && StoneATransforms.Num() > 0) StoneAC_HISM->AddInstances(StoneATransforms, false, true, false);
+	if (StoneCC_HISM && StoneCTransforms.Num() > 0) StoneCC_HISM->AddInstances(StoneCTransforms, false, true, false);
+	if (RockBHISM && RockBTransforms.Num() > 0)     RockBHISM->AddInstances(RockBTransforms, false, true, false);
+}
+
 void AAetheriaWorldBuilder::BuildLushMeadowFoliageAndWind()
 {
 	// GPU-Efficient HISM Meadow Grass (wind sway), Pink/Violet/Gold Wildflowers, Bushes, Sunlit Green Full-Canopy Trees,
@@ -6012,6 +6343,8 @@ void AAetheriaWorldBuilder::BuildLushMeadowFoliageAndWind()
 		TEXT("Meadow_WindGrassB_HISM"), AetheriaWorldConst::MeshMWAMGrassB, GrassWindMat, false, 7500, 11500, false);
 	UHierarchicalInstancedStaticMeshComponent* GrassCHISM = CreateFoliageHISM(
 		TEXT("Meadow_WindGrassC_HISM"), AetheriaWorldConst::MeshMWAMGrassC, GrassWindMat, false, 7500, 11500, false);
+	UHierarchicalInstancedStaticMeshComponent* GrassDHISM = CreateFoliageHISM(
+		TEXT("Meadow_WindGrassD_HISM"), AetheriaWorldConst::MeshMWAMGrassD, GrassWindMat, false, 7500, 11500, false);
 
 	// 2. Wildflower & Bush HISMs (CastShadow=false, Cull 7500..11500)
 	UHierarchicalInstancedStaticMeshComponent* FlowerVioletHISM = CreateFoliageHISM(
@@ -6030,6 +6363,7 @@ void AAetheriaWorldBuilder::BuildLushMeadowFoliageAndWind()
 	UStaticMesh* GrassAMesh   = LoadMeshSafe(AetheriaWorldConst::MeshMWAMGrassA, nullptr);
 	UStaticMesh* GrassBMesh   = LoadMeshSafe(AetheriaWorldConst::MeshMWAMGrassB, nullptr);
 	UStaticMesh* GrassCMesh   = LoadMeshSafe(AetheriaWorldConst::MeshMWAMGrassC, nullptr);
+	UStaticMesh* GrassDMesh   = LoadMeshSafe(AetheriaWorldConst::MeshMWAMGrassD, nullptr);
 	UStaticMesh* VioletMesh   = LoadMeshSafe(AetheriaWorldConst::MeshFlowerHeliophila, nullptr);
 	UStaticMesh* GoldMesh     = LoadMeshSafe(AetheriaWorldConst::MeshFlowerGazania, nullptr);
 	UStaticMesh* BushMesh     = LoadMeshSafe(AetheriaWorldConst::MeshWildRooibosBush, nullptr);
@@ -6039,6 +6373,7 @@ void AAetheriaWorldBuilder::BuildLushMeadowFoliageAndWind()
 	const float GrassAUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GrassAMesh, 62.f, 0.25f, 3.0f);
 	const float GrassBUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GrassBMesh, 58.f, 0.25f, 3.0f);
 	const float GrassCUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GrassCMesh, 66.f, 0.25f, 3.0f);
+	const float GrassDUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GrassDMesh, 60.f, 0.25f, 3.0f);
 	const float VioletUnit = AetheriaWorldHelpers::ComputeUniformScaleForHeight(VioletMesh, 46.f, 0.20f, 2.6f);
 	const float GoldUnit   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(GoldMesh, 42.f, 0.20f, 2.6f);
 	const float BushUnit   = AetheriaWorldHelpers::ComputeUniformScaleForHeight(BushMesh, 110.f, 0.20f, 2.4f);
@@ -6047,75 +6382,98 @@ void AAetheriaWorldBuilder::BuildLushMeadowFoliageAndWind()
 
 	FRandomStream MeadowRng(582026);
 
-	// Populate ~3,400 Wind-Swaying Grass Instances across Oakhaven Valley, Lakeside Shores, Road Verges & Hills
+	// Populate ~270,000 Wind-Swaying Grass Instances across Oakhaven Valley, Lakeside Shores, Road Verges & Hills.
+	// Stratified density: hero/road/shore anchors get the thickest cover, core meadow stays dense,
+	// outer hills taper off. Far-field reads as continuous lawn via the MWAM grass-colour landscape blend.
 	TArray<FTransform> GrassATransforms;
 	TArray<FTransform> GrassBTransforms;
 	TArray<FTransform> GrassCTransforms;
-	GrassATransforms.Reserve(1200);
-	GrassBTransforms.Reserve(1200);
-	GrassCTransforms.Reserve(1200);
+	TArray<FTransform> GrassDTransforms;
+	GrassATransforms.Reserve(70000);
+	GrassBTransforms.Reserve(70000);
+	GrassCTransforms.Reserve(70000);
+	GrassDTransforms.Reserve(70000);
 
-	// 1a. Dense hero-proximity lush valley & lakeside shore grass (~2,200 blades)
+	const auto ScatterBlade = [&](float X, float Y, float ScaleMin, float ScaleMax) -> bool
+	{
+		if (IsInsideNoGrassZone(X, Y))
+		{
+			return false;
+		}
+		const float GZ = SampleGroundZ(X, Y, FallbackGroundZ);
+		const int32 Variant = MeadowRng.RandRange(0, 3);
+		UStaticMesh* GMesh = (Variant == 0) ? GrassAMesh : ((Variant == 1) ? GrassBMesh : ((Variant == 2) ? GrassCMesh : GrassDMesh));
+		if (!GMesh)
+		{
+			return false;
+		}
+		const float BaseU = (Variant == 0) ? GrassAUnit : ((Variant == 1) ? GrassBUnit : ((Variant == 2) ? GrassCUnit : GrassDUnit));
+		const float S = BaseU * MeadowRng.FRandRange(ScaleMin, ScaleMax);
+		const float SZ = S * MeadowRng.FRandRange(0.85f, 1.35f);
+		const float Z = AetheriaWorldHelpers::ComputeGroundedZ(GMesh, GZ, SZ, 4.f);
+		const FRotator Rot(MeadowRng.FRandRange(-4.f, 4.f), MeadowRng.FRandRange(0.f, 360.f), MeadowRng.FRandRange(-4.f, 4.f));
+		const FTransform Blade(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
+		if (Variant == 0)      GrassATransforms.Emplace(Blade);
+		else if (Variant == 1) GrassBTransforms.Emplace(Blade);
+		else if (Variant == 2) GrassCTransforms.Emplace(Blade);
+		else                   GrassDTransforms.Emplace(Blade);
+		return true;
+	};
+
+	// 1a. Tier 1 (~80,000 blades): hero-proximity anchors — Oakhaven rim, Mirror Lake shore ring, King's Road verges
+	struct FGrassAnchor { FVector2D Center; float Radius; };
+	const FGrassAnchor Tier1Anchors[] = {
+		{ FVector2D(   0.f, 4200.f), 2700.f },  // Oakhaven village rim & sunlit meadow
+		{ FVector2D(   0.f, -800.f), 3050.f },  // Mirror Lake shoreline band
+		{ FVector2D(   0.f, 2310.f), 1250.f },  // King's Road north verge
+		{ FVector2D(   0.f, -5680.f), 1250.f }, // King's Road south verge
+		{ FVector2D(-1750.f, 3000.f), 900.f  }, // Road → Dragon Aerie diagonal
+		{ FVector2D(   0.f, 6400.f), 1300.f  }, // North pasture rise
+	};
+	int32 Tier1Placed = 0;
 	int32 Attempts = 0;
-	while ((GrassATransforms.Num() + GrassBTransforms.Num() + GrassCTransforms.Num()) < 2200 && Attempts < 7500)
+	while (Tier1Placed < 80000 && Attempts < 400000)
+	{
+		++Attempts;
+		const FGrassAnchor& A = Tier1Anchors[MeadowRng.RandRange(0, UE_ARRAY_COUNT(Tier1Anchors) - 1)];
+		const float Angle = MeadowRng.FRandRange(0.f, UE_TWO_PI);
+		const float Dist = FMath::Sqrt(MeadowRng.FRand()) * A.Radius;
+		const float X = A.Center.X + FMath::Cos(Angle) * Dist;
+		const float Y = A.Center.Y + FMath::Sin(Angle) * Dist;
+		if (ScatterBlade(X, Y, 0.78f, 1.55f))
+		{
+			++Tier1Placed;
+		}
+	}
+
+	// 1b. Tier 2 (~125,000 blades): dense core meadow across the whole valley floor
+	Attempts = 0;
+	while ((GrassATransforms.Num() + GrassBTransforms.Num() + GrassCTransforms.Num() + GrassDTransforms.Num()) < (Tier1Placed + 125000) && Attempts < 600000)
 	{
 		++Attempts;
 		const float X = MeadowRng.FRandRange(-4200.f, 4200.f);
-		const float Y = MeadowRng.FRandRange(-4800.f, 6200.f);
-		if (IsInsideNoGrassZone(X, Y))
-		{
-			continue;
-		}
-		const float GZ = SampleGroundZ(X, Y, FallbackGroundZ);
-		const int32 Variant = MeadowRng.RandRange(0, 2);
-		UStaticMesh* GMesh = (Variant == 0) ? GrassAMesh : ((Variant == 1) ? GrassBMesh : GrassCMesh);
-		if (!GMesh)
-		{
-			continue;
-		}
-		const float BaseU = (Variant == 0) ? GrassAUnit : ((Variant == 1) ? GrassBUnit : GrassCUnit);
-		const float S = BaseU * MeadowRng.FRandRange(0.78f, 1.55f);
-		const float SZ = S * MeadowRng.FRandRange(0.85f, 1.32f);
-		const float Z = AetheriaWorldHelpers::ComputeGroundedZ(GMesh, GZ, SZ, 4.f);
-		const FRotator Rot(MeadowRng.FRandRange(-4.f, 4.f), MeadowRng.FRandRange(0.f, 360.f), MeadowRng.FRandRange(-4.f, 4.f));
-
-		if (Variant == 0)      GrassATransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
-		else if (Variant == 1) GrassBTransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
-		else                   GrassCTransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
+		const float Y = MeadowRng.FRandRange(-5400.f, 6800.f);
+		ScatterBlade(X, Y, 0.85f, 1.6f);
 	}
 
-	// 1b. Rolling hillside & outer meadow grass (~1,200 blades reaching out to +/-6800)
+	// 1c. Tier 3 (~65,000 blades): rolling outer hills reaching out to +/-6800
+	int32 Tier3Placed = 0;
 	Attempts = 0;
-	while ((GrassATransforms.Num() + GrassBTransforms.Num() + GrassCTransforms.Num()) < 3400 && Attempts < 4500)
+	while (Tier3Placed < 65000 && Attempts < 400000)
 	{
 		++Attempts;
 		const float X = MeadowRng.FRandRange(-6800.f, 6800.f);
 		const float Y = MeadowRng.FRandRange(-7400.f, 6800.f);
-		if (IsInsideNoGrassZone(X, Y))
+		if (ScatterBlade(X, Y, 0.85f, 1.65f))
 		{
-			continue;
+			++Tier3Placed;
 		}
-		const float GZ = SampleGroundZ(X, Y, FallbackGroundZ);
-		const int32 Variant = MeadowRng.RandRange(0, 2);
-		UStaticMesh* GMesh = (Variant == 0) ? GrassAMesh : ((Variant == 1) ? GrassBMesh : GrassCMesh);
-		if (!GMesh)
-		{
-			continue;
-		}
-		const float BaseU = (Variant == 0) ? GrassAUnit : ((Variant == 1) ? GrassBUnit : GrassCUnit);
-		const float S = BaseU * MeadowRng.FRandRange(0.85f, 1.65f);
-		const float SZ = S * MeadowRng.FRandRange(0.85f, 1.35f);
-		const float Z = AetheriaWorldHelpers::ComputeGroundedZ(GMesh, GZ, SZ, 4.f);
-		const FRotator Rot(MeadowRng.FRandRange(-5.f, 5.f), MeadowRng.FRandRange(0.f, 360.f), MeadowRng.FRandRange(-5.f, 5.f));
-
-		if (Variant == 0)      GrassATransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
-		else if (Variant == 1) GrassBTransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
-		else                   GrassCTransforms.Emplace(Rot, FVector(X, Y, Z), FVector(S, S, SZ));
 	}
 
 	if (GrassAHISM && GrassATransforms.Num() > 0) GrassAHISM->AddInstances(GrassATransforms, false, true, false);
 	if (GrassBHISM && GrassBTransforms.Num() > 0) GrassBHISM->AddInstances(GrassBTransforms, false, true, false);
 	if (GrassCHISM && GrassCTransforms.Num() > 0) GrassCHISM->AddInstances(GrassCTransforms, false, true, false);
+	if (GrassDHISM && GrassDTransforms.Num() > 0) GrassDHISM->AddInstances(GrassDTransforms, false, true, false);
 
 	// Populate ~660 Pink/Violet & Gold Wildflowers in 26 Organic Meadow Patches + ~240 Meadow Bushes
 	TArray<FTransform> VioletTransforms;
@@ -6184,14 +6542,14 @@ void AAetheriaWorldBuilder::BuildLushMeadowFoliageAndWind()
 	if (FlowerGoldHISM && GoldTransforms.Num() > 0)     FlowerGoldHISM->AddInstances(GoldTransforms, false, true, false);
 	if (BushHISM && BushTransforms.Num() > 0)           BushHISM->AddInstances(BushTransforms, false, true, false);
 
-	// Populate ~145 Sunlit Green Full-Canopy Meadow & Hillside Trees (casting golden-hour volumetric sun rays!)
+	// Populate ~380 Sunlit Green Full-Canopy Meadow & Hillside Trees (casting golden-hour volumetric sun rays!)
 	TArray<FTransform> GreenLargeTransforms;
 	TArray<FTransform> GreenMedTransforms;
-	GreenLargeTransforms.Reserve(80);
-	GreenMedTransforms.Reserve(75);
+	GreenLargeTransforms.Reserve(210);
+	GreenMedTransforms.Reserve(185);
 
 	Attempts = 0;
-	while ((GreenLargeTransforms.Num() + GreenMedTransforms.Num()) < 145 && Attempts < 1800)
+	while ((GreenLargeTransforms.Num() + GreenMedTransforms.Num()) < 380 && Attempts < 5200)
 	{
 		++Attempts;
 		const float TX = MeadowRng.FRandRange(-4400.f, 4400.f);

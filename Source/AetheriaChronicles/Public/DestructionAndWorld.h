@@ -344,6 +344,8 @@ private:
 	void BuildHighkeepCitadel();
 	void BuildAshCalderaAndEmberCrypt();
 	void BuildCrystalGlacierPeaks();
+	void BuildAshBarrensDesert();
+	void BuildRockStrataOutcrops();
 	void BuildSkyRuneRings();
 	void BuildKingsRoadAndLanterns();
 	void BuildLushMeadowFoliageAndWind();

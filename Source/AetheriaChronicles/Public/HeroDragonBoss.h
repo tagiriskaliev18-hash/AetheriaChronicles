@@ -299,6 +299,10 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Aetheria|Orbs")
 	TObjectPtr<UStaticMeshComponent> OrbitingOrbMeshes[3];
 
+	/** Per-orb point light so each primal orb actually casts coloured bounce onto armor & ground. */
+	UPROPERTY(VisibleAnywhere, Category = "Aetheria|Orbs")
+	TObjectPtr<UPointLightComponent> OrbitingOrbLights[3];
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aetheria|Combat")
 	TObjectPtr<UPointLightComponent> CombatFlashLight;
 

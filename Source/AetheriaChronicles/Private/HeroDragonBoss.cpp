@@ -132,7 +132,7 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathRampageMeleeB[]        = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_B_Montage.Attack_Biped_Melee_B_Montage");
 	static constexpr TCHAR PathRampageMeleeC[]        = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Attack_Biped_Melee_C_Montage.Attack_Biped_Melee_C_Montage");
 	static constexpr TCHAR PathRampageRoar[]          = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Emote_Master_Roar_T3.Emote_Master_Roar_T3");
-	static constexpr TCHAR PathRampageHitReact[]      = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathRampageHitReact[]      = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Stun_Start.Stun_Start");
 	static constexpr TCHAR PathRampageDeath[]         = TEXT("/Game/ParagonRampage/Characters/Heroes/Rampage/Animations/Death_A.Death_A");
 
 	// Paragon Sevarog (Boss Malakor priority — SingleNode verified sequences) & Paragon Heroes
@@ -140,7 +140,8 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathSevarogMesh[]          = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Meshes/Sevarog.Sevarog");
 	static constexpr TCHAR PathSevarogABP[]           = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Sevarog_AnimBlueprint.Sevarog_AnimBlueprint_C");
 	static constexpr TCHAR PathSevarogIdle[]          = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Idle.Idle");
-	static constexpr TCHAR PathSevarogRun[]           = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Jog_Fwd.Jog_Fwd");
+	static constexpr TCHAR PathSevarogRun[]           = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Run_Fwd.Run_Fwd");
+	static constexpr TCHAR PathSevarogRunAlt[]        = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Jog_Fwd_Circle_Lt.Jog_Fwd_Circle_Lt");
 	static constexpr TCHAR PathSevarogSwing1Seq[]     = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing1_Medium.Swing1_Medium");
 	static constexpr TCHAR PathSevarogSwing2Seq[]     = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing2_Medium.Swing2_Medium");
 	static constexpr TCHAR PathSevarogSwing1Montage[] = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing1_Medium_Montage.Swing1_Medium_Montage");
@@ -148,7 +149,11 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathSevarogSwing3Seq[]     = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Swing3_Medium.Swing3_Medium");
 	static constexpr TCHAR PathSevarogUltSwingSeq[]   = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Ultimate_Swing_120fps.Ultimate_Swing_120fps");
 	static constexpr TCHAR PathSevarogCastSeq[]       = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Cast.Cast");
-	static constexpr TCHAR PathSevarogHitReact[]      = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Hitreact_Front.Hitreact_Front");
+	// Hit-react note: every Paragon pack ships "HitReact_*" as an ADDITIVE clip
+	// (AAT_LOCAL_SPACE_BASE / AAT_ROTATION_OFFSET_MESH_SPACE), which AnimSingleNodeInstance cannot
+	// evaluate. The non-additive "Stun_*" clips carry the same readable flinch on the same skeleton,
+	// so they stand in wherever a full-body reaction pose is needed.
+	static constexpr TCHAR PathSevarogHitReact[]      = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Stun_Start.Stun_Start");
 	static constexpr TCHAR PathSevarogDeath[]         = TEXT("/Game/ParagonSevarog/Characters/Heroes/Sevarog/Animations/Death_front.Death_front");
 	static constexpr TCHAR PathBossExplosionFX[]      = TEXT("/Game/FXVarietyPack/Particles/P_ky_explosion.P_ky_explosion");
 	static constexpr TCHAR PathBossShockwaveNS[]      = TEXT("/Game/Free_Spells/VFX_Niagara/NS_Free_Spells_Shockwave.NS_Free_Spells_Shockwave");
@@ -168,7 +173,7 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathGideonAttackASeq[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_A_Medium.Primary_Attack_A_Medium");
 	static constexpr TCHAR PathGideonAttackBSeq[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_B_Medium.Primary_Attack_B_Medium");
 	static constexpr TCHAR PathGideonAttackCSeq[]     = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Primary_Attack_C_Medium.Primary_Attack_C_Medium");
-	static constexpr TCHAR PathGideonHitReact[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathGideonHitReact[]       = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Stun_Start.Stun_Start");
 	static constexpr TCHAR PathGideonDeath[]          = TEXT("/Game/ParagonGideon/Characters/Heroes/Gideon/Animations/Death_Fwd.Death_Fwd");
 
 	static constexpr TCHAR PathAuroraMesh[]           = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Meshes/Aurora.Aurora");
@@ -183,7 +188,7 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathAuroraAttackASeq[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_A.Primary_Attack_A");
 	static constexpr TCHAR PathAuroraAttackBSeq[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_B.Primary_Attack_B");
 	static constexpr TCHAR PathAuroraAttackCSeq[]     = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Primary_Attack_C.Primary_Attack_C");
-	static constexpr TCHAR PathAuroraHitReact[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathAuroraHitReact[]       = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Stun_Start.Stun_Start");
 	static constexpr TCHAR PathAuroraDeath[]          = TEXT("/Game/ParagonAurora/Characters/Heroes/Aurora/Animations/Death.Death");
 
 	static constexpr TCHAR PathGruxMesh[]             = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Meshes/Grux.Grux");
@@ -198,7 +203,7 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathGruxAttackASeq[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_LA.PrimaryAttack_LA");
 	static constexpr TCHAR PathGruxAttackBSeq[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_RA.PrimaryAttack_RA");
 	static constexpr TCHAR PathGruxAttackCSeq[]       = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/PrimaryAttack_FourStrikes.PrimaryAttack_FourStrikes");
-	static constexpr TCHAR PathGruxHitReact[]         = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathGruxHitReact[]         = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Stun_Idle.Stun_Idle");
 	static constexpr TCHAR PathGruxDeath[]            = TEXT("/Game/ParagonGrux/Characters/Heroes/Grux/Animations/Death_A.Death_A");
 
 	static constexpr TCHAR PathMorigeshMesh[]         = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Meshes/Morigesh.Morigesh");
@@ -211,7 +216,7 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathMorigeshAttackASeq[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_A_Slow.PrimaryAttack_A_Slow");
 	static constexpr TCHAR PathMorigeshAttackBSeq[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_B_Slow.PrimaryAttack_B_Slow");
 	static constexpr TCHAR PathMorigeshAttackCSeq[]   = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/PrimaryAttack_C_Slow.PrimaryAttack_C_Slow");
-	static constexpr TCHAR PathMorigeshHitReact[]     = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathMorigeshHitReact[]     = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Stun_Start.Stun_Start");
 	static constexpr TCHAR PathMorigeshDeath[]        = TEXT("/Game/ParagonMorigesh/Characters/Heroes/Morigesh/Animations/Death.Death");
 	static constexpr TCHAR PathKwangMesh[]     = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Meshes/Kwang_GDC.Kwang_GDC");
 	static constexpr TCHAR PathKwangABP[]      = TEXT("/Game/ParagonKwang/Characters/Heroes/Kwang/Animations/Kwang_AnimBlueprint.Kwang_AnimBlueprint_C");
@@ -236,7 +241,7 @@ namespace AetheriaActorsUtil
 	// Staged Paragon Khaimera (FrostWarden / Highland Berserker)
 	static constexpr TCHAR PathKhaimeraMesh[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Meshes/Khaimera.Khaimera");
 	static constexpr TCHAR PathKhaimeraABP[]        = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Khaimera_AnimBlueprint.Khaimera_AnimBlueprint_C");
-	static constexpr TCHAR PathKhaimeraIdle[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Idle.Idle");
+	static constexpr TCHAR PathKhaimeraIdle[]       = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Idle_NonAdditive.Idle_NonAdditive");
 	static constexpr TCHAR PathKhaimeraRun[]        = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Jog_Fwd.Jog_Fwd");
 	static constexpr TCHAR PathKhaimeraJumpStart[]  = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Jump_Start.Jump_Start");
 	static constexpr TCHAR PathKhaimeraJumpLoop[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Jump_Apex.Jump_Apex");
@@ -247,7 +252,7 @@ namespace AetheriaActorsUtil
 	static constexpr TCHAR PathKhaimeraMeleeA[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_A_Montage.Melee_A_Montage");
 	static constexpr TCHAR PathKhaimeraMeleeB[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_B_Montage.Melee_B_Montage");
 	static constexpr TCHAR PathKhaimeraMeleeC[]     = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Melee_C_Montage.Melee_C_Montage");
-	static constexpr TCHAR PathKhaimeraHitReact[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/HitReact_Front.HitReact_Front");
+	static constexpr TCHAR PathKhaimeraHitReact[]   = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Stunned_Start.Stunned_Start");
 	static constexpr TCHAR PathKhaimeraDeath[]      = TEXT("/Game/ParagonKhaimera/Characters/Heroes/Khaimera/Animations/Death_A.Death_A");
 
 	// Staged Dragon Fire FX, Free_Spells Niagara & FreeModularMagicSFX
@@ -388,6 +393,79 @@ namespace AetheriaActorsUtil
 			return false;
 		}
 		return (MeshSkeleton == TargetSkeleton) || TargetSkeleton->IsCompatibleMesh(SkelMesh);
+	}
+
+	/**
+	 * An AnimSingleNodeInstance can only evaluate a full-body clip. Feeding it an additive clip
+	 * (AAT_LOCAL_SPACE_BASE / AAT_ROTATION_OFFSET_MESH_SPACE) makes the engine log
+	 * "Setting an additive animation ... is not allowed" and then pose the mesh against an empty
+	 * base, which is what produced the frozen T-pose / collapsed-limb animations across the project.
+	 * Paragon packs ship many clips whose *names* look like full-body idles (Khaimera "Idle",
+	 * Sevarog "Jog_Fwd", every "HitReact_*") but which are actually additive. Every SingleNode
+	 * playback path must therefore reject them here.
+	 */
+	static bool IsPlayableAsSingleNode(const UAnimSequence* Seq)
+	{
+		return Seq && !Seq->IsValidAdditive();
+	}
+
+	/**
+	 * Paragon hero skins ship cosmetic FX geometry baked into the skeletal mesh itself: Gideon's
+	 * M03_Rings (the huge "halo" ring over the head) and M06_Portal. Those sections are authored for
+	 * the MOBA select-screen / ultimate VFX and read as broken floating props in a grounded ARPG.
+	 * Hide them per-LOD so the silhouette stays clean without touching the shared mesh asset.
+	 */
+	static void HideParagonCosmeticSections(USkeletalMeshComponent* MeshComp)
+	{
+		if (!MeshComp)
+		{
+			return;
+		}
+		USkeletalMesh* SkelMesh = MeshComp->GetSkeletalMeshAsset();
+		if (!SkelMesh)
+		{
+			return;
+		}
+
+		static const FName CosmeticSlots[] = {
+			FName(TEXT("M03_Rings")),
+			FName(TEXT("M06_Portal")),
+		};
+
+		const TArray<FSkeletalMaterial>& Materials = SkelMesh->GetMaterials();
+		const int32 NumLODs = SkelMesh->GetLODNum();
+		int32 HiddenCount = 0;
+
+		for (int32 MatIdx = 0; MatIdx < Materials.Num(); ++MatIdx)
+		{
+			const FName& SlotName = Materials[MatIdx].MaterialSlotName;
+			bool bIsCosmetic = false;
+			for (const FName& CosmeticSlot : CosmeticSlots)
+			{
+				if (SlotName == CosmeticSlot)
+				{
+					bIsCosmetic = true;
+					break;
+				}
+			}
+			if (!bIsCosmetic)
+			{
+				continue;
+			}
+
+			for (int32 LODIdx = 0; LODIdx < NumLODs; ++LODIdx)
+			{
+				MeshComp->ShowMaterialSection(MatIdx, MatIdx, false, LODIdx);
+			}
+			++HiddenCount;
+		}
+
+		if (HiddenCount > 0)
+		{
+			UE_LOG(LogChronicles, Log,
+				TEXT("[HeroRig] Hidden %d Paragon cosmetic FX section(s) on '%s' (halo ring / portal)."),
+				HiddenCount, *SkelMesh->GetName());
+		}
 	}
 
 	static bool TryBindCompatibleAnimBPFromList(
@@ -2011,13 +2089,27 @@ AAetheriaHeroCharacter::AAetheriaHeroCharacter()
 		OrbitingOrbMeshes[i]->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		OrbitingOrbMeshes[i]->SetGenerateOverlapEvents(false);
 		OrbitingOrbMeshes[i]->SetCastShadow(false);
-		OrbitingOrbMeshes[i]->SetRelativeScale3D(FVector(0.105f));
+		// 0.085 jewel-scale: small enough to read as a condensed energy mote, big enough to carry
+		// a blooming core. Larger sizes drifted into "floating plastic ball" territory.
+		OrbitingOrbMeshes[i]->SetRelativeScale3D(FVector(0.085f));
 		OrbitingOrbMeshes[i]->bDisallowNanite = true;
 		OrbitingOrbMeshes[i]->SetVisibility(false);
 		if (SphereMesh)
 		{
 			OrbitingOrbMeshes[i]->SetStaticMesh(SphereMesh);
 		}
+
+		// Unshadowed low-lumen accent light: makes each orb read as a real energy source that
+		// spills coloured bounce onto the hero's armor instead of a flat floating marble.
+		const FName OrbLightName(*FString::Printf(TEXT("OrbitingOrbLight_%d"), i));
+		OrbitingOrbLights[i] = CreateDefaultSubobject<UPointLightComponent>(OrbLightName);
+		OrbitingOrbLights[i]->SetupAttachment(RootComponent);
+		OrbitingOrbLights[i]->SetIntensityUnits(ELightUnits::Lumens);
+		OrbitingOrbLights[i]->SetIntensity(0.f);
+		OrbitingOrbLights[i]->SetAttenuationRadius(260.f);
+		OrbitingOrbLights[i]->SetCastShadows(false);
+		OrbitingOrbLights[i]->SetSpecularScale(0.35f);
+		OrbitingOrbLights[i]->SetVisibility(false);
 	}
 
 	// Optional arcane staff/blade mesh attached to hand socket in BeginPlay if present
@@ -2259,27 +2351,30 @@ bool AAetheriaHeroCharacter::BindParagonHeroSingleNodeAnims(USkeletalMesh* SkelM
 		return false;
 	}
 
+	// SingleNode playback rejects additive clips; a rejected primary falls through to the fallback
+	// (and, if that is additive too, to the engine's own non-additive idle for the same skeleton).
 	auto LoadCompatibleSeq = [SkelMesh](const TCHAR* PrimaryPath, const TCHAR* FallbackPath = nullptr) -> UAnimSequence*
 	{
-		if (PrimaryPath)
+		const TCHAR* Candidates[2] = { PrimaryPath, FallbackPath };
+		for (const TCHAR* Path : Candidates)
 		{
-			if (UAnimSequence* Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(PrimaryPath))
+			if (!Path)
 			{
-				if (AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
-				{
-					return Seq;
-				}
+				continue;
 			}
-		}
-		if (FallbackPath)
-		{
-			if (UAnimSequence* Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(FallbackPath))
+			UAnimSequence* Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(Path);
+			if (!Seq || !AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
 			{
-				if (AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
-				{
-					return Seq;
-				}
+				continue;
 			}
+			if (!AetheriaActorsUtil::IsPlayableAsSingleNode(Seq))
+			{
+				UE_LOG(LogChronicles, Warning,
+					TEXT("[Anim] Skipping additive clip %s for SingleNode playback (skeleton %s)."),
+					*Seq->GetName(), *SkelMesh->GetName());
+				continue;
+			}
+			return Seq;
 		}
 		return nullptr;
 	};
@@ -2434,6 +2529,9 @@ void AAetheriaHeroCharacter::SetupHeroSkeletalMeshAndAnims()
 	{
 		MeshComp->SetSkeletalMesh(ChosenMesh);
 
+		// Strip Paragon select-screen FX geometry (Gideon halo ring, portal) from the playable silhouette
+		AetheriaActorsUtil::HideParagonCosmeticSections(MeshComp);
+
 		// Drive staged Paragon heroes via AnimationSingleNode (Idle + Jog_Fwd + combat sequences) so broken legacy
 		// Paragon *_AnimBlueprint graphs never freeze the Hero in ref A-pose!
 		const bool bBoundSingleNodeParagon = BindParagonHeroSingleNodeAnims(ChosenMesh);
@@ -2575,6 +2673,9 @@ bool AAetheriaHeroCharacter::ApplyCustomSkeletalRig(
 
 	MeshComp->SetSkeletalMesh(NewMesh);
 
+	// Strip Paragon select-screen FX geometry (Gideon halo ring, portal) from the playable silhouette
+	AetheriaActorsUtil::HideParagonCosmeticSections(MeshComp);
+
 	for (int32 i = 0; i < 4; ++i)
 	{
 		HeroAttackMontages[i] = nullptr;
@@ -2699,6 +2800,11 @@ void AAetheriaHeroCharacter::SetCreatorStudioCameraMode(bool bEnable, float Orbi
 			{
 				OrbitingOrbMeshes[i]->SetVisibility(false);
 			}
+			if (OrbitingOrbLights[i])
+			{
+				OrbitingOrbLights[i]->SetVisibility(false);
+				OrbitingOrbLights[i]->SetIntensity(0.f);
+			}
 		}
 
 		// Position calibrated 3-point studio lighting immediately (warm 3/4 key + cool rim)
@@ -2771,14 +2877,14 @@ void AAetheriaHeroCharacter::SetupOrbitingOrbs()
 				if (OrbitingOrbMatMode == 1)
 				{
 					OrbitingOrbMIDs[i]->SetVectorParameterValue(TEXT("EmissiveColor"), DefaultCol);
-					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("EmissiveBoost"), 3.2f);
 					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("Opacity"), 0.92f);
 				}
 				else
 				{
 					OrbitingOrbMIDs[i]->SetVectorParameterValue(TEXT("BaseColor"), DefaultCol);
 					OrbitingOrbMIDs[i]->SetVectorParameterValue(TEXT("AccentColor"), DefaultCol * 1.10f);
-					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+					OrbitingOrbMIDs[i]->SetScalarParameterValue(TEXT("EmissiveBoost"), 3.2f);
 				}
 			}
 		}
@@ -2789,7 +2895,7 @@ void AAetheriaHeroCharacter::SetupOrbitingOrbs()
 
 		if (OrbitingOrbMeshes[i])
 		{
-			OrbitingOrbMeshes[i]->SetRelativeScale3D(FVector(0.105f));
+			OrbitingOrbMeshes[i]->SetRelativeScale3D(FVector(0.085f));
 			if (OrbitingOrbMIDs[i])
 			{
 				OrbitingOrbMeshes[i]->SetMaterial(0, OrbitingOrbMIDs[i]);
@@ -3889,6 +3995,11 @@ void AAetheriaHeroCharacter::UpdateOrbitingOrbs(float DeltaTime)
 		OrbMesh->SetVisibility(bShow);
 		if (!bShow)
 		{
+			if (UPointLightComponent* OrbLight = OrbitingOrbLights[i])
+			{
+				OrbLight->SetVisibility(false);
+				OrbLight->SetIntensity(0.f);
+			}
 			continue;
 		}
 
@@ -3903,22 +4014,36 @@ void AAetheriaHeroCharacter::UpdateOrbitingOrbs(float DeltaTime)
 
 		OrbMesh->SetRelativeLocation(LocalOffset);
 
+		const FLinearColor BaseCol = AetheriaActorsUtil::GetOrbVisualColor(SpellSystem->ActiveOrbs[i]);
+
+		// Drive the paired accent light in lockstep with the orb: colour, position and a slow
+		// breathing pulse. Kept LOW-lumen (90 lm, wide 320 radius) — these hang right behind the
+		// shoulders, and anything hotter blows the armor out to ghost-white.
+		if (UPointLightComponent* OrbLight = OrbitingOrbLights[i])
+		{
+			OrbLight->SetRelativeLocation(LocalOffset + FVector(0.f, 0.f, -4.f));
+			OrbLight->SetLightColor(BaseCol);
+			OrbLight->SetIntensity(90.f * (0.85f + 0.15f * FMath::Sin(OrbOrbitAngle * 2.7f + static_cast<float>(i) * 2.1f)));
+			OrbLight->SetVisibility(true);
+		}
+
 		if (UMaterialInstanceDynamic* MID = OrbitingOrbMIDs[i])
 		{
-			const FLinearColor BaseCol = AetheriaActorsUtil::GetOrbVisualColor(SpellSystem->ActiveOrbs[i]);
+			// 3.2x boost: hotter white-hot core so bloom wraps the orb in a coloured halo —
+			// at 2.2x the additive sphere read as a flat matte marble instead of raw energy.
 			if (OrbitingOrbMatMode == 1)
 			{
-				// M_AetheriaEmissiveCore: EmissiveColor * EmissiveBoost -> rich jewel orb at 2.2x
+				// M_AetheriaEmissiveCore: EmissiveColor * EmissiveBoost -> rich jewel orb
 				MID->SetVectorParameterValue(TEXT("EmissiveColor"), BaseCol);
-				MID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+				MID->SetScalarParameterValue(TEXT("EmissiveBoost"), 3.2f);
 				MID->SetScalarParameterValue(TEXT("Opacity"), 0.92f);
 			}
 			else if (OrbitingOrbMatMode == 2)
 			{
-				// M_AetheriaFireball: churning elemental core at 2.2x
+				// M_AetheriaFireball: churning elemental core
 				MID->SetVectorParameterValue(TEXT("BaseColor"), BaseCol);
 				MID->SetVectorParameterValue(TEXT("AccentColor"), BaseCol * 1.10f);
-				MID->SetScalarParameterValue(TEXT("EmissiveBoost"), 2.2f);
+				MID->SetScalarParameterValue(TEXT("EmissiveBoost"), 3.2f);
 			}
 			else
 			{
@@ -4731,10 +4856,20 @@ bool AAetheriaEnemyCharacter::BindParagonEnemySingleNodeAnims(
 		}
 		if (UAnimSequence* Seq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(Path))
 		{
-			if (AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
+			if (!AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
 			{
-				return Seq;
+				return nullptr;
 			}
+			// Additive clips cannot be evaluated by AnimSingleNodeInstance — treat as unavailable so
+			// the caller's fallback chain keeps looking (see AetheriaActorsUtil::IsPlayableAsSingleNode).
+			if (!AetheriaActorsUtil::IsPlayableAsSingleNode(Seq))
+			{
+				UE_LOG(LogChronicles, Warning,
+					TEXT("[Anim] Enemy clip %s is additive; skipped for SingleNode playback."),
+					*Seq->GetName());
+				return nullptr;
+			}
+			return Seq;
 		}
 		return nullptr;
 	};
@@ -4842,6 +4977,13 @@ void AAetheriaEnemyCharacter::PlayEnemySingleNodeAnim(UAnimSequence* Seq, bool b
 
 	USkeletalMesh* SkelMesh = MeshComp->GetSkeletalMeshAsset();
 	if (!SkelMesh || !Seq->GetSkeleton() || !AetheriaActorsUtil::IsSkeletonCompatible(SkelMesh, Seq->GetSkeleton()))
+	{
+		return;
+	}
+
+	// Hard guard: an additive clip handed to AnimSingleNodeInstance logs a warning and poses the mesh
+	// against nothing (frozen T-pose). Reject here so no caller can bypass the loader-level filter.
+	if (!AetheriaActorsUtil::IsPlayableAsSingleNode(Seq))
 	{
 		return;
 	}
@@ -5874,14 +6016,16 @@ void AAetheriaBossCharacter::BindEnemyMeshAndAnims()
 
 		if (UAnimSequence* UltSeq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(AetheriaActorsUtil::PathSevarogUltSwingSeq))
 		{
-			if (AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, UltSeq->GetSkeleton()))
+			if (AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, UltSeq->GetSkeleton())
+				&& AetheriaActorsUtil::IsPlayableAsSingleNode(UltSeq))
 			{
 				BossHeavyAnim = UltSeq;
 			}
 		}
 		if (UAnimSequence* CastSeq = AetheriaActorsUtil::SafeLoadObjectIfPresent<UAnimSequence>(AetheriaActorsUtil::PathSevarogCastSeq))
 		{
-			if (AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, CastSeq->GetSkeleton()))
+			if (AetheriaActorsUtil::IsSkeletonCompatible(ChosenMesh, CastSeq->GetSkeleton())
+				&& AetheriaActorsUtil::IsPlayableAsSingleNode(CastSeq))
 			{
 				BossRoarAnim = CastSeq;
 			}

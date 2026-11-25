@@ -111,22 +111,27 @@ void FAetheriaStyleHarmonizer::ApplyCrimsonDesertPostProcess(FPostProcessSetting
 	PP.WhiteTint = 0.0f;
 
 	PP.bOverride_ColorSaturation = true;
-	PP.ColorSaturation = FVector4(0.90f, 0.90f, 0.90f, 1.0f);
+	// Slight lift over the old 0.90: Crimson Desert keeps rich earth tones and saturated
+	// magic while staying grounded — 0.90 was bleaching the whole frame into grey.
+	PP.ColorSaturation = FVector4(0.97f, 0.97f, 0.97f, 1.0f);
 
 	PP.bOverride_ColorContrast = true;
-	PP.ColorContrast = FVector4(1.08f, 1.08f, 1.08f, 1.0f);
+	// Punchier contrast separates silhouettes from the fog plane and gives the frame depth.
+	PP.ColorContrast = FVector4(1.14f, 1.14f, 1.14f, 1.0f);
 
 	PP.bOverride_ColorGamma = true;
 	PP.ColorGamma = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	PP.bOverride_ColorGainHighlights = true;
-	PP.ColorGainHighlights = FVector4(1.05f, 0.99f, 0.92f, 1.0f);
+	PP.ColorGainHighlights = FVector4(1.06f, 1.00f, 0.93f, 1.0f);
 
 	PP.bOverride_ColorGainShadows = true;
-	PP.ColorGainShadows = FVector4(0.94f, 0.97f, 1.04f, 1.0f);
+	// Cooler, deeper shadows (was a barely-there 0.94/0.97/1.04) for that cold-blue bounce
+	// against warm sunlit stone — the signature Crimson Desert split-tone.
+	PP.ColorGainShadows = FVector4(0.88f, 0.93f, 1.06f, 1.0f);
 
 	PP.bOverride_ColorOffset = true;
-	PP.ColorOffset = FVector4(0.002f, 0.004f, 0.008f, 0.0f);
+	PP.ColorOffset = FVector4(0.0f, 0.001f, 0.004f, 0.0f);
 
 	PP.bOverride_FilmSlope = true;
 	PP.FilmSlope = 0.89f;
@@ -148,6 +153,21 @@ void FAetheriaStyleHarmonizer::ApplyCrimsonDesertPostProcess(FPostProcessSetting
 
 	PP.bOverride_MotionBlurAmount = true;
 	PP.MotionBlurAmount = 0.0f;
+
+	// Film-like local contrast: lifts micro-detail in stone/armor without crushing the sky,
+	// which is what separates a "filmic" frame from a flat unlit-looking render.
+	PP.bOverride_LocalExposureMethod = true;
+	PP.LocalExposureMethod = ELocalExposureMethod::Bilateral;
+	PP.bOverride_LocalExposureHighlightContrastScale = true;
+	PP.LocalExposureHighlightContrastScale = 1.05f;
+	PP.bOverride_LocalExposureShadowContrastScale = true;
+	PP.LocalExposureShadowContrastScale = 1.10f;
+	PP.bOverride_LocalExposureDetailStrength = true;
+	PP.LocalExposureDetailStrength = 0.85f;
+
+	// Whisper of grain so large flat surfaces (sky, stone) never read as sterile CG.
+	PP.bOverride_FilmGrainIntensity = true;
+	PP.FilmGrainIntensity = 0.035f;
 }
 
 void FAetheriaStyleHarmonizer::HarmonizeActorMaterials(AActor* Actor, EChronicleStyleCategory Category)
