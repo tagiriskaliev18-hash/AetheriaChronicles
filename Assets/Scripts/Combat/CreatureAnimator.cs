@@ -139,7 +139,7 @@ namespace Aetheria
             CurrentAction = 0;
             if (!Valid) return;
             if (Animator.avatar != null && Animator.avatar.isValid)
-                Animator.Rebind(false);
+                Animator.Rebind();
             Animator.Update(0f);
             Animator.SetTrigger(TRevive);
         }

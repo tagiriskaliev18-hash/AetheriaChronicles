@@ -365,7 +365,7 @@ namespace Aetheria.Editor
                 var current = terrain.materialTemplate;
                 if (terrainMat != null && (current == null || current.shader == null || current.shader.name != "HDRP/TerrainLit"))
                     terrain.materialTemplate = terrainMat;
-                terrain.renderingLayerMask |= RenderingLayerMask.defaultRenderingLayerMask;
+                terrain.renderingLayerMask |= UnityEngine.RenderingLayerMask.defaultRenderingLayerMask;
                 EditorUtility.SetDirty(terrain);
             }
 
@@ -379,7 +379,7 @@ namespace Aetheria.Editor
             var offenders = new List<string>();
             foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
             {
-                r.renderingLayerMask |= RenderingLayerMask.defaultRenderingLayerMask;
+                r.renderingLayerMask |= UnityEngine.RenderingLayerMask.defaultRenderingLayerMask;
                 foreach (var m in r.sharedMaterials)
                 {
                     string n = m == null || m.shader == null ? "<missing>" : m.shader.name;
