@@ -1,0 +1,17 @@
+"AppBuild"
+{
+  // Replace with your real Steam AppID from Steamworks Partner Dashboard
+  "AppID" "480"
+  "Desc" "Aethelgard: Ashes of the Drake — v1.0.0"
+  "BuildOutput" "..\release\steampipe_output"
+  "ContentRoot" "..\release"
+  "SetLive" ""
+  "Preview" "0"
+
+  "Depots"
+  {
+    // Replace 481 / 482 with your real Windows & macOS Depot IDs
+    "481" "depot_win.vdf"
+    "482" "depot_mac.vdf"
+  }
+}

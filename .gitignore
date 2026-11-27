@@ -43,3 +43,10 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 *.bak
+
+# Unified Web/Electron edition (FantasyWeb) & local planning/logs
+/FantasyWeb/node_modules/
+/FantasyWeb/release/
+/FantasyWeb/dist-desktop/
+/.zcode/
+/demo-verification.log

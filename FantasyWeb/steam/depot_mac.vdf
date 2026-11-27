@@ -1,0 +1,12 @@
+"DepotBuild"
+{
+  // Replace with your real macOS Depot ID
+  "DepotID" "482"
+  "FileMapping"
+  {
+    "LocalPath" "mac-universal\*"
+    "DepotPath" "."
+    "recursive" "1"
+  }
+  "FileExclusion" "*.DS_Store"
+}

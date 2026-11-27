@@ -1,0 +1,85 @@
+{
+  "name": "aethelgard-ashes-of-the-drake",
+  "productName": "Aethelgard - Ashes of the Drake",
+  "version": "1.0.0",
+  "description": "3D Open-World Fantasy Action RPG — Ride the crimson dragon, explore Oakhaven and the lava crypt, and vanquish Highkeep's Grave Sovereign.",
+  "author": "Tagir Iskaliev",
+  "license": "UNLICENSED",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:desktop": "node build.mjs && node electron/build-desktop.mjs",
+    "desktop": "npm run build:desktop && electron .",
+    "dist:win": "node build.mjs && node electron/build-desktop.mjs && npx electron-builder --win dir && node electron/stamp-win-exe.mjs && npx electron-builder --win nsis --prepackaged release/win-unpacked",
+    "dist:mac": "npm run build:desktop && electron-builder --mac",
+    "dist:all": "npm run build:desktop && electron-builder --win --mac"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8",
+    "rcedit": "^5.0.2"
+  },
+  "build": {
+    "appId": "com.mind.aethelgard.ashesofthedrake",
+    "productName": "Aethelgard - Ashes of the Drake",
+    "copyright": "Copyright © 2026 Tagir Iskaliev",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "electron/main.cjs",
+      "electron/preload.cjs",
+      "dist-desktop/**/*",
+      "assets/icon.png",
+      "assets/icon.ico"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "icon": "assets/icon.png",
+      "category": "public.app-category.role-playing-games",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    }
+  }
+}
