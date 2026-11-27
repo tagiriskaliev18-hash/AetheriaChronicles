@@ -237,6 +237,7 @@ namespace Aetheria
 
         private void HandleGlobalKeys()
         {
+            if (AetheriaIntroCinematic.Active) return;   // the opening cinematic owns the keyboard
             if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.F1))
                 ToggleOverlay(OverlayMode.DevConsole);
             else if (Input.GetKeyDown(KeyCode.Escape))

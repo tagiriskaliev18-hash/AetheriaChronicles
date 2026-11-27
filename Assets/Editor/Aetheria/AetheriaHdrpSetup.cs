@@ -102,7 +102,10 @@ namespace Aetheria.Editor
 
             // Environment
             var env = Get<VisualEnvironment>(profile);
-            env.skyType.value = SkySettings.GetUniqueID<GradientSky>();
+            // Physically based sky: a gradient sky at multiplier 1 is thousands of times dimmer than the
+            // physical sun, so after exposure it rendered as a muddy brown dome.
+            env.skyType.value = SkySettings.GetUniqueID<PhysicallyBasedSky>();
+            Get<PhysicallyBasedSky>(profile);
             env.skyAmbientMode.value = SkyAmbientMode.Dynamic;
             var grad = Get<GradientSky>(profile);
             grad.top.Override(new Color(0.12f, 0.26f, 0.52f));

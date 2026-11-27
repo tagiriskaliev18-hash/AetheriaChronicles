@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,7 +16,7 @@ namespace Aetheria.Editor
         // v3: pelvis translation is retargeted (deaths reach the ground, locomotion bobs), the Move state
         // is time-scaled by MoveScale against foot sliding, borrowed Hit/Death clips for heroes that had
         // none, and cross-fades sized per transition instead of one 0.07 s snap everywhere.
-        private const string BakeVersion = "aetheria-demo-rig-v3";
+        private const string BakeVersion = "aetheria-demo-rig-v5";
         private const string ParagonHit = "Heroes/Kwang:Hitreact_Fwd";
         private const string ParagonDeath = "Heroes/Kwang:Death_Bwd";
 
@@ -249,67 +249,149 @@ namespace Aetheria.Editor
                 if (legacyDragonRig)
                     sourceBones = UniqueBones(source.transform, name => name.Replace("_Left", "_L").Replace("_Right", "_R"));
                 var targetBones = UniqueBones(target.transform);
-                Quaternion alignment = Quaternion.FromToRotation(RightAxis(sourceBones), RightAxis(targetBones));
-                var bones = new List<(Transform source, Quaternion rest, Quaternion basis, Quaternion targetRest, string path)>();
+                string SourceName(string n) => legacyDragonRig ? DragonSourceBone(n) : n;
+
+                // Matched bones, parents first (GetComponentsInChildren is a depth-first pre-order walk).
+                var match = new Dictionary<Transform, Transform>();
                 foreach (var (boneName, targetBone) in targetBones)
                 {
-                    if (targetBone == target.transform || boneName == "root" ||
-                        !sourceBones.TryGetValue(legacyDragonRig ? DragonSourceBone(boneName) : boneName, out var sourceBone) ||
-                        sourceBone == source.transform)
-                        continue;
-                    Quaternion basis = Quaternion.Inverse(targetBone.rotation) * alignment * sourceBone.rotation;
-                    bones.Add((sourceBone, sourceBone.localRotation, basis, targetBone.localRotation,
-                        AnimationUtility.CalculateTransformPath(targetBone, target.transform)));
+                    if (targetBone == target.transform) continue;
+                    if (sourceBones.TryGetValue(SourceName(boneName), out var sourceBone) && sourceBone != source.transform)
+                        match[targetBone] = sourceBone;
+                }
+                if (match.Count < 12) throw new InvalidOperationException($"{path}: only {match.Count} bones match {target.name}.");
+
+                // The rest pose of the target must survive the bake: this is the prefab that gets saved.
+                var targetAll = target.GetComponentsInChildren<Transform>(true);
+                var restLocalRot = targetAll.Select(t => t.localRotation).ToArray();
+                var restLocalPos = targetAll.Select(t => t.localPosition).ToArray();
+                void RestoreTarget()
+                {
+                    for (int i = 0; i < targetAll.Length; i++)
+                    {
+                        targetAll[i].localRotation = restLocalRot[i];
+                        targetAll[i].localPosition = restLocalPos[i];
+                    }
                 }
 
-                if (bones.Count < 12) throw new InvalidOperationException($"{path}: only {bones.Count} bones match {target.name}.");
+                // Coordinate frames. Both rigs carry the UE "root" bone at the feet, so a pose expressed in
+                // the source root frame maps 1:1 onto the target root frame; this also strips root motion.
+                sourceBones.TryGetValue(SourceName("root"), out var sourceRoot);
+                targetBones.TryGetValue("root", out var targetRoot);
+                if (sourceRoot == null || targetRoot == null) { sourceRoot = source.transform; targetRoot = target.transform; }
+                Quaternion fallbackAlign = Quaternion.FromToRotation(RightAxis(sourceBones), RightAxis(targetBones));
+                bool rootFrames = sourceRoot != source.transform;
 
-                // Pelvis translation. Rotations alone keep the hips nailed at rest height, so a death clip
-                // folds the body in mid-air and a jog has no bounce. The source pelvis offset from its rest
-                // pose is carried into the target's parent space and scaled by the hip-height ratio.
+                var plans = new List<SolvePlan>();
+                foreach (var t in targetAll)
+                {
+                    if (!match.TryGetValue(t, out var s) || t == targetRoot) continue;
+                    var plan = new SolvePlan { Target = t, Source = s, Path = AnimationUtility.CalculateTransformPath(t, target.transform) };
+                    var kids = new List<Transform>();
+                    foreach (Transform child in t)
+                        if (match.ContainsKey(child)) kids.Add(child);
+                    var primary = kids.Where(k => !k.name.ToLowerInvariant().Contains("twist"))
+                        .OrderByDescending(k => IsSided(k.name) ? 0 : 1)
+                        .ThenByDescending(k => k.GetComponentsInChildren<Transform>(true).Count(match.ContainsKey))
+                        .FirstOrDefault();
+                    if (primary != null)
+                    {
+                        plan.TargetPrimary = primary;
+                        plan.SourcePrimary = match[primary];
+                        // Twist reference: the two remaining children farthest apart (thighs of the pelvis,
+                        // clavicles of the chest, thumb/pinky of the hand).
+                        var others = kids.Where(k => k != primary && !k.name.ToLowerInvariant().Contains("twist")).ToList();
+                        float best = 0.0001f;
+                        for (int a = 0; a < others.Count; a++)
+                        for (int b = a + 1; b < others.Count; b++)
+                        {
+                            float d = (others[a].position - others[b].position).sqrMagnitude;
+                            if (d <= best) continue;
+                            best = d;
+                            plan.TargetA = others[a]; plan.TargetB = others[b];
+                            plan.SourceA = match[others[a]]; plan.SourceB = match[others[b]];
+                        }
+                    }
+                    plans.Add(plan);
+                }
+
+                // Pelvis placement, scaled by leg length so the feet land on the ground of a taller or shorter body.
                 sourceBones.TryGetValue("pelvis", out var sourceHip);
                 targetBones.TryGetValue("pelvis", out var targetHip);
-                bool bakeHip = sourceHip != null && targetHip != null && sourceHip.parent != null && targetHip.parent != null;
-                Vector3 sourceHipRest = Vector3.zero, targetHipRest = Vector3.zero;
-                Matrix4x4 sourceHipParent = Matrix4x4.identity, targetHipParentInverse = Matrix4x4.identity;
-                float hipRatio = 1f;
-                if (bakeHip)
-                {
-                    float sourceHeight = sourceHip.position.y - source.transform.position.y;
-                    float targetHeight = targetHip.position.y - target.transform.position.y;
-                    bakeHip = sourceHeight > 0.05f && targetHeight > 0.05f;
-                    hipRatio = bakeHip ? targetHeight / sourceHeight : 1f;
-                    sourceHipRest = sourceHip.localPosition;
-                    targetHipRest = targetHip.localPosition;
-                    sourceHipParent = sourceHip.parent.localToWorldMatrix;
-                    targetHipParentInverse = targetHip.parent.worldToLocalMatrix;
-                }
+                bool bakeHip = sourceHip != null && targetHip != null && targetHip.parent != null;
+                float LegLength(Dictionary<string, Transform> d) =>
+                    d.TryGetValue("thigh_l", out var th) && d.TryGetValue("calf_l", out var ca) && d.TryGetValue("foot_l", out var fo)
+                        ? Vector3.Distance(th.position, ca.position) + Vector3.Distance(ca.position, fo.position) : 0f;
+                float targetLeg = LegLength(targetBones);
+                float sourceLeg = LegLength(sourceBones);
+                float hipRatio = targetLeg > 0.01f && sourceLeg > 0.01f ? targetLeg / sourceLeg : 1f;
 
+                var bones = plans.Where(p => p.TargetPrimary != null).ToList();
                 int frames = Mathf.Max(2, Mathf.CeilToInt(clip.length * 30f) + 1);
                 var bindings = new List<EditorCurveBinding>();
                 var curves = new List<AnimationCurve>();
                 var poses = new Quaternion[bones.Count, frames];
                 var hipPositions = new Vector3[frames];
                 float largestMotion = 0f;
-                for (int frame = 0; frame < frames; frame++)
+                try
                 {
-                    float time = clip.length * frame / (frames - 1);
-                    clip.SampleAnimation(source, time);
-                    if (bakeHip)
+                    for (int frame = 0; frame < frames; frame++)
                     {
-                        Vector3 worldDelta = sourceHipParent.MultiplyVector(sourceHip.localPosition - sourceHipRest);
-                        hipPositions[frame] = targetHipRest + targetHipParentInverse.MultiplyVector(alignment * worldDelta * hipRatio);
+                        float time = clip.length * frame / (frames - 1);
+                        clip.SampleAnimation(source, time);
+                        RestoreTarget();
+
+                        // Maps a source world vector into target world space: a yaw only. The FBX root bone carries
+                        // the Z-up conversion (-90 X) while the glTF root does not, so the full root rotation would
+                        // tip the whole body over; the root X axis is horizontal in both and gives the facing.
+                        Quaternion map = fallbackAlign;
+                        if (rootFrames)
+                        {
+                            Vector3 sx = Vector3.ProjectOnPlane(sourceRoot.rotation * Vector3.right, Vector3.up);
+                            Vector3 tx = Vector3.ProjectOnPlane(targetRoot.rotation * Vector3.right, Vector3.up);
+                            if (sx.sqrMagnitude > 1e-4f && tx.sqrMagnitude > 1e-4f) map = Quaternion.FromToRotation(sx.normalized, tx.normalized);
+                        }
+
+                        if (bakeHip)
+                        {
+                            targetHip.position = targetRoot.position + map * (sourceHip.position - sourceRoot.position) * hipRatio;
+                            hipPositions[frame] = targetHip.localPosition;
+                        }
+
+                        // Aim every bone down its source direction, parents first, then roll it about that
+                        // direction so its side children line up too. No rest pose is involved, so a clip whose
+                        // first frame is not the bind pose can no longer twist the whole skeleton.
+                        foreach (var p in plans)
+                        {
+                            if (p.TargetPrimary == null) continue;
+                            Vector3 want = map * (p.SourcePrimary.position - p.Source.position);
+                            Vector3 have = p.TargetPrimary.position - p.Target.position;
+                            if (want.sqrMagnitude < 1e-10f || have.sqrMagnitude < 1e-10f) continue;
+                            Quaternion q = Quaternion.FromToRotation(have, want);
+                            if (p.TargetA != null)
+                            {
+                                Vector3 axis = want.normalized;
+                                Vector3 wantSide = Vector3.ProjectOnPlane(map * (p.SourceB.position - p.SourceA.position), axis);
+                                Vector3 haveSide = Vector3.ProjectOnPlane(q * (p.TargetB.position - p.TargetA.position), axis);
+                                if (wantSide.sqrMagnitude > 1e-8f && haveSide.sqrMagnitude > 1e-8f)
+                                    q = Quaternion.AngleAxis(Vector3.SignedAngle(haveSide, wantSide, axis), axis) * q;
+                            }
+                            p.Target.rotation = q * p.Target.rotation;
+                        }
+
+                        for (int i = 0; i < bones.Count; i++)
+                        {
+                            Quaternion pose = bones[i].Target.localRotation;
+                            if (frame > 0 && Quaternion.Dot(poses[i, frame - 1], pose) < 0f)
+                                pose = new Quaternion(-pose.x, -pose.y, -pose.z, -pose.w);
+                            poses[i, frame] = pose;
+                            if (frame > 0) largestMotion = Mathf.Max(largestMotion, Quaternion.Angle(poses[i, 0], pose));
+                        }
                     }
-                    for (int i = 0; i < bones.Count; i++)
-                    {
-                        var bone = bones[i];
-                        Quaternion delta = Quaternion.Inverse(bone.rest) * bone.source.localRotation;
-                        Quaternion pose = bone.targetRest * bone.basis * delta * Quaternion.Inverse(bone.basis);
-                        largestMotion = Mathf.Max(largestMotion, Quaternion.Angle(Quaternion.identity, delta));
-                        if (frame > 0 && Quaternion.Dot(poses[i, frame - 1], pose) < 0f)
-                            pose = new Quaternion(-pose.x, -pose.y, -pose.z, -pose.w);
-                        poses[i, frame] = pose;
-                    }
+                }
+                finally
+                {
+                    RestoreTarget();
                 }
                 if (largestMotion < 1f) throw new InvalidOperationException($"{path}: the imported clip did not move the rig.");
 
@@ -320,7 +402,7 @@ namespace Aetheria.Editor
                     framesToKeep.Add(frames - 1);
                     for (int j = 0; j < 4; j++)
                     {
-                        bindings.Add(EditorCurveBinding.FloatCurve(bones[i].path, typeof(Transform), "m_LocalRotation." + "xyzw"[j]));
+                        bindings.Add(EditorCurveBinding.FloatCurve(bones[i].Path, typeof(Transform), "m_LocalRotation." + "xyzw"[j]));
                         var track = new Keyframe[framesToKeep.Count];
                         for (int k = 0; k < track.Length; k++)
                         {
@@ -384,6 +466,19 @@ namespace Aetheria.Editor
             KeepFrames(bone, first, split, poses, frames);
             frames.Add(split);
             KeepFrames(bone, split, last, poses, frames);
+        }
+
+        /// <summary>How one target bone is aimed: down its primary child, rolled by a pair of side children.</summary>
+        private sealed class SolvePlan
+        {
+            public Transform Target, Source, TargetPrimary, SourcePrimary, TargetA, TargetB, SourceA, SourceB;
+            public string Path;
+        }
+
+        private static bool IsSided(string name)
+        {
+            string n = name.ToLowerInvariant();
+            return n.EndsWith("_l") || n.EndsWith("_r") || n.Contains("_l_") || n.Contains("_r_");
         }
 
         private static string DragonSourceBone(string name) => name switch

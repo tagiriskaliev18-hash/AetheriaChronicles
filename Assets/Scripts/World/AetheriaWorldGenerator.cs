@@ -13,7 +13,7 @@ namespace Aetheria
         public static AetheriaWorldGenerator Instance { get; private set; }
 
         [Range(0f, 1f)]
-        public float TimeOfDay = 0.68f; // Default: Crimson Desert Golden Sunset
+        public float TimeOfDay = 0.42f; // Default: clear late morning (the old 0.68 sunset washed the whole valley orange)
 
         public Light SunLight;
         public Volume GlobalVolume;

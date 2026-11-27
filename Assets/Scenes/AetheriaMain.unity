@@ -11913,7 +11913,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8596605455d8a3941869d7013e82a8c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Aetheria.AetheriaWorldGenerator
-  TimeOfDay: 0.68
+  TimeOfDay: 0.42
   SunLight: {fileID: 1361573133}
   GlobalVolume: {fileID: 1410160526}
   MirrorLakeSurface: {fileID: 475213722}
@@ -21605,14 +21605,14 @@ Terrain:
   m_Enabled: 1
   serializedVersion: 6
   m_TerrainData: {fileID: 15600000, guid: 51de9cdde80f5a2459e450c51c9d8521, type: 2}
-  m_TreeDistance: 5000
-  m_TreeBillboardDistance: 50
+  m_TreeDistance: 900
+  m_TreeBillboardDistance: 900
   m_TreeCrossFadeLength: 5
-  m_TreeMaximumFullLODCount: 50
-  m_DetailObjectDistance: 80
+  m_TreeMaximumFullLODCount: 4000
+  m_DetailObjectDistance: 120
   m_DetailObjectDensity: 1
-  m_HeightmapPixelError: 5
-  m_SplatMapDistance: 1000
+  m_HeightmapPixelError: 3
+  m_SplatMapDistance: 900
   m_HeightmapMinimumLODSimplification: 0
   m_HeightmapMaximumLOD: 0
   m_ShadowCastingMode: 2
