@@ -65,6 +65,11 @@ namespace Aetheria
         {
             ApplyTimeOfDay(TimeOfDay);
             string[] args = System.Environment.GetCommandLineArgs();
+            if (System.Array.IndexOf(args, "-verify-demo") >= 0)
+            {
+                StartCoroutine(AetheriaDemoVerification.Run());
+                return;
+            }
             for (int i = 0; i < args.Length - 1; i++)
             {
                 if (args[i] == "-verify-screenshots")
@@ -133,9 +138,10 @@ namespace Aetheria
                     var drake = DragonController.Instance;
                     if (drake != null)
                     {
-                        float lakeY = Mathf.Max(AetheriaWorld.SeaLevel, AetheriaWorld.SampleHeight(new Vector3(-130f, 0f, -60f)));
+                        Vector3 lake = AetheriaWorld.FindSite("MirrorLake").Position;
+                        lake.y = Mathf.Max(AetheriaWorld.SeaLevel, AetheriaWorld.SampleHeight(lake));
                         drake.transform.rotation = Quaternion.Euler(0f, 45f, 0f);
-                        drake.transform.position = new Vector3(-130f, lakeY + 14f, -60f);
+                        drake.transform.position = lake + Vector3.up * 14f;
                         drake.Mount(hero);
                         drake.ForceBreathForDemo = true;
                     }
@@ -150,10 +156,12 @@ namespace Aetheria
                         drake.ForceBreathForDemo = false;
                         if (drake.Mounted) drake.Dismount();
                     }
-                    map?.RevealAround(new Vector3(0f, 48f, 440f), 220f, true);
+                    Vector3 arena = AetheriaWorld.FindSite("HighkeepCitadel").Position;
+                    map?.RevealAround(arena, 80f, true);
                     while (map != null && map.PopNotification() != null) { }
-                    hero.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-                    hero.TeleportSafe(new Vector3(0f, AetheriaWorld.SampleHeight(new Vector3(0f, 0f, 418f)) + 0.5f, 418f));
+                    Vector3 approach = AetheriaWorld.UsesCourtyardLayout ? Vector3.forward : Vector3.back;
+                    hero.transform.rotation = Quaternion.LookRotation(-approach, Vector3.up);
+                    hero.TeleportSafe(arena + approach * 9f);
                     break;
                 }
                 case 7:  // World Map Fog-of-War & Teleport Landmarks

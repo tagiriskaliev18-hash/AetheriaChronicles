@@ -46,7 +46,7 @@ namespace Aetheria
         {
             Animator = animator;
             if (Animator == null) return;
-            if (Animator.runtimeAnimatorController == null || Animator.avatar == null || !Animator.avatar.isValid)
+            if (Animator.runtimeAnimatorController == null)
             {
                 Animator = null;
                 return;
@@ -104,7 +104,7 @@ namespace Aetheria
             if (Dead) return false;
             CurrentAction = action;
             ActionTime = 0f;
-            InAttack = action >= 1 && action <= 4;
+            InAttack = action >= 1 && action <= 5;
             InStun = action == 6;
             if (!Valid) return false;
             Animator.SetInteger(PAction, action);

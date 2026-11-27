@@ -49,6 +49,8 @@ namespace Aetheria.Editor
             if (!File.Exists(ScenePath))
                 throw new FileNotFoundException($"Main scene not found at '{ScenePath}'. Run 'Aetheria/1. Setup Project, Assets & Scene' first.", ScenePath);
 
+            AetheriaDemoAnimations.Prepare();
+            PrepareDemoScene();
             string fullExePath = Path.GetFullPath(BuildExePath);
             Directory.CreateDirectory(Path.GetDirectoryName(fullExePath)!);
 
@@ -78,7 +80,7 @@ namespace Aetheria.Editor
                 scenes = scenes,
                 locationPathName = fullExePath,
                 target = BuildTarget.StandaloneWindows64,
-                options = BuildOptions.None
+                options = BuildOptions.CompressWithLz4
             };
             var report = BuildPipeline.BuildPlayer(opts);
             Debug.Log($"[AetheriaSetup] Build finished: result={report.summary.result} errors={report.summary.totalErrors} size={report.summary.totalSize / (1024 * 1024)}MB backend={PlayerSettings.GetScriptingBackend(NamedBuildTarget.Standalone)} -> {fullExePath}");
@@ -98,6 +100,58 @@ namespace Aetheria.Editor
                     }
                 }
                 throw new Exception(errSb.ToString());
+            }
+        }
+
+        public static void VerifyDemoInEditor()
+        {
+            var args = Environment.GetCommandLineArgs();
+            if (!args.Contains("-verify-demo"))
+                throw new ArgumentException("Run VerifyDemoInEditor with -verify-demo.");
+            AetheriaDemoAnimations.Prepare();
+            PrepareDemoScene();
+            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            EditorApplication.EnterPlaymode();
+        }
+
+        [MenuItem("Aetheria/Prepare Demo Scene")]
+        public static void PrepareDemoScene()
+        {
+            var scene = SceneManager.GetSceneByPath(ScenePath);
+            bool openedHere = !scene.isLoaded;
+            if (openedHere) scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
+            try
+            {
+                var objects = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<Transform>(true));
+                var bridge = objects.FirstOrDefault(t => t.name == "MirrorLakeStoneBridge");
+                bool dirty = false;
+                if (bridge != null)
+                {
+                    foreach (var filter in bridge.GetComponentsInChildren<MeshFilter>(true))
+                    {
+                        if (filter.sharedMesh == null || filter.GetComponent<Collider>() != null) continue;
+                        filter.gameObject.AddComponent<MeshCollider>().sharedMesh = filter.sharedMesh;
+                        dirty = true;
+                    }
+                }
+                var enemy = objects.FirstOrDefault(t => t.name == "CalderaBrute")?.GetComponent<EnemyAndBossAI>();
+                if (enemy != null && !enemy.Ranged)
+                {
+                    enemy.Ranged = true;
+                    enemy.AttackRange = 10f;
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(enemy);
+                    dirty = true;
+                }
+                if (dirty)
+                {
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    if (!EditorSceneManager.SaveScene(scene))
+                        throw new IOException($"Could not save demo scene at {ScenePath}.");
+                }
+            }
+            finally
+            {
+                if (openedHere) EditorSceneManager.CloseScene(scene, true);
             }
         }
 

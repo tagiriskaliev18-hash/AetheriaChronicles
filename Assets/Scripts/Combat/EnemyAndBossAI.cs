@@ -101,6 +101,7 @@ namespace Aetheria
         private enum State { Idle, Chase, Windup, Recover, Stagger, Dead }
         private State _state = State.Idle;
         private Vector3 _homePos;
+        private float _groundOffset;
         private float _attackCooldown = 1.2f;
         private float _staggerBreakTimer;
         private float _burnTimer, _freezeTimer, _shockTimer;
@@ -128,6 +129,7 @@ namespace Aetheria
         private void Awake()
         {
             _homePos = transform.position;
+            _groundOffset = Mathf.Clamp(_homePos.y - AetheriaWorld.SampleHeight(_homePos), -0.4f, 0.4f);
             if (IsBoss) ActiveBoss = this;
 
             Anim = GetComponent<CreatureAnimator>() ?? gameObject.AddComponent<CreatureAnimator>();
@@ -318,10 +320,17 @@ namespace Aetheria
                     }
                 }
                 Vector3 next = transform.position + step;
-                if (AetheriaWorld.SampleHeight(next) > AetheriaWorld.SeaLevel + 0.2f && Vector3.Distance(_homePos, next) < 70f)
+                float nextHeight = AetheriaWorld.SampleHeight(next);
+                float currentHeight = AetheriaWorld.SampleHeight(transform.position);
+                bool walkable = nextHeight > AetheriaWorld.SeaLevel + 0.2f &&
+                    Mathf.Abs(nextHeight - currentHeight) <= step.magnitude * 1.3f + 0.03f;
+                if (walkable && Vector3.Distance(_homePos, next) < 70f)
+                {
                     transform.position = next;
+                    Anim.Drive(speed);
+                }
+                else Anim.Drive(0f);
                 PlaceOnGround();
-                Anim.Drive(speed);
             }
             else
             {
@@ -333,7 +342,7 @@ namespace Aetheria
         private void PlaceOnGround()
         {
             Vector3 p = transform.position;
-            p.y = AetheriaWorld.SampleHeight(p);
+            p.y = AetheriaWorld.SampleHeight(p) + _groundOffset;
             transform.position = p;
         }
 
@@ -351,7 +360,7 @@ namespace Aetheria
             if (IsBoss) { BeginBossAttack(); return; }
             if (Ranged)
             {
-                _pendingAction = 5;
+                _pendingAction = _cycle++ % 3 == 0 ? 5 : (_cycle % 2 == 0 ? 1 : 2);
                 _pendingHitFrame = 0.50f;
             }
             else
@@ -382,9 +391,9 @@ namespace Aetheria
             }
 
             float fallbackWindupSec = IsBoss ? 0.65f : 0.42f;
-            bool hitReady = Anim.Valid
-                ? ((Anim.InActionState(_pendingAction, out float t) && t >= _pendingHitFrame) || Anim.ActionTime > 1.6f)
-                : (_stateTimer >= fallbackWindupSec);
+            bool hitReady = Anim.InActionState(_pendingAction, out float t)
+                ? t >= _pendingHitFrame
+                : _stateTimer >= (Anim.Valid ? 1.6f : fallbackWindupSec);
             if (hitReady)
             {
                 _strikeDone = true;
@@ -502,7 +511,7 @@ namespace Aetheria
                 case BossAttackKind.CrimsonCleave:     _pendingAction = 1; _pendingHitFrame = 0.40f; break;
                 case BossAttackKind.SeismicSlam:       _pendingAction = 2; _pendingHitFrame = 0.46f; break;
                 case BossAttackKind.TempestLunge:      _pendingAction = 3; _pendingHitFrame = 0.34f; break;
-                case BossAttackKind.ShatterSpin:       _pendingAction = 1; _pendingHitFrame = 0.30f; break;
+                case BossAttackKind.ShatterSpin:       _pendingAction = 4; _pendingHitFrame = 0.30f; break;
                 case BossAttackKind.AbyssalFireVolley: _pendingAction = 5; _pendingHitFrame = 0.45f; break;
                 default:                               _pendingAction = 4; _pendingHitFrame = 0.52f; break;
             }

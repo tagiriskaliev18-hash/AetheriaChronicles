@@ -105,11 +105,13 @@ namespace Aetheria
         private static readonly int AnimCombatSpeed = Animator.StringToHash("CombatSpeed");
 
         public static HeroController Instance { get; private set; }
-        public Vector3 OakhavenRespawnPoint => AetheriaWorld.FindSite("OakhavenVillage").Position + Vector3.up * (AetheriaWorld.SampleHeight(AetheriaWorld.FindSite("OakhavenVillage").Position) + 0.2f);
+        private Vector3 _villageSpawn;
+        public Vector3 OakhavenRespawnPoint => _villageSpawn;
 
         private void Awake()
         {
             Instance = this;
+            _villageSpawn = transform.position;
             CC = GetComponent<CharacterController>();
             CC.height = 1.85f;
             CC.radius = 0.38f;
@@ -371,15 +373,15 @@ namespace Aetheria
             // Remember the last dry, flat spot: the sea returns the hero there
             float ground = AetheriaWorld.SampleHeight(transform.position);
             _safeTimer -= dt;
-            if (CC.isGrounded && ground > AetheriaWorld.SeaLevel + 0.25f && _safeTimer <= 0f)
+            if (CC.isGrounded && transform.position.y >= ground - CC.skinWidth &&
+                ground > AetheriaWorld.SeaLevel + 0.25f && _safeTimer <= 0f)
             {
                 _lastSafeGround = transform.position;
                 _safeTimer = 0.5f;
             }
-            if (transform.position.y < AetheriaWorld.SeaLevel - 0.85f)
+            if (transform.position.y < AetheriaWorld.SeaLevel - 0.85f || transform.position.y < ground - 0.65f)
             {
-                transform.position = _lastSafeGround + Vector3.up * 0.3f;
-                _smoothVel = Vector3.zero; _verticalVel = 0f;
+                TeleportSafe(_lastSafeGround);
                 QuestAndMapService.Instance?.PushNotification("Холодные воды Этерии вынесли вас на берег");
             }
 
@@ -861,7 +863,8 @@ namespace Aetheria
             target.y = Mathf.Max(target.y, AetheriaWorld.SampleHeight(target) + 0.35f);
             transform.position = target;
             _smoothVel = Vector3.zero; _verticalVel = 0f; _knockback = Vector3.zero;
-            _lastSafeGround = target;
+            if (AetheriaWorld.SampleHeight(target) > AetheriaWorld.SeaLevel + 0.25f)
+                _lastSafeGround = target;
             CC.enabled = true;
             SnapCameraBehindHero();
         }
@@ -921,9 +924,10 @@ namespace Aetheria
         {
             HasEnteredWorld = true;
             PrologueStage = 0;
-            var cliff = AetheriaWorld.FindSite("PrologueCliff").Position;
+            var tutor = AetheriaNPC.AllNPCs.Find(npc => npc.NpcId == "Npc_CaveTutor");
+            var cliff = tutor != null ? tutor.transform.position : AetheriaWorld.FindSite("PrologueCliff").Position;
             transform.rotation = Quaternion.Euler(0f, 90f, 0f);
-            TeleportSafe(cliff + new Vector3(-6f, 0.3f, 0f));
+            TeleportSafe(new Vector3(cliff.x - 2.4f, AetheriaWorld.SeaLevel, cliff.z));
             QuestAndMapService.Instance.TrackedQuestId = "Q_PrologueAwakening";
             QuestAndMapService.Instance?.PushNotification("ПЕЩЕРА ПРОБУЖДЕНИЯ · Поговорите с Хранителем Вейленом [E]");
         }
@@ -941,8 +945,11 @@ namespace Aetheria
         private void UpdatePrologueStageTriggers()
         {
             if (PrologueStage >= 4) return;
-            Vector3 brink = AetheriaWorld.FindSite("PrologueCliff").Position + new Vector3(20f, 0f, 0f);
-            if (PrologueStage <= 1 && Vector3.Distance(transform.position, brink) < 7f)
+            var quest = QuestAndMapService.Instance?.FindQuest("Q_PrologueAwakening");
+            if (quest == null || quest.State != QuestState.Active) return;
+            Vector3 offset = transform.position - quest.ObjectiveWorldLocation;
+            offset.y = 0f;
+            if (PrologueStage <= 1 && offset.sqrMagnitude < 9f)
             {
                 PrologueStage = 3;
                 _waterfallTimer = 0f;
@@ -955,7 +962,14 @@ namespace Aetheria
         {
             _waterfallTimer += dt;
             float u = Mathf.Clamp01(_waterfallTimer / 3.6f);
-            Vector3 landing = new Vector3(-84f, 0f, -60f);
+            var bridge = AetheriaWorld.FindSite("MirrorLake").Position;
+            Vector3 landing = AetheriaWorld.UsesCourtyardLayout ? bridge : new Vector3(-84f, 0f, -60f);
+            if (AetheriaWorld.UsesCourtyardLayout)
+            {
+                landing = Vector3.MoveTowards(landing, OakhavenRespawnPoint, 18f);
+                while ((landing - OakhavenRespawnPoint).sqrMagnitude > 1f && AetheriaWorld.SampleHeight(landing) < 1.1f)
+                    landing = Vector3.MoveTowards(landing, OakhavenRespawnPoint, 2f);
+            }
             landing.y = AetheriaWorld.SampleHeight(landing) + 0.4f;
             Vector3 pos = Vector3.Lerp(_cutsceneStartPos, landing, u);
             pos.y += Mathf.Sin(u * Mathf.PI) * 6.5f;
@@ -971,6 +985,7 @@ namespace Aetheria
             {
                 PrologueStage = 4;
                 TeleportSafe(landing);
+                QuestAndMapService.Instance?.TurnInQuest("Q_PrologueAwakening", this);
                 AetheriaFx.Shockwave(landing, new Color(0.55f, 0.88f, 1f), 4.5f, 0.55f);
                 AetheriaFx.Puff(landing, new Color(0.84f, 0.90f, 0.96f, 0.55f), 14, 3.2f, 1.4f, 1.0f, 0.35f);
                 AetheriaFx.Burst(landing + Vector3.up * 0.25f, new Color(0.65f, 0.92f, 1f), 22, 2.5f, 7f, 0.08f, 0.18f, 0.6f, 1.2f, new Color(0.3f, 0.7f, 1f, 0f));
@@ -1071,7 +1086,7 @@ namespace Aetheria
             if (_heroModelInstance == null) { ActiveAnimator = null; return; }
             var anim = _heroModelInstance.GetComponentInChildren<Animator>(true);
             if (anim != null && anim.isActiveAndEnabled && anim.runtimeAnimatorController != null &&
-                anim.avatar != null && anim.avatar.isValid && anim.avatar.isHuman)
+                (anim.avatar == null || anim.avatar.isValid))
             {
                 anim.applyRootMotion = false;
                 anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;

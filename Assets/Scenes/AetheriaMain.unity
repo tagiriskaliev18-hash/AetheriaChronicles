@@ -8578,7 +8578,7 @@ Camera:
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
   m_TargetEye: 3
-  m_HDR: 1
+  m_HDR: 0
   m_AllowMSAA: 0
   m_AllowDynamicResolution: 0
   m_ForceIntoRT: 0
@@ -20980,6 +20980,7 @@ MonoBehaviour:
   IsBlocking: 0
   DragonUnlocked: 0
   GodMode: 0
+  MouseSensitivity: 1
   EnemiesSlain: 0
   PrologueStage: 4
   HasEnteredWorld: 0
@@ -22155,10 +22156,10 @@ MonoBehaviour:
   XPReward: 70
   GoldReward: 35
   AggroRadius: 22
-  AttackRange: 2.8
+  AttackRange: 10
   AttackDamage: 14
   MoveSpeed: 3.6
-  Ranged: 0
+  Ranged: 1
   ProjectileColor: {r: 0.75, g: 0.35, b: 1, a: 1}
   BodyRadius: 0.6
   BossPhase: 1
@@ -22590,13 +22591,43 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 4d8d2d6a1dd642a4f9b22cf0ad4269bf, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2070324095}
   m_SourcePrefab: {fileID: 100100000, guid: 4d8d2d6a1dd642a4f9b22cf0ad4269bf, type: 3}
 --- !u!4 &2070324093 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4d8d2d6a1dd642a4f9b22cf0ad4269bf, type: 3}
   m_PrefabInstance: {fileID: 2070324092}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2070324094 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 4d8d2d6a1dd642a4f9b22cf0ad4269bf, type: 3}
+  m_PrefabInstance: {fileID: 2070324092}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &2070324095
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2070324094}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -90739759817554843, guid: 4d8d2d6a1dd642a4f9b22cf0ad4269bf, type: 3}
 --- !u!1 &2077397087
 GameObject:
   m_ObjectHideFlags: 0

@@ -37,11 +37,12 @@ namespace Aetheria
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+            AetheriaWorld.ReadSceneLandmarks();
             PopulateStoryQuests();
             SeedMapPins();
             BuildBiomeCache();
             KindledShrines.Add("Shrine_Oakhaven");
-            RevealAround(new Vector3(0f, 0f, 20f), 95f, suppressToast: true);
+            RevealAround(SitePos("OakhavenVillage", 0f, 0f), AetheriaWorld.UsesCourtyardLayout ? 55f : 95f, suppressToast: true);
         }
 
         private void PopulateStoryQuests()
@@ -58,19 +59,20 @@ namespace Aetheria
                 OfferDialogue = "Добро пожаловать в Этерию, Пробуждённый! Лишь Ткач Первосфер — Exort [Z], Wex [X], Quas [Q], призыв [R] — связанный с драконом Игнисом, остановит Малакора.\n\n[LMB] — удары клинком, [RMB] — блок и парирование, [Space] — прыжок, [Space+Ctrl] или [V] — перекат, [C] — редактор героя, [M] — карта мира.\n\nСтупай на край утёса — и вниз, к водопаду!",
                 TurnInDialogue = "Долина открыта! Иди через Каменный мост к старейшине Олдрику в Оукхейвен.",
                 TargetCount = 1, RewardGold = 75, RewardXP = 100, UnlockOrbReward = OrbType.None,
-                ObjectiveWorldLocation = SitePos("PrologueCliff", 8f, 0f)
+                ObjectiveWorldLocation = SitePos("PrologueCliff", AetheriaWorld.UsesCourtyardLayout ? 0f : 20f, 0f)
             });
 
             Quests.Add(new QuestDef
             {
                 QuestId = "Q_AwakenExort", GiverId = "ElderAldric", GiverName = "Elder Aldric",
                 Title = "Пепел Очага",
-                Summary = "Разбейте искажённый барьер за площадью Оукхейвена и зажгите оба Рунических Маяка, чтобы пробудить сферу Exort.",
+                Summary = "Зажгите оба Рунических Маяка за площадью Оукхейвена, чтобы пробудить сферу Exort.",
                 ObjectiveText = "Зажгите 2 Рунических Маяка Оукхейвена",
-                OfferDialogue = "Очаг Оукхейвена гаснет. Разбейте искажённую печать за площадью и зажгите оба Маяка — искры пробудят Exort! [Z Z Z → R]",
+                OfferDialogue = "Очаг Оукхейвена гаснет. Ударьте клинком по обоим маякам за площадью — их искры пробудят Exort.",
                 TurnInDialogue = "Золотое пламя снова отвечает! Призывайте EEE [Z-Z-Z → R], чтобы обрушить Солнечную Катастрофу.",
                 TargetCount = 2, RewardGold = 120, RewardXP = 200, UnlockOrbReward = OrbType.Exort,
-                ObjectiveWorldLocation = SitePos("OakhavenVillage", -9f, -30f)
+                ObjectiveWorldLocation = AetheriaWorld.UsesCourtyardLayout
+                    ? ScenePosition("OakhavenBeacon_East", "OakhavenVillage") : SitePos("OakhavenVillage", -9f, -30f)
             });
 
             Quests.Add(new QuestDef
@@ -133,6 +135,7 @@ namespace Aetheria
                 ObjectiveWorldLocation = SitePos("HighkeepCitadel", 0f, 0f)
             });
 
+            if (AetheriaWorld.UsesCourtyardLayout) return;
             // ---------------- Side quests: discovered out in the world, completed on the spot ----------------
             Side("Q_ShrinePilgrim", "Паломник Этерии", "Зажгите очаги святилищ по всем землям — каждое открывает быстрое перемещение с карты [M].",
                 "Зажгите святилища Этерии", 11, 420, 900, SitePos("Shrine_Lake", 0f, 0f));
@@ -160,6 +163,12 @@ namespace Aetheria
         {
             var s = AetheriaWorld.FindSite(siteId);
             return s != null ? s.Position + new Vector3(dx, 0f, dz) : new Vector3(dx, 0f, dz);
+        }
+
+        private static Vector3 ScenePosition(string objectName, string siteId)
+        {
+            var obj = GameObject.Find(objectName);
+            return obj != null ? obj.transform.position : SitePos(siteId, 0f, 0f);
         }
 
         private void SeedMapPins()
@@ -360,7 +369,7 @@ namespace Aetheria
             Array.Clear(_biomeExplored, 0, _biomeExplored.Length);
             TrackedQuestId = "Q_PrologueAwakening";
             _notifications.Clear();
-            RevealAround(new Vector3(0f, 0f, 20f), 95f, suppressToast: true);
+            RevealAround(SitePos("OakhavenVillage", 0f, 0f), AetheriaWorld.UsesCourtyardLayout ? 55f : 95f, suppressToast: true);
             OnQuestOrMapUpdated?.Invoke();
         }
 

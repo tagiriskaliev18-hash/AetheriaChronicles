@@ -69,7 +69,7 @@ namespace Aetheria
         public const int BiomeCount = 13;
 
         /// <summary>+Z is north on the map.</summary>
-        public static readonly SiteDef[] Sites =
+        private static readonly SiteDef[] ContinentSites =
         {
             new SiteDef("OakhavenVillage",    "Oakhaven Village",           BiomeId.OakhavenValley,  SiteKind.Village,     0f,   20f, true),
             new SiteDef("Shrine_Oakhaven",    "Oakhaven Hearth Shrine",     BiomeId.OakhavenValley,  SiteKind.Shrine,    -24f,   36f, true),
@@ -100,6 +100,9 @@ namespace Aetheria
             new SiteDef("GullIsle",           "Gullskerry Isle",            BiomeId.AetherianSea,    SiteKind.Isle,      556f, -296f),
             new SiteDef("StarIsle",           "Starspire Isle",             BiomeId.AetherianSea,    SiteKind.Isle,      148f,  612f),
         };
+
+        public static SiteDef[] Sites { get; private set; } = ContinentSites;
+        public static bool UsesCourtyardLayout => Sites != ContinentSites;
 
         /// <summary>The twelve biome regions partition the whole continent; boundaries are blended.</summary>
         public static readonly BiomeRegion[] Regions =
@@ -194,9 +197,36 @@ namespace Aetheria
 
         // ------------------------------------------------------------------ queries
 
+        public static void ReadSceneLandmarks()
+        {
+            Sites = ContinentSites;
+            if (GameObject.Find("PrologueWaterfallMist") == null) return;
+            var found = new System.Collections.Generic.List<SiteDef>();
+            void Add(string id, string objectName)
+            {
+                var obj = GameObject.Find(objectName);
+                var site = FindSite(id);
+                if (obj == null || site == null) return;
+                var p = obj.transform.position;
+                found.Add(new SiteDef(id, site.Label, site.Biome, site.Kind, p.x, p.z, site.StartDiscovered));
+            }
+            Add("PrologueCliff", "PrologueWaterfallMist");
+            Add("OakhavenVillage", "ElderAldric");
+            Add("Shrine_Oakhaven", "Shrine_OakhavenForge");
+            Add("MirrorLake", "MirrorLakeStoneBridge");
+            Add("DragonAerie", "IgnisCrimsonDragon");
+            Add("SapphireWoods", "TempestConductor_1");
+            Add("EmberCrypt", "EmberCryptObsidianSeal");
+            Add("CrystalGlacier", "FrostWarden");
+            Add("HighkeepCitadel", "Boss_Malakor");
+            Sites = found.ToArray();
+        }
+
         public static SiteDef FindSite(string id)
         {
             foreach (var s in Sites) if (s.Id == id) return s;
+            if (UsesCourtyardLayout)
+                foreach (var s in ContinentSites) if (s.Id == id) return s;
             return null;
         }
 
@@ -248,6 +278,20 @@ namespace Aetheria
         /// <summary>Discrete biome at a world position (sea when the point is under water).</summary>
         public static BiomeId BiomeAt(float x, float z)
         {
+            if (UsesCourtyardLayout)
+            {
+                float nearest = float.PositiveInfinity;
+                BiomeId biome = BiomeId.OakhavenValley;
+                foreach (var site in Sites)
+                {
+                    float dx = site.Position.x - x, dz = site.Position.z - z;
+                    float distance = dx * dx + dz * dz;
+                    if (distance >= nearest) continue;
+                    nearest = distance;
+                    biome = site.Biome;
+                }
+                return biome;
+            }
             var p = new Vector2(x, z);
             foreach (var isle in Isles)
                 if (Vector2.Distance(p, new Vector2(isle.x, isle.y)) < isle.z)
@@ -306,7 +350,19 @@ namespace Aetheria
             return h;
         }
 
-        public static float SampleHeight(Vector3 p) => HeightAt(p.x, p.z);
+        public static float SampleHeight(Vector3 p)
+        {
+            var terrain = Terrain.activeTerrain;
+            if (terrain != null && terrain.terrainData != null)
+            {
+                var origin = terrain.transform.position;
+                var size = terrain.terrainData.size;
+                if (p.x >= origin.x && p.x <= origin.x + size.x &&
+                    p.z >= origin.z && p.z <= origin.z + size.z)
+                    return origin.y + terrain.SampleHeight(p);
+            }
+            return HeightAt(p.x, p.z);
+        }
 
         public static bool IsOpenSea(float x, float z) => HeightAt(x, z) <= SeaLevel - 2.2f;
 
@@ -462,6 +518,14 @@ namespace Aetheria
         /// <summary>Color of one pixel of the flat 2D overview used by the minimap (sRGB).</summary>
         public static Color MapColor(float x, float z)
         {
+            if (UsesCourtyardLayout)
+            {
+                var p = new Vector3(x, 0f, z);
+                var palette = Palettes[(int)BiomeAt(x, z)];
+                float elevation = SampleHeight(p);
+                if (elevation < 0.25f) return Palettes[(int)BiomeId.AetherianSea].Ground.gamma;
+                return Color.Lerp(palette.Ground2, palette.Rock, Mathf.Clamp01(elevation / 80f)).gamma;
+            }
             float y = HeightAt(x, z);
             if (y <= SeaLevel)
             {

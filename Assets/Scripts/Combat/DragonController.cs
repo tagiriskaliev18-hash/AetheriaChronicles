@@ -52,7 +52,7 @@ namespace Aetheria
             _anim = GetComponentInChildren<Animator>(true);
             if (_anim != null)
             {
-                if (_anim.runtimeAnimatorController == null || _anim.avatar == null || !_anim.avatar.isValid) _anim = null;
+                if (_anim.runtimeAnimatorController == null) _anim = null;
                 else { _anim.applyRootMotion = false; _anim.cullingMode = AnimatorCullingMode.AlwaysAnimate; }
             }
 

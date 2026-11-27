@@ -311,14 +311,15 @@ namespace Aetheria
 
             var basePixels = AetheriaMapTexture.BasePixels;
             var cols = new Color[N * N];
-            float half = AetheriaWorld.HalfExtent, size = AetheriaWorld.WorldSize;
+            float half = MapExtent;
+            float size = half * 2f;
             for (int y = 0; y < N; y++)
             {
                 float wz = -half + (y + 0.5f) / N * size;
                 for (int x = 0; x < N; x++)
                 {
                     float wx = -half + (x + 0.5f) / N * size;
-                    Color c = basePixels[y * N + x];
+                    Color c = AetheriaWorld.UsesCourtyardLayout ? AetheriaMapTexture.Sample(wx, wz) : basePixels[y * N + x];
                     cols[y * N + x] = map.IsExploredAt(wx, wz) ? c : AetheriaMapTexture.Fogged(c);
                 }
             }
@@ -326,10 +327,13 @@ namespace Aetheria
             _mapTexture.Apply(false);
         }
 
+        private static float MapExtent => AetheriaWorld.UsesCourtyardLayout ? 150f : AetheriaWorld.HalfExtent;
+
         /// <summary>World point to a rect-local position on the drawn map.</summary>
         private static Vector2 WorldToMapPoint(Vector2 world, Rect mapRect)
         {
-            Vector2 uv = AetheriaWorld.WorldToUV(world.x, world.y);
+            float half = MapExtent;
+            Vector2 uv = new Vector2(Mathf.InverseLerp(-half, half, world.x), Mathf.InverseLerp(-half, half, world.y));
             return new Vector2(mapRect.x + uv.x * mapRect.width, mapRect.y + (1f - uv.y) * mapRect.height);
         }
 
