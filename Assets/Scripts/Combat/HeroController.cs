@@ -1248,6 +1248,7 @@ namespace Aetheria
                         SlotClass cls = i < rs.Classes.Length ? rs.Classes[i] : SlotClass.Unknown;
                         if (src[i] == null) { mats[i] = null; continue; }
                         var inst = new Material(src[i]) { name = src[i].name + " (Instance)" };
+                        AetheriaSurfaceDetail.Apply(inst, cls);   // real PBR surface: the model ships without albedo maps
                         Color baseCol = src[i].HasProperty("_BaseColor")
                             ? src[i].GetColor("_BaseColor")
                             : (src[i].HasProperty("_Color") ? src[i].GetColor("_Color") : Color.white);

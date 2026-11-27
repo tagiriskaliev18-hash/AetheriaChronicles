@@ -118,12 +118,18 @@ namespace Aetheria
         private static void ApplyUpscaler(HDAdditionalCameraData hd, bool ultra)
         {
             if (hd == null) return;
-            hd.allowDynamicResolution = true;
+            // Ultra: DLSS in DLAA mode (native resolution, the network only anti-aliases) on RTX cards.
+            // Without DLSS the frame stays at full resolution with TAA: dynamic resolution without an
+            // upscaler used to drop to 66 % and smear every texture.
             bool useDlss = ultra && HDDynamicResolutionPlatformCapabilities.DLSSDetected;
-            bool useFsr2 = !useDlss && HDDynamicResolutionPlatformCapabilities.FSR2Detected;
+            bool useFsr2 = !ultra && !useDlss && HDDynamicResolutionPlatformCapabilities.FSR2Detected;
+            hd.allowDynamicResolution = useDlss || useFsr2;
+            hd.antialiasing = HDAdditionalCameraData.AntialiasingMode.TemporalAntialiasing;
+            hd.TAAQuality = HDAdditionalCameraData.TAAQualityLevel.High;
             hd.allowDeepLearningSuperSampling = useDlss;
-            hd.deepLearningSuperSamplingUseCustomQualitySettings = false;
-            hd.deepLearningSuperSamplingUseOptimalSettings = true;
+            hd.deepLearningSuperSamplingUseCustomQualitySettings = true;
+            hd.deepLearningSuperSamplingQuality = 4;   // DLAA
+            hd.deepLearningSuperSamplingUseOptimalSettings = false;
             hd.allowFidelityFX2SuperResolution = useFsr2;
             hd.fidelityFX2SuperResolutionUseCustomQualitySettings = false;
             hd.fidelityFX2SuperResolutionUseOptimalSettings = true;

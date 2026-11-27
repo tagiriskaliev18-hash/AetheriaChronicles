@@ -102,11 +102,56 @@ namespace Aetheria
                         shadows = prof.Add<HDShadowSettings>(true);
                     shadows.maxShadowDistance.Override(ultra ? 180f : 75f);
                     shadows.cascadeShadowSplitCount.Override(ultra ? 4 : 2);
+                    ApplyLightingQuality(prof, ultra);
                     VolumeManager.instance?.OnVolumeProfileChanged(prof);
                 }
             }
 
             AetheriaRender.SetUpscalerEnabled(ultra);
+            ApplySunShadows(ultra);
+        }
+
+        /// <summary>Ambient occlusion, screen-space GI and reflections, contact shadows and volumetric clouds.</summary>
+        private static void ApplyLightingQuality(VolumeProfile prof, bool ultra)
+        {
+            if (!prof.TryGet<ScreenSpaceAmbientOcclusion>(out var ao)) ao = prof.Add<ScreenSpaceAmbientOcclusion>(false);
+            ao.active = true;
+            ao.intensity.Override(ultra ? 1.1f : 0.8f);
+            ao.radius.Override(ultra ? 1.6f : 1.0f);
+            ao.directLightingStrength.Override(0.35f);
+
+            if (!prof.TryGet<GlobalIllumination>(out var gi)) gi = prof.Add<GlobalIllumination>(false);
+            gi.active = true;
+            gi.enable.Override(ultra);
+            gi.tracing.Override(RayCastingMode.RayMarching);   // ray tracing was configured but never ran in the player
+
+            if (!prof.TryGet<ScreenSpaceReflection>(out var ssr)) ssr = prof.Add<ScreenSpaceReflection>(false);
+            ssr.active = true;
+            ssr.enabled.Override(true);
+            ssr.tracing.Override(RayCastingMode.RayMarching);
+
+            if (!prof.TryGet<ContactShadows>(out var contact)) contact = prof.Add<ContactShadows>(false);
+            contact.active = true;
+            contact.enable.Override(true);
+            contact.length.Override(0.25f);
+
+            if (!prof.TryGet<VolumetricClouds>(out var clouds)) clouds = prof.Add<VolumetricClouds>(false);
+            clouds.active = true;
+            clouds.enable.Override(ultra);
+            clouds.cloudPreset = VolumetricClouds.CloudPresets.Sparse;
+        }
+
+        private static void ApplySunShadows(bool ultra)
+        {
+            foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+            {
+                if (l.type != LightType.Directional) continue;
+                l.shadows = LightShadows.Soft;
+                var hd = l.GetComponent<HDAdditionalLightData>();
+                if (hd == null) continue;
+                hd.SetShadowResolutionLevel(ultra ? 3 : 1);
+                hd.shadowDimmer = 1f;
+            }
         }
 
         private void SetupAudioDecks()

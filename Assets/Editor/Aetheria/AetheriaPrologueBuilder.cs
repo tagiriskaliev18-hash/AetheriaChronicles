@@ -62,6 +62,7 @@ namespace Aetheria.Editor
             director.CaveBounds = caveBounds;
             LightCave(cave, path, mouth, outDir, caveBounds);
             CarveUnderCave(path, top + 0.05f);
+            DressCaveRocks(cave.transform, path, mouth, outDir, side);
 
             // ---- ledge over the cliff ----------------------------------------------------------
             var ledge = new GameObject("Prologue_Ledge").transform;
@@ -131,7 +132,81 @@ namespace Aetheria.Editor
             return m;
         }
 
+        /// <summary>HDRP/Lit with world-space triplanar projection: no UV stretching on organic rock shapes.</summary>
+        private static Material Triplanar(string name, string texId, float worldScale, Color tint)
+        {
+            var m = Mat(name, Shader.Find("HDRP/Lit"));
+            string t = "Assets/_AAA_Imported/PolyHaven/Textures/" + texId + "/" + texId;
+            var nImp = AssetImporter.GetAtPath(t + "_nor_gl_2k.jpg") as TextureImporter;
+            if (nImp != null && nImp.textureType != TextureImporterType.NormalMap) { nImp.textureType = TextureImporterType.NormalMap; nImp.SaveAndReimport(); }
+            m.SetTexture("_BaseColorMap", AssetDatabase.LoadAssetAtPath<Texture2D>(t + "_diff_2k.jpg"));
+            m.SetTexture("_NormalMap", AssetDatabase.LoadAssetAtPath<Texture2D>(t + "_nor_gl_2k.jpg"));
+            m.SetFloat("_NormalScale", 1.3f);
+            m.SetColor("_BaseColor", tint);
+            m.SetFloat("_UVBase", 5f);              // Triplanar
+            m.SetFloat("_TexWorldScale", worldScale);
+            m.SetFloat("_Smoothness", 0.22f);
+            m.SetFloat("_SmoothnessRemapMax", 0.3f);
+            m.SetFloat("_Metallic", 0f);
+            m.SetFloat("_DoubleSidedEnable", 1f);
+            m.SetFloat("_DoubleSidedNormalMode", 0f);
+            AetheriaHdrpConvert.ValidateHdMaterial(m);
+            // Validation alone left the UV0 path active (streaks along the tunnel): force the triplanar variant.
+            m.DisableKeyword("_MAPPING_PLANAR");
+            m.EnableKeyword("_MAPPING_TRIPLANAR");
+            AetheriaHdrpConvert.ValidateHdMaterial(m);
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        private static float Noise3(Vector3 p) =>
+            (Mathf.PerlinNoise(p.x, p.y) + Mathf.PerlinNoise(p.y + 31.7f, p.z) + Mathf.PerlinNoise(p.z + 7.3f, p.x + 13.1f)) / 3f;
+
+        private static float Ridged(Vector3 p)
+        {
+            float sum = 0f, amp = 0.6f, f = 1f;
+            for (int o = 0; o < 3; o++) { sum += amp * (1f - Mathf.Abs(Noise3(p * f) * 2f - 1f)); amp *= 0.5f; f *= 2.1f; }
+            return sum;
+        }
+
+        /// <summary>The walkable floor: a strip with gentle bumps, its own rocky-ground material.</summary>
+        private static Mesh CaveFloor(List<Vector3> axis, List<float> halfWidth, Vector3 side, float floorY)
+        {
+            const int across = 12;
+            var v = new List<Vector3>(); var tri = new List<int>(); var uv = new List<Vector2>();
+            for (int r = 0; r < axis.Count; r++)
+            {
+                for (int i = 0; i <= across; i++)
+                {
+                    float u = i / (float)across * 2f - 1f;
+                    Vector3 p = axis[r] + side * (u * halfWidth[r]);
+                    float edge = Mathf.Pow(Mathf.Abs(u), 3f);
+                    p.y = floorY + 0.02f + 0.05f * Noise3(p * 2.5f) + edge * 0.18f;
+                    v.Add(p); uv.Add(new Vector2(u, r));
+                }
+            }
+            for (int r = 0; r < axis.Count - 1; r++)
+            for (int i = 0; i < across; i++)
+            {
+                int a = r * (across + 1) + i, b = a + across + 1;
+                tri.AddRange(new[] { a, b, a + 1, a + 1, b, b + 1 });
+            }
+            var m = new Mesh { name = "Cave_Floor", indexFormat = IndexFormat.UInt32 };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(tri, 0);
+            m.RecalculateNormals();
+            var n = m.normals;
+            for (int i = 0; i < n.Length; i++) if (n[i].y < 0f) n[i] = -n[i];   // floor faces up whatever the strip order
+            m.normals = n;
+            m.RecalculateTangents(); m.RecalculateBounds();
+            return m;
+        }
+
         private static Material RockMaterial()
+        {
+            return Triplanar("Cave_Rock", "cliff_side", 0.2f, new Color(0.78f, 0.76f, 0.74f));   // natural rock (rock_wall_08 read as masonry)
+        }
+
+        private static Material RockMaterialLegacy()
         {
             var m = Mat("Cave_Rock", Shader.Find("HDRP/Lit"));
             m.SetTexture("_BaseColorMap", AssetDatabase.LoadAssetAtPath<Texture2D>(PH + "Textures/mossy_rock/mossy_rock_diff.jpg"));
@@ -169,34 +244,44 @@ namespace Aetheria.Editor
         private static GameObject BuildCave(Transform parent, Vector3 mouth, Vector3 inward, float floorY, Material rock,
             out Bounds bounds, out List<Vector3> centreline)
         {
-            const int rings = 30, k = 22;
+            // Dense rings with layered rock noise, so the walls read as broken stone rather than a smooth tube.
+            const int rings = 112, k = 72;
             const float length = 27f, step = length / (rings - 1);
             Vector3 side = Vector3.Cross(Vector3.up, inward);
             var inner = new Vector3[rings, k];
             var outer = new Vector3[rings, k];
+            var axisHi = new List<Vector3>();
+            var halfWidth = new List<float>();
             centreline = new List<Vector3>();
+            for (int r = 0; r < 30; r++)
+            {
+                float s = r * (length / 29f), t = s / length;
+                Vector3 a = mouth + inward * s + side * Mathf.Sin(t * Mathf.PI) * 3.2f;
+                a.y = floorY;
+                centreline.Add(a);
+            }
             for (int r = 0; r < rings; r++)
             {
                 float s = r * step;
                 float t = s / length;
                 Vector3 axis = mouth + inward * s + side * Mathf.Sin(t * Mathf.PI) * 3.2f;
                 axis.y = floorY;
-                centreline.Add(axis);
-                // Wider, higher chamber at the back where the hero wakes; a tighter throat mid-way.
+                axisHi.Add(axis);
                 float widen = 1f + 0.45f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 0.95f, t)) - 0.15f * Mathf.Exp(-Mathf.Pow((t - 0.4f) / 0.12f, 2f));
                 float rw = 2.9f * widen, rh = 3.3f * widen;
                 float centreY = floorY + 1.4f;
+                halfWidth.Add(rw * Mathf.Sqrt(Mathf.Max(0.05f, 1f - Mathf.Pow(1.4f / rh, 2f))) * 0.95f);
                 for (int i = 0; i < k; i++)
                 {
                     float th = i / (float)k * Mathf.PI * 2f;
-                    float n = Mathf.PerlinNoise(s * 0.35f + i * 0.9f, i * 0.37f) - 0.5f;
-                    float ni = 1f + n * 0.35f;
-                    Vector3 local = side * Mathf.Cos(th) * rw * ni + Vector3.up * Mathf.Sin(th) * rh * ni;
-                    Vector3 p = axis + Vector3.up * (centreY - floorY) + local;
-                    if (p.y < floorY) p.y = floorY;
+                    Vector3 dir = side * Mathf.Cos(th) * rw + Vector3.up * Mathf.Sin(th) * rh;
+                    Vector3 basePt = axis + Vector3.up * (centreY - floorY) + dir;
+                    float d = 0.7f * Ridged(basePt * 0.35f) + 0.38f * Ridged(basePt * 1.15f + Vector3.one * 3.3f) + 0.12f * Noise3(basePt * 3.5f) - 0.75f;
+                    Vector3 p = basePt + dir.normalized * d;
+                    if (p.y < floorY - 0.05f) p.y = floorY - 0.05f;
                     inner[r, i] = p;
-                    float thick = 2.6f + (Mathf.PerlinNoise(s * 0.21f + 40f, i * 0.5f) * 2.2f);
-                    Vector3 q = axis + Vector3.up * (centreY - floorY) + local.normalized * (local.magnitude + thick);
+                    float thick = 2.4f + 2.4f * Noise3(basePt * 0.18f + Vector3.one * 40f);
+                    Vector3 q = basePt + dir.normalized * (thick + 1.3f * Ridged(basePt * 0.2f + Vector3.one * 7f));
                     float ground = H(q) - 1.2f;
                     if (Mathf.Sin(th) < 0.15f) q.y = Mathf.Min(q.y, ground);   // the lower hull is buried in the hill
                     outer[r, i] = q;
@@ -208,8 +293,11 @@ namespace Aetheria.Editor
             go.isStatic = true;
             var innerMesh = Loft(inner, rings, k, true, "Cave_Inner");
             var outerMesh = Loft(outer, rings, k, false, "Cave_Outer");
-            var mouthMesh = MouthAndCaps(inner, outer, rings, k, centreline, inward, "Cave_Caps");
-            foreach (var (mesh, name) in new[] { (innerMesh, "Inner"), (outerMesh, "Outer"), (mouthMesh, "Caps") })
+            var mouthMesh = MouthAndCaps(inner, outer, rings, k, axisHi, inward, "Cave_Caps");
+            var floorMesh = CaveFloor(axisHi, halfWidth, side, floorY);
+            var hill = Triplanar("Cave_Hill", "cliff_side", 0.12f, new Color(0.85f, 0.83f, 0.8f));
+            var groundMat = Triplanar("Cave_Ground", "rocky_trail", 0.45f, new Color(0.75f, 0.72f, 0.68f));
+            foreach (var (mesh, name, mat) in new[] { (innerMesh, "Inner", rock), (outerMesh, "Outer", hill), (mouthMesh, "Caps", hill), (floorMesh, "Floor", groundMat) })
             {
                 var part = new GameObject(name);
                 part.transform.SetParent(go.transform, false);
@@ -217,13 +305,13 @@ namespace Aetheria.Editor
                 var saved = AetheriaProcFlora.SaveAsset(mesh, mesh.name);
                 part.AddComponent<MeshFilter>().sharedMesh = saved;
                 var mr = part.AddComponent<MeshRenderer>();
-                mr.sharedMaterial = rock;
+                mr.sharedMaterial = mat;
                 mr.shadowCastingMode = ShadowCastingMode.TwoSided;
                 part.AddComponent<MeshCollider>().sharedMesh = saved;
             }
 
             // A solid walkable floor independent of the loft winding: one thin box per tunnel segment.
-            for (int r = 0; r < rings - 1; r++)
+            for (int r = 0; r < centreline.Count - 1; r++)
             {
                 Vector3 a0 = centreline[r], a1 = centreline[r + 1];
                 var seg = new GameObject("Cave_Floor_" + r);
@@ -237,6 +325,41 @@ namespace Aetheria.Editor
             bounds = new Bounds(centreline[0], Vector3.zero);
             for (int r = 0; r < rings; r++) for (int i = 0; i < k; i++) bounds.Encapsulate(inner[r, i]);
             return go;
+        }
+
+        /// <summary>Scanned rocks: cliff faces framing the mouth and boulders along the walls inside.</summary>
+        private static void DressCaveRocks(Transform parent, List<Vector3> path, Vector3 mouth, Vector3 outDir, Vector3 side)
+        {
+            GameObject Rock(string id, Vector3 p, float size, float yaw)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/_AAA_Imported/PolyHaven/Models/{id}/{id}_1k.gltf");
+                if (prefab == null) return null;
+                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                go.transform.SetParent(parent, true);
+                go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                var rends = go.GetComponentsInChildren<Renderer>();
+                if (rends.Length == 0) return go;
+                var b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
+                float sc = size / Mathf.Max(0.1f, Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z)));
+                go.transform.localScale = Vector3.one * sc;
+                rends = go.GetComponentsInChildren<Renderer>();
+                b = rends[0].bounds; foreach (var r in rends) b.Encapsulate(r.bounds);
+                go.transform.position += p - new Vector3(b.center.x, b.min.y, b.center.z);
+                go.isStatic = true;
+                return go;
+            }
+            var rng = new System.Random(77);
+            float yawOut = Quaternion.LookRotation(outDir).eulerAngles.y;
+            Rock("namaqualand_cliff_01", mouth + side * 4.6f + outDir * 0.5f + Vector3.down * 0.6f, 7.5f, yawOut + 90f);
+            Rock("namaqualand_cliff_01", mouth - side * 4.6f + outDir * 0.5f + Vector3.down * 0.6f, 7f, yawOut - 70f);
+            Rock("rock_face_01", mouth + Vector3.up * 5.5f + outDir * 0.8f, 6f, yawOut);
+            string[] small = { "boulder_01", "rock_07", "rock_09", "stone_01" };
+            for (int i = 4; i < path.Count - 2; i += 3)
+            {
+                Vector3 dir = Vector3.Cross(Vector3.up, (path[i + 1] - path[i]).normalized);
+                float sgn = rng.NextDouble() < 0.5 ? -1f : 1f;
+                Rock(small[rng.Next(small.Length)], path[i] + dir * sgn * 2.2f + Vector3.down * 0.15f, 0.8f + (float)rng.NextDouble() * 1.1f, (float)rng.NextDouble() * 360f);
+            }
         }
 
         /// <summary>Pushes the terrain below the cave floor along the tunnel so the hill never pokes through it.</summary>

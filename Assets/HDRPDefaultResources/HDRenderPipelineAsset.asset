@@ -226,10 +226,10 @@ MonoBehaviour:
       m_SchemaId:
         m_Id: With3Levels
     supportVolumetrics: 1
-    supportVolumetricClouds: 0
+    supportVolumetricClouds: 1
     supportLightLayers: 0
     renderingLayerMaskBuffer: 0
-    supportWater: 0
+    supportWater: 1
     waterSimulationResolution: 128
     supportWaterExclusion: 1
     supportWaterHorizontalDeformation: 0
@@ -318,8 +318,8 @@ MonoBehaviour:
     hdShadowInitParams:
       maxShadowRequests: 128
       directionalShadowsDepthBits: 32
-      punctualShadowFilteringQuality: 1
-      directionalShadowFilteringQuality: 1
+      punctualShadowFilteringQuality: 2
+      directionalShadowFilteringQuality: 2
       areaShadowFilteringQuality: 0
       punctualLightShadowAtlas:
         shadowAtlasResolution: 4096
@@ -344,7 +344,7 @@ MonoBehaviour:
         m_Values: 00010000000200000004000000080000
         m_SchemaId:
           m_Id: With4Levels
-      maxDirectionalShadowMapResolution: 2048
+      maxDirectionalShadowMapResolution: 4096
       maxPunctualShadowMapResolution: 2048
       maxAreaShadowMapResolution: 2048
       supportScreenSpaceShadows: 1
@@ -371,12 +371,12 @@ MonoBehaviour:
       - DLSS
       - FSR2
       - STP
-      DLSSPerfQualitySetting: 2
+      DLSSPerfQualitySetting: 4
       DLSSInjectionPoint: 0
       TAAUInjectionPoint: 0
       STPInjectionPoint: 0
       defaultInjectionPoint: 2
-      DLSSUseOptimalSettings: 1
+      DLSSUseOptimalSettings: 0
       DLSSSharpness: 0.5
       DLSSRenderPresetForQuality: 0
       DLSSRenderPresetForBalanced: 0
@@ -391,7 +391,7 @@ MonoBehaviour:
       fsrOverrideSharpness: 0
       fsrSharpness: 0.92
       maxPercentage: 100
-      minPercentage: 66
+      minPercentage: 100
       dynResType: 1
       upsampleFilter: 1
       forceResolution: 0
@@ -400,7 +400,7 @@ MonoBehaviour:
       rayTracingHalfResThreshold: 50
       lowResSSGIMinimumThreshold: 0
       lowResVolumetricCloudsMinimumThreshold: 50
-      enableDLSS: 0
+      enableDLSS: 1
     lowresTransparentSettings:
       enabled: 1
       checkerboardDepthBuffer: 1
