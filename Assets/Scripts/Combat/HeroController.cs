@@ -103,6 +103,10 @@ namespace Aetheria
         private static readonly int AnimRespawn = Animator.StringToHash("Respawn");
         private static readonly int AnimBlocking = Animator.StringToHash("Blocking");
         private static readonly int AnimCombatSpeed = Animator.StringToHash("CombatSpeed");
+        private static readonly int AnimMoveScale = Animator.StringToHash("MoveScale");
+        private const float JogAuthoredSpeed = 6.2f;   // m/s the Paragon Jog_Fwd clips cover per cycle
+        private bool? _animHasMoveScale;
+        private Animator _animMoveScaleOwner;
 
         public static HeroController Instance { get; private set; }
         private Vector3 _villageSpawn;
@@ -562,6 +566,14 @@ namespace Aetheria
             {
                 // Jog is authored at about 6.2 m/s; CombatSpeed scales attack and cast clips by the hero's attack speed
                 ActiveAnimator.SetFloat(AnimSpeed, speed);
+                // Time-scale the jog to the real speed so walking, jogging and sprinting all keep feet planted
+                if (_animHasMoveScale == null || _animMoveScaleOwner != ActiveAnimator)
+                {
+                    _animMoveScaleOwner = ActiveAnimator;
+                    _animHasMoveScale = CreatureAnimator.HasParameter(ActiveAnimator, AnimMoveScale);
+                }
+                if (_animHasMoveScale == true)
+                    ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(speed / JogAuthoredSpeed, 0.55f, 1.6f));
                 float attackSpeed = Mathf.Max(0.5f, Customization.Derived.AttackSpeedMultiplier * _alacrityMult);
                 ActiveAnimator.SetFloat(AnimCombatSpeed, attackSpeed);
                 ActiveAnimator.SetBool(AnimBlocking, blocking);

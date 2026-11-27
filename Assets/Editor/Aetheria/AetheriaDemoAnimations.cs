@@ -13,7 +13,12 @@ namespace Aetheria.Editor
     {
         private const string Sources = "Assets/_AAA_Imported/";
         private const string Controllers = "Assets/Generated/DemoAnimations/";
-        private const string BakeVersion = "aetheria-demo-rig-v2";
+        // v3: pelvis translation is retargeted (deaths reach the ground, locomotion bobs), the Move state
+        // is time-scaled by MoveScale against foot sliding, borrowed Hit/Death clips for heroes that had
+        // none, and cross-fades sized per transition instead of one 0.07 s snap everywhere.
+        private const string BakeVersion = "aetheria-demo-rig-v3";
+        private const string ParagonHit = "Heroes/Kwang:Hitreact_Fwd";
+        private const string ParagonDeath = "Heroes/Kwang:Death_Bwd";
 
         [MenuItem("Aetheria/Prepare Demo Animations")]
         public static void Prepare()
@@ -48,17 +53,19 @@ namespace Aetheria.Editor
             foreach (var name in new[] { "Gideon", "GideonInq", "GideonMeph", "Morigesh", "MorigeshMystic" })
                 Bake("Heroes/Hero_" + name, "Heroes/Gideon", true, "Idle", "Jog_Fwd",
                     ("Attack1", "Primary_Attack_A_Medium"), ("Attack2", "Primary_Attack_A_Medium"),
-                    ("Attack3", "Primary_Attack_A_Medium"), ("Cast", "Cast"));
+                    ("Attack3", "Primary_Attack_A_Medium"), ("Cast", "Cast"),
+                    ("Hit", ParagonHit), ("Death", ParagonDeath));
 
             foreach (var name in new[] { "Serath", "SerathGold", "SerathFrost", "Kallari", "KallariLotus" })
                 Bake("Heroes/Hero_" + name, "Heroes/Serath", true, "Idle", "Jog_Fwd",
                     ("Attack1", "Primary_Attack_A_Medium"), ("Attack2", "Primary_Attack_B_Medium"),
-                    ("Attack3", "Primary_Attack_D_Medium"), ("Cast", "Primary_Attack_D_Medium"), ("Death", "Death_Fwd"));
+                    ("Attack3", "Primary_Attack_D_Medium"), ("Cast", "Primary_Attack_D_Medium"), ("Death", "Death_Fwd"),
+                    ("Hit", ParagonHit));
 
             foreach (var name in new[] { "Khaimera", "KhaimeraPelt" })
                 Bake("Heroes/Hero_" + name, "Heroes/Khaimera", true, "Idle_NonAdditive", "Jog_Fwd",
                     ("Attack1", "Melee_A"), ("Attack2", "Melee_B"), ("Attack3", "Melee_A"),
-                    ("Cast", "Melee_B"), ("Death", "Death_A"));
+                    ("Cast", "Melee_B"), ("Death", "Death_A"), ("Hit", ParagonHit));
 
             AssetDatabase.SaveAssets();
         }
@@ -88,27 +95,33 @@ namespace Aetheria.Editor
                 rest.motion = BakeMotion(controller, target, sources, idle, true);
                 controller.AddParameter("Speed", AnimatorControllerParameterType.Float);
 
-                void Connect(AnimatorState from, AnimatorState to, AnimatorConditionMode condition, float threshold, string name)
+                void Connect(AnimatorState from, AnimatorState to, AnimatorConditionMode condition, float threshold, string name,
+                    float duration = 0.08f)
                 {
                     var transition = from == null ? machine.AddAnyStateTransition(to) : from.AddTransition(to);
                     transition.hasExitTime = false;
                     transition.hasFixedDuration = true;
-                    transition.duration = 0.07f;
+                    transition.duration = duration;
                     transition.canTransitionToSelf = false;
                     transition.AddCondition(condition, threshold, name);
                 }
 
+                controller.AddParameter("MoveScale", AnimatorControllerParameterType.Float);
                 if (move != null)
                 {
                     var moving = machine.AddState("Move");
                     moving.motion = BakeMotion(controller, target, sources, move, true);
-                    Connect(rest, moving, AnimatorConditionMode.Greater, 0.12f, "Speed");
-                    Connect(moving, rest, AnimatorConditionMode.Less, 0.12f, "Speed");
+                    // Gameplay writes MoveScale = actual speed / authored speed so the feet stay planted.
+                    moving.speedParameter = "MoveScale";
+                    moving.speedParameterActive = true;
+                    Connect(rest, moving, AnimatorConditionMode.Greater, 0.12f, "Speed", 0.2f);
+                    Connect(moving, rest, AnimatorConditionMode.Less, 0.12f, "Speed", 0.25f);
                 }
 
                 controller.AddParameter("CombatSpeed", AnimatorControllerParameterType.Float);
                 var parameters = controller.parameters;
                 parameters.Single(p => p.name == "CombatSpeed").defaultFloat = 1f;
+                parameters.Single(p => p.name == "MoveScale").defaultFloat = 1f;
                 controller.parameters = parameters;
                 string attack = hero ? "Attack" : "DoAction";
                 string index = hero ? "AttackIndex" : "Action";
@@ -139,8 +152,8 @@ namespace Aetheria.Editor
                     state.motion = motion;
                     if (stateName == "Fly")
                     {
-                        Connect(rest, state, AnimatorConditionMode.If, 0, "Flying");
-                        Connect(state, rest, AnimatorConditionMode.IfNot, 0, "Flying");
+                        Connect(rest, state, AnimatorConditionMode.If, 0, "Flying", 0.35f);
+                        Connect(state, rest, AnimatorConditionMode.IfNot, 0, "Flying", 0.45f);
                         continue;
                     }
                     var actionIndex = stateName switch
@@ -166,17 +179,25 @@ namespace Aetheria.Editor
                             "Hit" => hero ? "HitReact" : "Hit",
                             _ => stateName
                         };
-                        Connect(null, state, AnimatorConditionMode.If, 0, trigger);
+                        float fade = stateName switch { "Death" => 0.15f, "Hit" => 0.06f, _ => 0.12f };
+                        Connect(null, state, AnimatorConditionMode.If, 0, trigger, fade);
                     }
 
-                    if (stateName == "Death") Connect(state, rest, AnimatorConditionMode.If, 0, respawn);
+                    if (stateName == "Death")
+                    {
+                        // Nothing but the respawn trigger may pull a corpse back up.
+                        Connect(state, rest, AnimatorConditionMode.If, 0, respawn, 0.2f);
+                    }
                     else
                     {
+                        // Blend back to idle over ~0.2 s that ends exactly on the clip's last frame.
+                        float length = Mathf.Max(0.1f, motion.length);
+                        const float recover = 0.2f;
                         var back = state.AddTransition(rest);
                         back.hasExitTime = true;
-                        back.exitTime = 0.96f;
+                        back.exitTime = Mathf.Clamp(1f - recover / length, 0.6f, 0.97f);
                         back.hasFixedDuration = true;
-                        back.duration = 0.08f;
+                        back.duration = Mathf.Min(recover, length * 0.4f);
                     }
                 }
 
@@ -242,15 +263,43 @@ namespace Aetheria.Editor
                 }
 
                 if (bones.Count < 12) throw new InvalidOperationException($"{path}: only {bones.Count} bones match {target.name}.");
+
+                // Pelvis translation. Rotations alone keep the hips nailed at rest height, so a death clip
+                // folds the body in mid-air and a jog has no bounce. The source pelvis offset from its rest
+                // pose is carried into the target's parent space and scaled by the hip-height ratio.
+                sourceBones.TryGetValue("pelvis", out var sourceHip);
+                targetBones.TryGetValue("pelvis", out var targetHip);
+                bool bakeHip = sourceHip != null && targetHip != null && sourceHip.parent != null && targetHip.parent != null;
+                Vector3 sourceHipRest = Vector3.zero, targetHipRest = Vector3.zero;
+                Matrix4x4 sourceHipParent = Matrix4x4.identity, targetHipParentInverse = Matrix4x4.identity;
+                float hipRatio = 1f;
+                if (bakeHip)
+                {
+                    float sourceHeight = sourceHip.position.y - source.transform.position.y;
+                    float targetHeight = targetHip.position.y - target.transform.position.y;
+                    bakeHip = sourceHeight > 0.05f && targetHeight > 0.05f;
+                    hipRatio = bakeHip ? targetHeight / sourceHeight : 1f;
+                    sourceHipRest = sourceHip.localPosition;
+                    targetHipRest = targetHip.localPosition;
+                    sourceHipParent = sourceHip.parent.localToWorldMatrix;
+                    targetHipParentInverse = targetHip.parent.worldToLocalMatrix;
+                }
+
                 int frames = Mathf.Max(2, Mathf.CeilToInt(clip.length * 30f) + 1);
                 var bindings = new List<EditorCurveBinding>();
                 var curves = new List<AnimationCurve>();
                 var poses = new Quaternion[bones.Count, frames];
+                var hipPositions = new Vector3[frames];
                 float largestMotion = 0f;
                 for (int frame = 0; frame < frames; frame++)
                 {
                     float time = clip.length * frame / (frames - 1);
                     clip.SampleAnimation(source, time);
+                    if (bakeHip)
+                    {
+                        Vector3 worldDelta = sourceHipParent.MultiplyVector(sourceHip.localPosition - sourceHipRest);
+                        hipPositions[frame] = targetHipRest + targetHipParentInverse.MultiplyVector(alignment * worldDelta * hipRatio);
+                    }
                     for (int i = 0; i < bones.Count; i++)
                     {
                         var bone = bones[i];
@@ -285,6 +334,21 @@ namespace Aetheria.Editor
                             track[k].inTangent = slope;
                         }
                         curves.Add(new AnimationCurve(track));
+                    }
+                }
+
+                if (bakeHip)
+                {
+                    string hipPath = AnimationUtility.CalculateTransformPath(targetHip, target.transform);
+                    for (int axis = 0; axis < 3; axis++)
+                    {
+                        var track = new Keyframe[frames];
+                        for (int frame = 0; frame < frames; frame++)
+                            track[frame] = new Keyframe(clip.length * frame / (frames - 1), hipPositions[frame][axis]);
+                        var curve = new AnimationCurve(track);
+                        for (int k = 0; k < track.Length; k++) curve.SmoothTangents(k, 0f);
+                        bindings.Add(EditorCurveBinding.FloatCurve(hipPath, typeof(Transform), "m_LocalPosition." + "xyz"[axis]));
+                        curves.Add(curve);
                     }
                 }
 

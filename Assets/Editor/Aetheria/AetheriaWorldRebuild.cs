@@ -35,6 +35,10 @@ namespace Aetheria.Editor
         private const int HeightRes = 641;
         private const int AlphaRes = 1024;
         private const float TerrainHeight = 260f;   // vertical range in metres (peaks reach ~200 m)
+        // The height field dips to about -9 m in the lake and sea basins. Unity terrain heights cannot go
+        // below the terrain's origin, so the terrain sits this far below sea level; without it every basin
+        // was clamped flat at y=0 and the water planes floated 5 cm over a dry bed.
+        private const float TerrainBaseDepth = 16f;
 
         private const int LayerGrass = 0;
         private const int LayerForest = 1;
@@ -156,7 +160,7 @@ namespace Aetheria.Editor
                 for (int x = 0; x < HeightRes; x++)
                 {
                     float wx = -AetheriaWorld.HalfExtent + (x / (float)(HeightRes - 1)) * AetheriaWorld.WorldSize;
-                    heights[y, x] = Mathf.Clamp01(AetheriaWorld.HeightAt(wx, wz) / TerrainHeight);
+                    heights[y, x] = Mathf.Clamp01((AetheriaWorld.HeightAt(wx, wz) + TerrainBaseDepth) / TerrainHeight);
                 }
             }
             td.SetHeights(0, 0, heights);
@@ -191,16 +195,22 @@ namespace Aetheria.Editor
                     float rock = Mathf.Clamp01(AetheriaWorld.SmoothStep(0.30f, 0.62f, slope) * 1.35f);
                     float beach = AetheriaWorld.SmoothStep(3.4f, 0.6f, h) * AetheriaWorld.SmoothStep(-2.0f, -0.2f, h);
 
-                    float grass = Mathf.Max(0f, 1f - forest - ash - rock - beach);
-                    float forestFloor = forest * (1f - rock * 0.7f);
+                    // Final per-layer weights first, then one normalisation over exactly those values:
+                    // HDRP TerrainLit does not renormalise, so a splat that sums to less than 1 renders dark.
+                    snow = Mathf.Clamp01(snow) * (1f - rock);
+                    float gravelW = gravel * (1f - rock) + beach * 0.5f;
+                    float ashW = ash * (1f - rock);
+                    float forestFloor = forest * (1f - rock * 0.7f) * (1f - snow);
+                    float grass = Mathf.Max(0f, 1f - forestFloor - ashW - rock - beach - snow - gravelW);
 
-                    float sum = grass + forestFloor + rock + gravel + ash + snow + 1e-5f;
+                    float sum = grass + forestFloor + rock + gravelW + ashW + snow;
+                    if (sum < 1e-4f) { grass = 1f; sum = 1f; }
                     alphas[y, x, LayerGrass] = grass / sum;
                     alphas[y, x, LayerForest] = forestFloor / sum;
                     alphas[y, x, LayerRock] = rock / sum;
-                    alphas[y, x, LayerGravel] = (gravel * (1f - rock) + beach * 0.5f) / sum;
-                    alphas[y, x, LayerAsh] = ash * (1f - rock) / sum;
-                    alphas[y, x, LayerSnow] = snow * (1f - rock) / sum;
+                    alphas[y, x, LayerGravel] = gravelW / sum;
+                    alphas[y, x, LayerAsh] = ashW / sum;
+                    alphas[y, x, LayerSnow] = snow / sum;
                 }
             }
             td.SetAlphamaps(0, 0, alphas);
@@ -212,7 +222,7 @@ namespace Aetheria.Editor
 
             var go = Terrain.CreateTerrainGameObject(AssetDatabase.LoadAssetAtPath<TerrainData>(tdPath));
             go.name = "AetheriaTerrain";
-            go.transform.position = new Vector3(-AetheriaWorld.HalfExtent, 0f, -AetheriaWorld.HalfExtent);
+            go.transform.position = new Vector3(-AetheriaWorld.HalfExtent, -TerrainBaseDepth, -AetheriaWorld.HalfExtent);
             go.isStatic = true;
 
             var terrain = go.GetComponent<Terrain>();
@@ -409,40 +419,54 @@ namespace Aetheria.Editor
             var grassMeshes = CollectMeshes(grass1);
             if (grassMeshes.Count == 0) grassMeshes = CollectMeshes(grass2);
             var fernMeshes = CollectMeshes(fern);
-            var shrubMeshes = new List<Mesh>();
+            var shrubMeshes = new List<VegPart>();
             foreach (var s in shrubs) shrubMeshes.AddRange(CollectMeshes(s));
-            var rockMeshes = new List<Mesh>();
+            var rockMeshes = new List<VegPart>();
             rockMeshes.AddRange(CollectMeshes(rock1));
             rockMeshes.AddRange(CollectMeshes(rock2));
             var treeMeshes = CollectMeshes(deadTree);
 
-            if (grassMeshes.Count == 0) Debug.LogWarning("[WorldRebuild] No grass meshes found — valley will be bare.");
+            if (grassMeshes.Count == 0) Debug.LogWarning("[WorldRebuild] No grass meshes found - valley will be bare.");
             if (rockMeshes.Count == 0) Debug.LogWarning("[WorldRebuild] No rock meshes found.");
 
-            var grassMat = MakeFoliageMaterial("Veg_Grass", "Assets/_AAA_Imported/PolyHaven/Textures/leafy_grass/leafy_grass_diff.jpg",
-                "Assets/_AAA_Imported/PolyHaven/Textures/leafy_grass/leafy_grass_nor.jpg", new Color(0.62f, 0.78f, 0.34f), true);
-            var forestMat = MakeFoliageMaterial("Veg_Forest", "Assets/_AAA_Imported/PolyHaven/Textures/forest_ground_04/forest_ground_04_diff.jpg",
-                "Assets/_AAA_Imported/PolyHaven/Textures/forest_ground_04/forest_ground_04_nor.jpg", new Color(0.34f, 0.52f, 0.30f), true);
+            // Fallbacks only. Each model keeps its own imported material (alpha-cut grass/fern/leaf cards,
+            // scanned rock albedo); the old pass painted every blade with the tiling ground photo instead.
+            var grassMat = MakeFoliageMaterial("Veg_Grass", "Assets/_AAA_Imported/PolyHaven/Models/grass_medium_01/textures/grass_medium_01_diff_1k.jpg",
+                "Assets/_AAA_Imported/PolyHaven/Models/grass_medium_01/textures/grass_medium_01_nor_gl_1k.jpg", new Color(0.62f, 0.78f, 0.34f), true);
+            var forestMat = MakeFoliageMaterial("Veg_Forest", "Assets/_AAA_Imported/PolyHaven/Models/fern_02/textures/fern_02_diff_1k.jpg",
+                "Assets/_AAA_Imported/PolyHaven/Models/fern_02/textures/fern_02_nor_gl_1k.jpg", new Color(0.34f, 0.52f, 0.30f), true);
             var rockMat = AssetDatabase.LoadAssetAtPath<Material>(MaterialFolder + "/Boulder3D.mat");
             var treeMat = AssetDatabase.LoadAssetAtPath<Material>(MaterialFolder + "/DeadTree3D.mat");
 
-            // One batch per 64 m cell keeps the instance counts per renderer sane.
-            var batches = new Dictionary<long, List<(Mesh mesh, Matrix4x4 trs, Material mat)>>();
+            // One batch per 64 m cell AND per material: a combined mesh carries one material, and keying by
+            // cell alone gave the rocks, ferns and grass of a cell whichever material happened to come last.
+            var batches = new Dictionary<(long cell, Material mat), List<CombineInstance>>();
             var weights = new float[AetheriaWorld.BiomeCount];
             var rng = new System.Random(20261126);
 
-            void Emit(Mesh mesh, Material mat, Vector3 pos, float yaw, float scale, float tilt)
+            float GroundY(float x, float z) => terrain != null
+                ? terrain.SampleHeight(new Vector3(x, 0f, z)) + terrain.transform.position.y
+                : AetheriaWorld.HeightAt(x, z);
+
+            void Emit(VegPart part, Material fallback, Vector3 pos, float yaw, float scale, float tilt, float sink, bool forceFallback = false)
             {
-                if (mesh == null) return;
+                if (part.Mesh == null) return;
+                pos.y = GroundY(pos.x, pos.z) - sink * scale;     // the visible terrain, not the analytic field
                 var rot = Quaternion.Euler(tilt * (float)(rng.NextDouble() - 0.5), yaw, tilt * (float)(rng.NextDouble() - 0.5));
-                var trs = Matrix4x4.TRS(pos, rot, Vector3.one * scale);
+                var trs = Matrix4x4.TRS(pos, rot, Vector3.one * scale) * part.Local;
                 long key = ((long)Mathf.FloorToInt(pos.x / 64f) << 32) ^ (uint)Mathf.FloorToInt(pos.z / 64f);
-                if (!batches.TryGetValue(key, out var list)) batches[key] = list = new List<(Mesh, Matrix4x4, Material)>();
-                list.Add((mesh, trs, mat));
+                for (int sub = 0; sub < part.Mesh.subMeshCount; sub++)
+                {
+                    var own = part.Materials != null && sub < part.Materials.Length ? part.Materials[sub] : null;
+                    var mat = !forceFallback && Usable(own) ? own : fallback;
+                    if (mat == null) continue;
+                    if (!batches.TryGetValue((key, mat), out var list)) batches[(key, mat)] = list = new List<CombineInstance>();
+                    list.Add(new CombineInstance { mesh = part.Mesh, subMeshIndex = sub, transform = trs });
+                }
                 stats.Instances++;
             }
 
-            // Dense pass over the map. 2 m grid with a hashed jitter, so nothing lines up.
+            // Dense pass over the map: a 3 m grid with a hashed jitter, so nothing lines up.
             const float step = 3.0f;
             for (float z = -AetheriaWorld.HalfExtent + step; z < AetheriaWorld.HalfExtent - step; z += step)
             {
@@ -457,7 +481,23 @@ namespace Aetheria.Editor
                     float hx = AetheriaWorld.HeightAt(x + e, z) - AetheriaWorld.HeightAt(x - e, z);
                     float hz = AetheriaWorld.HeightAt(x, z + e) - AetheriaWorld.HeightAt(x, z - e);
                     float flat = Mathf.Clamp01(new Vector3(-hx, 2f * e, -hz).normalized.y);
-                    if (flat < 0.62f) continue;                                   // cliffs get rocks instead
+
+                    float r = (float)rng.NextDouble();
+                    float jx = x + ((float)rng.NextDouble() - 0.5f) * step * 1.6f;
+                    float jz = z + ((float)rng.NextDouble() - 0.5f) * step * 1.6f;
+                    var pos = new Vector3(jx, 0f, jz);
+
+                    if (flat < 0.62f)
+                    {
+                        // Cliffs and steep banks: no foliage, but scree and boulders half buried in the slope.
+                        if (r < 0.06f && rockMeshes.Count > 0)
+                        {
+                            Emit(rockMeshes[rng.Next(rockMeshes.Count)], rockMat, pos, (float)rng.NextDouble() * 360f,
+                                 0.8f + (float)rng.NextDouble() * 2.0f, 30f, 0.35f);
+                            stats.Boulders++;
+                        }
+                        continue;
+                    }
 
                     AetheriaWorld.BiomeWeights(x, z, weights);
                     float meadow = weights[(int)BiomeId.OakhavenValley] + weights[(int)BiomeId.MirrorLake]
@@ -467,17 +507,11 @@ namespace Aetheria.Editor
                     float ash = weights[(int)BiomeId.AshCaldera] + weights[(int)BiomeId.SunblightWastes];
                     float snow = weights[(int)BiomeId.CrystalGlacier];
 
-                    float r = (float)rng.NextDouble();
-                    float jx = x + ((float)rng.NextDouble() - 0.5f) * step * 1.6f;
-                    float jz = z + ((float)rng.NextDouble() - 0.5f) * step * 1.6f;
-                    float jh = AetheriaWorld.HeightAt(jx, jz);
-                    var pos = new Vector3(jx, jh, jz);
-
                     // Grass carpets the meadows; the forest gets ferns and shrubs instead.
                     if (meadow > 0.35f && r < 0.55f * meadow && grassMeshes.Count > 0)
                     {
-                        var m = grassMeshes[rng.Next(grassMeshes.Count)];
-                        Emit(m, grassMat, pos, (float)rng.NextDouble() * 360f, 0.75f + (float)rng.NextDouble() * 0.7f, 6f);
+                        Emit(grassMeshes[rng.Next(grassMeshes.Count)], grassMat, pos, (float)rng.NextDouble() * 360f,
+                             0.75f + (float)rng.NextDouble() * 0.7f, 6f, 0.02f);
                         continue;
                     }
                     if (woods > 0.3f)
@@ -485,13 +519,13 @@ namespace Aetheria.Editor
                         if (r < 0.22f * woods && fernMeshes.Count > 0)
                         {
                             Emit(fernMeshes[rng.Next(fernMeshes.Count)], forestMat, pos,
-                                 (float)rng.NextDouble() * 360f, 0.9f + (float)rng.NextDouble() * 0.9f, 4f);
+                                 (float)rng.NextDouble() * 360f, 0.9f + (float)rng.NextDouble() * 0.9f, 4f, 0.03f);
                             continue;
                         }
                         if (r < 0.30f * woods && shrubMeshes.Count > 0)
                         {
                             Emit(shrubMeshes[rng.Next(shrubMeshes.Count)], forestMat, pos,
-                                 (float)rng.NextDouble() * 360f, 0.8f + (float)rng.NextDouble() * 1.0f, 3f);
+                                 (float)rng.NextDouble() * 360f, 0.8f + (float)rng.NextDouble() * 1.0f, 3f, 0.05f);
                             continue;
                         }
                     }
@@ -500,14 +534,13 @@ namespace Aetheria.Editor
                     if (r < 0.045f * bare && shrubMeshes.Count > 0)
                     {
                         Emit(shrubMeshes[rng.Next(shrubMeshes.Count)], forestMat, pos,
-                             (float)rng.NextDouble() * 360f, 0.7f + (float)rng.NextDouble() * 0.9f, 4f);
+                             (float)rng.NextDouble() * 360f, 0.7f + (float)rng.NextDouble() * 0.9f, 4f, 0.05f);
                         continue;
                     }
-                    if (r < 0.075f && rockMeshes.Count > 0 && rockMat != null)
+                    if (r < 0.075f && rockMeshes.Count > 0)
                     {
-                        float s = 0.6f + (float)rng.NextDouble() * 1.6f;
                         Emit(rockMeshes[rng.Next(rockMeshes.Count)], rockMat, pos,
-                             (float)rng.NextDouble() * 360f, s, 14f);
+                             (float)rng.NextDouble() * 360f, 0.6f + (float)rng.NextDouble() * 1.6f, 14f, 0.2f);
                         stats.Boulders++;
                     }
                 }
@@ -527,35 +560,27 @@ namespace Aetheria.Editor
                     if ((float)rng.NextDouble() > dry * 0.22f || treeMeshes.Count == 0 || treeMat == null) continue;
                     float jx = x + ((float)rng.NextDouble() - 0.5f) * 16f;
                     float jz = z + ((float)rng.NextDouble() - 0.5f) * 16f;
-                    Emit(treeMeshes[rng.Next(treeMeshes.Count)], treeMat, new Vector3(jx, AetheriaWorld.HeightAt(jx, jz), jz),
-                         (float)rng.NextDouble() * 360f, 0.8f + (float)rng.NextDouble() * 0.8f, 5f);
+                    // The Megascans FBX slots are untextured; DeadTree3D carries the albedo and normal map.
+                    Emit(treeMeshes[rng.Next(treeMeshes.Count)], treeMat, new Vector3(jx, 0f, jz),
+                         (float)rng.NextDouble() * 360f, 0.8f + (float)rng.NextDouble() * 0.8f, 5f, 0.3f, true);
                     stats.Trees++;
                 }
             }
 
-            // Flush the batches into combined meshes.
-            var combined = new List<CombineInstance>();
+            // Flush the batches into combined meshes, one renderer per (cell, material).
             var groups = 0;
             foreach (var kv in batches)
             {
-                combined.Clear();
-                Material mat = null;
-                foreach (var item in kv.Value)
-                {
-                    combined.Add(new CombineInstance { mesh = item.mesh, transform = item.trs });
-                    mat = item.mat;
-                }
-                if (combined.Count == 0) continue;
-
-                var mesh = new Mesh { name = "Veg_" + kv.Key, indexFormat = IndexFormat.UInt32 };
-                mesh.CombineMeshes(combined.ToArray(), true, true);
+                if (kv.Value.Count == 0) continue;
+                var mesh = new Mesh { name = $"Veg_{kv.Key.cell}_{kv.Key.mat.name}", indexFormat = IndexFormat.UInt32 };
+                mesh.CombineMeshes(kv.Value.ToArray(), true, true);
                 mesh.RecalculateBounds();
 
-                var go = new GameObject("Veg_" + kv.Key);
+                var go = new GameObject(mesh.name);
                 go.transform.SetParent(root, false);
                 go.AddComponent<MeshFilter>().sharedMesh = mesh;
                 var mr = go.AddComponent<MeshRenderer>();
-                mr.sharedMaterial = mat;
+                mr.sharedMaterial = kv.Key.mat;
                 mr.shadowCastingMode = ShadowCastingMode.On;
                 mr.receiveShadows = true;
                 go.isStatic = true;
@@ -566,14 +591,34 @@ namespace Aetheria.Editor
             return stats;
         }
 
-        private static List<Mesh> CollectMeshes(GameObject model)
+        /// <summary>One mesh of a vegetation model, its offset from the model root and its own materials.</summary>
+        private struct VegPart
         {
-            var meshes = new List<Mesh>();
-            if (model == null) return meshes;
-            foreach (var mf in model.GetComponentsInChildren<MeshFilter>(true))
-                if (mf.sharedMesh != null) meshes.Add(mf.sharedMesh);
-            return meshes;
+            public Mesh Mesh;
+            public Matrix4x4 Local;
+            public Material[] Materials;
         }
+
+        private static List<VegPart> CollectMeshes(GameObject model)
+        {
+            var parts = new List<VegPart>();
+            if (model == null) return parts;
+            Matrix4x4 toRoot = model.transform.worldToLocalMatrix;
+            foreach (var mf in model.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null) continue;
+                // Keep the node's rotation and scale (FBX Z-up roots, centimetre units) but drop its
+                // translation: PolyHaven packs lay their variants side by side, and each one is planted alone.
+                Matrix4x4 local = toRoot * mf.transform.localToWorldMatrix;
+                local.SetColumn(3, new Vector4(0f, 0f, 0f, 1f));
+                var mr = mf.GetComponent<MeshRenderer>();
+                parts.Add(new VegPart { Mesh = mf.sharedMesh, Local = local, Materials = mr != null ? mr.sharedMaterials : null });
+            }
+            return parts;
+        }
+
+        private static bool Usable(Material m) =>
+            m != null && m.shader != null && m.shader.isSupported && m.shader.name != "Hidden/InternalErrorShader";
 
         private static Material MakeFoliageMaterial(string name, string diffuse, string normal, Color tint, bool doubleSided)
         {
@@ -603,7 +648,13 @@ namespace Aetheria.Editor
                 // HDRP: double-sided + alpha clip is what foliage cards need.
                 if (mat.HasProperty("_DoubleSidedEnable")) mat.SetFloat("_DoubleSidedEnable", 1f);
                 if (mat.HasProperty("_DoubleSidedNormalMode")) mat.SetFloat("_DoubleSidedNormalMode", 0f);
+                if (mat.HasProperty("_AlphaCutoffEnable")) mat.SetFloat("_AlphaCutoffEnable", 1f);
+                if (mat.HasProperty("_AlphaCutoff")) mat.SetFloat("_AlphaCutoff", 0.45f);
+                if (mat.HasProperty("_AlphaCutoffShadow")) mat.SetFloat("_AlphaCutoffShadow", 0.45f);
+                if (mat.HasProperty("_UseShadowThreshold")) mat.SetFloat("_UseShadowThreshold", 1f);
             }
+            // Let HDRP derive keywords and passes (_ALPHATEST_ON, _DOUBLESIDED_ON, cull mode) from the floats.
+            AetheriaHdrpConvert.ValidateHdMaterial(mat);
 
             string path = MaterialFolder + "/" + name + ".mat";
             if (AssetDatabase.LoadAssetAtPath<Material>(path) != null) AssetDatabase.DeleteAsset(path);
