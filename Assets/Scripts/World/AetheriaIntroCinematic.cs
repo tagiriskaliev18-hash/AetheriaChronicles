@@ -65,17 +65,6 @@ namespace Aetheria
             Vector3 village = Site("OakhavenVillage", new Vector3(0f, 0f, 42f));
             Vector3 cliff = Site("PrologueCliff", new Vector3(-27f, 0f, -8f));
 
-            // Where the hero will wake: next to Guardian Weylan, as StartPrologueAwakening places him.
-            Vector3 wake = cliff;
-            var tutor = AetheriaNPC.AllNPCs.Find(npc => npc.NpcId == "Npc_CaveTutor");
-            if (tutor != null) wake = tutor.transform.position + new Vector3(-2.4f, 0f, 0f);
-            if (hero != null)
-            {
-                hero.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
-                hero.TeleportSafe(new Vector3(wake.x, AetheriaWorld.SeaLevel, wake.z));
-                wake = hero.transform.position;
-            }
-
             Vector3 toCitadel = (citadel - village); toCitadel.y = 0f; toCitadel.Normalize();
             Vector3 side = Vector3.Cross(Vector3.up, toCitadel);
             _shots = new[]
@@ -106,9 +95,10 @@ namespace Aetheria
                 },
                 new Shot
                 {
-                    From = Ground(wake + new Vector3(-14f, 0f, -10f), 14f),
-                    To = wake + new Vector3(-3.6f, 2.2f, -2.4f),
-                    LookFrom = wake + Vector3.up * 1.2f, LookTo = wake + Vector3.up * 1.4f,
+                    // The cliff where the cave lies: the camera sinks toward it and the screen goes dark.
+                    From = Ground(cliff + new Vector3(30f, 0f, 22f), 26f),
+                    To = Ground(cliff + new Vector3(10f, 0f, 6f), 6f),
+                    LookFrom = Ground(cliff, 2f), LookTo = Ground(cliff - new Vector3(8f, 0f, 0f), 1f),
                     Duration = 6f,
                     Line = "Пробудись, Странник."
                 },
@@ -129,7 +119,7 @@ namespace Aetheria
             // Fade in at the start of every shot and out at its end; the last shot ends on black only when done.
             float fadeIn = 1f - Mathf.Clamp01(_time / 0.8f);
             float fadeOut = Mathf.Clamp01((_time - (shot.Duration - 0.7f)) / 0.7f);
-            _fade = Mathf.Max(fadeIn, _index == _shots.Length - 1 ? 0f : fadeOut);
+            _fade = Mathf.Max(fadeIn, fadeOut);   // ends on black: the prologue fades in from it
             if (_time >= shot.Duration)
             {
                 _time = 0f;

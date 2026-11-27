@@ -32,6 +32,8 @@ namespace Aetheria
         /// <summary>0=InCaveTalkToTutor, 1=WalkOutToOverlook, 2=ApproachWaterfall, 3=PlayingCutscene, 4=OpenWorld</summary>
         public int PrologueStage = 4;
         public bool HasEnteredWorld = false;
+        /// <summary>Set by story cinematics: the hero keeps idling but takes no input and leaves the camera alone.</summary>
+        public bool CinematicLock;
 
         public Transform VisualRoot;
         public Animator ActiveAnimator { get; private set; }
@@ -215,6 +217,14 @@ namespace Aetheria
             if (AetheriaHUDManager.Instance == null || !HasEnteredWorld)
             {
                 UpdateStudioCameraIfActive(dt);
+                return;
+            }
+
+            if (CinematicLock)
+            {
+                // Keep him settled on the ground (isGrounded only updates through Move).
+                if (CC.enabled) CC.Move(Vector3.down * 3f * dt);
+                DriveAnimator(0f, false, dt);
                 return;
             }
 
@@ -807,6 +817,7 @@ namespace Aetheria
 
         public void RespawnAtOakhaven()
         {
+            AetheriaPrologueDirector.Instance?.Abort();
             if (DragonController.Instance != null && DragonController.Instance.Mounted)
                 DragonController.Instance.Dismount();
             IsDead = false;
@@ -934,6 +945,12 @@ namespace Aetheria
 
         public void StartPrologueAwakening()
         {
+            // The directed prologue (cave, sage, collapse, waterfall, glade) when the scene has one.
+            if (AetheriaPrologueDirector.Instance != null)
+            {
+                AetheriaPrologueDirector.Instance.Begin(this);
+                return;
+            }
             HasEnteredWorld = true;
             PrologueStage = 0;
             var tutor = AetheriaNPC.AllNPCs.Find(npc => npc.NpcId == "Npc_CaveTutor");
@@ -946,6 +963,7 @@ namespace Aetheria
 
         public void SkipToOpenWorld(bool loadSave)
         {
+            AetheriaPrologueDirector.Instance?.Abort();
             HasEnteredWorld = true;
             PrologueStage = 4;
             if (loadSave && SkillTree.LoadProgress(this)) return;
@@ -956,7 +974,7 @@ namespace Aetheria
 
         private void UpdatePrologueStageTriggers()
         {
-            if (PrologueStage >= 4) return;
+            if (PrologueStage >= 4 || AetheriaPrologueDirector.Instance != null) return;
             var quest = QuestAndMapService.Instance?.FindQuest("Q_PrologueAwakening");
             if (quest == null || quest.State != QuestState.Active) return;
             Vector3 offset = transform.position - quest.ObjectiveWorldLocation;

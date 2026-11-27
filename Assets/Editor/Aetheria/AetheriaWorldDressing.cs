@@ -51,7 +51,7 @@ namespace Aetheria.Editor
             PlantDetails(terrain, td, clear);
             PlantTrees(terrain, td, clear);
 
-            terrain.detailObjectDistance = 120f;
+            terrain.detailObjectDistance = 95f;
             terrain.detailObjectDensity = 1f;
             terrain.treeDistance = 900f;
             terrain.treeBillboardDistance = 900f;   // mesh trees: no billboards
@@ -204,7 +204,8 @@ namespace Aetheria.Editor
             layers[LGrass] = Make("Grass", PH + "Textures/leafy_grass/leafy_grass_diff.jpg", PH + "Textures/leafy_grass/leafy_grass_nor.jpg", 6f, 0.12f);
             layers[LMeadow] = Make("Meadow", PH + "Textures/aerial_grass_rock/aerial_grass_rock_diff.jpg", PH + "Textures/aerial_grass_rock/aerial_grass_rock_nor.jpg", 9f, 0.15f);
             layers[LForest] = Make("Forest", PH + "Textures/forest_ground_04/forest_ground_04_diff.jpg", PH + "Textures/forest_ground_04/forest_ground_04_nor.jpg", 7f, 0.1f);
-            layers[LCliff] = Reuse("TL_LayeredCliff", () => Make("Cliff", PH + "Textures/mossy_rock/mossy_rock_diff.jpg", PH + "Textures/mossy_rock/mossy_rock_nor.jpg", 14f, 0.2f));
+            // Grey mossy rock on slopes; the old orange sandstone cliff layer read as a desert.
+            layers[LCliff] = Make("Cliff", PH + "Textures/mossy_rock/mossy_rock_diff.jpg", PH + "Textures/mossy_rock/mossy_rock_nor.jpg", 12f, 0.2f);
             layers[LSnow] = Make("Snow", PH + "Textures/snow_02/snow_02_diff.jpg", PH + "Textures/snow_02/snow_02_nor.jpg", 10f, 0.45f);
             layers[LAsh] = Reuse("TL_BurntAsh", () => Make("Ash", PH + "Textures/forest_ground_04/forest_ground_04_diff.jpg", PH + "Textures/forest_ground_04/forest_ground_04_nor.jpg", 10f, 0.1f));
             layers[LRoad] = Make("Road", PH + "Textures/mossy_cobblestone/mossy_cobblestone_diff.jpg", PH + "Textures/mossy_cobblestone/mossy_cobblestone_nor.jpg", 5f, 0.25f);
@@ -297,7 +298,9 @@ namespace Aetheria.Editor
             mat.SetFloat("_AlphaCutoffShadow", 0.5f);
             mat.SetFloat("_UseShadowThreshold", cutout ? 1f : 0f);
             mat.SetFloat("_DoubleSidedEnable", twoSided ? 1f : 0f);
-            mat.SetFloat("_DoubleSidedNormalMode", 2f);   // none: the cards carry their own soft normals
+            // Cards (leaves) carry their own soft normals; solid blades (grass, ferns) mirror the normal on the
+            // back face, or every blade seen from behind renders black.
+            mat.SetFloat("_DoubleSidedNormalMode", cutout ? 2f : 1f);
             mat.enableInstancing = true;
             if (create) AssetDatabase.CreateAsset(mat, path);
             AetheriaHdrpConvert.ValidateHdMaterial(mat);
@@ -338,16 +341,18 @@ namespace Aetheria.Editor
 
         private static void PlantDetails(Terrain terrain, TerrainData td, List<(Vector2 p, float r)> clear)
         {
-            var grassMat = LitMaterial("Grass_Blades", PH + "Models/grass_medium_01/textures/grass_medium_01_diff_1k.jpg",
-                PH + "Models/grass_medium_01/textures/grass_medium_01_nor_gl_1k.jpg", new Color(0.86f, 0.95f, 0.78f), false, true);
-            var fernMat = LitMaterial("Fern_Fronds", PH + "Models/fern_02/textures/fern_02_diff_1k.jpg",
-                PH + "Models/fern_02/textures/fern_02_nor_gl_1k.jpg", Color.white, false, true);
-
-            // Light variants only: the 4-6k triangle clumps would cost millions of triangles as a carpet.
-            var grass = ModelMeshes(PH + "Models/grass_medium_01/grass_medium_01_1k.gltf", 1300)
-                .Concat(ModelMeshes(PH + "Models/grass_medium_02/grass_medium_02_1k.gltf", 1300))
-                .Where(m => Tris(m) >= 150).Take(4).ToList();
-            var ferns = ModelMeshes(PH + "Models/fern_02/fern_02_1k.gltf", 900).Take(2).ToList();
+            // Procedural blades and leaf bushes: the PolyHaven 1k grass/fern downloads ship JPG albedo without
+            // the alpha their cards rely on, so they rendered as dark rectangles.
+            var grassTex = AetheriaProcFlora.Gradient("Grass_Gradient", new Color(0.13f, 0.22f, 0.06f), new Color(0.32f, 0.52f, 0.14f), new Color(0.62f, 0.74f, 0.3f));
+            var grassMat = LitMaterial("Grass_Blades", null, null, Color.white, false, true, grassTex);
+            grassMat.SetFloat("_DoubleSidedNormalMode", 2f);
+            AetheriaHdrpConvert.ValidateHdMaterial(grassMat);
+            var leafTex = CardTexture("Broadleaf_RGBA", PH + "Textures/broadleaf_cards/broadleaf_diff.jpg", PH + "Textures/broadleaf_cards/broadleaf_alpha.png");
+            var fernMat = LitMaterial("Fern_Fronds", null, PH + "Textures/broadleaf_cards/broadleaf_nor.jpg", new Color(0.55f, 0.75f, 0.45f), true, true, leafTex);
+            var grass = new List<Mesh>();
+            for (int i = 0; i < 4; i++) grass.Add(AetheriaProcFlora.SaveAsset(AetheriaProcFlora.GrassClump(300 + i, 0.5f + i * 0.08f), "GrassClump_" + i));
+            var ferns = new List<Mesh>();
+            for (int i = 0; i < 2; i++) ferns.Add(AetheriaProcFlora.SaveAsset(AetheriaProcFlora.Bush(400 + i, 0.45f), "GroundBush_" + i));
 
             var protos = new List<DetailPrototype>();
             var kinds = new List<int>();   // 0 grass, 1 fern
@@ -400,11 +405,11 @@ namespace Aetheria.Editor
                     if (Cleared(clear, wx, z, 0.5f)) continue;
                     float clump = Mathf.PerlinNoise(wx * 0.11f + 3.7f, z * 0.11f + 9.2f);
                     float grassAmount = (g.Grass + g.Meadow * 0.8f) * (0.35f + clump);
-                    int count = Mathf.RoundToInt(grassAmount * 5f);
+                    int count = Mathf.RoundToInt(grassAmount * 3.5f);
                     for (int c = 0; c < count && grassKinds > 0; c++)
                         layers[rng.Next(grassKinds)][y, x]++;
                     float fernAmount = g.Forest * (0.4f + clump);
-                    int ferns2 = Mathf.RoundToInt(fernAmount * 2.2f);
+                    int ferns2 = Mathf.RoundToInt(fernAmount * 1.2f);
                     for (int c = 0; c < ferns2 && fernKinds > 0; c++)
                         layers[grassKinds + rng.Next(fernKinds)][y, x]++;
                 }

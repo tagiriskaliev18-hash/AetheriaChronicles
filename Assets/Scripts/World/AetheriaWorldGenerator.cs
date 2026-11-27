@@ -72,6 +72,16 @@ namespace Aetheria
             }
             for (int i = 0; i < args.Length - 1; i++)
             {
+                if (args[i] == "-world-shots")
+                {
+                    StartCoroutine(AetheriaPrologueShots.RunWorld(args[i + 1]));
+                    break;
+                }
+                if (args[i] == "-prologue-shots")
+                {
+                    StartCoroutine(AetheriaPrologueShots.Run(args[i + 1]));
+                    break;
+                }
                 if (args[i] == "-verify-screenshots")
                 {
                     StartCoroutine(RunVerificationCaptureRoutine(args[i + 1]));
