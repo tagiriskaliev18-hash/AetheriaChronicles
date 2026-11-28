@@ -16,6 +16,7 @@ namespace Aetheria
         private HeroController _hero;
         private float _speed;          // forced locomotion speed for this phase (m/s), -1 = leave to the hero
         private bool _side = true;
+        private Vector3 _origin;
 
         public static void Begin(string dir)
         {
@@ -38,8 +39,12 @@ namespace Aetheria
             if (hud != null) hud.SetOverlay(OverlayMode.None);
             _hero.HasEnteredWorld = true;
             _hero.CinematicLock = true;              // no player input; this script drives the body
-            _hero.TeleportSafe(new Vector3(0f, 0f, 40f));
-            _hero.transform.rotation = Quaternion.Euler(0f, 90f, 0f);
+            // The plateau in front of the cave: flat, empty, no enemies in the way.
+            var d = AetheriaPrologueDirector.Instance;
+            Vector3 spot = d != null && d.CaveMouth != null ? d.CaveMouth.position + d.CaveMouth.forward * 6f : new Vector3(0f, 0f, 40f);
+            _origin = spot;
+            _hero.TeleportSafe(spot);
+            _hero.transform.rotation = d != null && d.CaveMouth != null ? Quaternion.LookRotation(d.CaveMouth.right) : Quaternion.Euler(0f, 90f, 0f);
             yield return new WaitForSeconds(1.5f);
 
             yield return Phase("a_idle", 0f, 2.0f);
@@ -89,7 +94,7 @@ namespace Aetheria
             {
                 // Move him along the plaza and feed the Animator the same parameters HeroController would.
                 _hero.transform.position += _hero.transform.forward * _speed * Time.deltaTime;
-                if (Mathf.Abs(_hero.transform.position.x) > 18f) _hero.transform.Rotate(0f, 180f, 0f);
+                if (Vector3.Distance(_hero.transform.position, _origin) > 5f && Vector3.Dot(_hero.transform.forward, _hero.transform.position - _origin) > 0f) _hero.transform.Rotate(0f, 180f, 0f);
             }
             if (anim != null && anim.isActiveAndEnabled && _speed >= 0f)
             {

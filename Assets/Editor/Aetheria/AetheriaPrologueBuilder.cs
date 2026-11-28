@@ -101,8 +101,8 @@ namespace Aetheria.Editor
             wake.y = H(wake);
             director.GladeWakePoint = Marker(root, "Prologue_GladeWake", wake, Quaternion.AngleAxis(70f, Vector3.up) * toLake);
             Vector3 gladeSide = Vector3.Cross(Vector3.up, toLake);
-            Vector3 camPos = wake + gladeSide * 3.4f - toLake * 1.2f;
-            camPos.y = H(camPos) + 1.7f;
+            Vector3 camPos = wake + gladeSide * 2.8f - toLake * 1.0f;
+            camPos.y = H(camPos) + 2.3f;   // above the grass, looking down at him
             director.GladeCamera = Marker(root, "Prologue_GladeCamera", camPos, wake - camPos);
             Vector3 gladeCentre = wake - toLake * 5f;
             BuildGlade(root, gladeCentre, wake, toLake);   // root sits at the origin: glade meshes are in world space
@@ -558,8 +558,11 @@ namespace Aetheria.Editor
             if (prof == null) { prof = ScriptableObject.CreateInstance<VolumeProfile>(); AssetDatabase.CreateAsset(prof, profPath); }
             if (!prof.TryGet<Exposure>(out var exp)) exp = prof.Add<Exposure>(true);
             exp.mode.Override(ExposureMode.Fixed);
-            exp.fixedExposure.Override(7.1f);   // darker interior: the mouth is the only key light
+            exp.fixedExposure.Override(7.6f);   // darker interior: the mouth is the only key light
             if (!prof.TryGet<Fog>(out var fog)) fog = prof.Add<Fog>(true);
+            if (!prof.TryGet<IndirectLightingController>(out var indirect)) indirect = prof.Add<IndirectLightingController>(true);
+            indirect.indirectDiffuseLightingMultiplier.Override(0.18f);   // sky light does not reach into rock
+            indirect.reflectionLightingMultiplier.Override(0.3f);
             fog.enabled.Override(true);
             fog.enableVolumetricFog.Override(true);
             fog.meanFreePath.Override(16f);    // dense enough for visible light shafts
@@ -568,8 +571,8 @@ namespace Aetheria.Editor
 
             // Dark adaptation only in the deep part: near the mouth the normal exposure takes over, so the
             // sage and the way out are not blown out to white.
-            var deep = new Bounds(path[9], Vector3.zero);
-            for (int i = 9; i < path.Count; i++) deep.Encapsulate(path[i]);
+            var deep = new Bounds(path[3], Vector3.zero);   // the whole tunnel behind the mouth, not only its far end
+            for (int i = 3; i < path.Count; i++) deep.Encapsulate(path[i]);
             deep.Expand(new Vector3(7f, 9f, 7f));
             var volGo = new GameObject("Cave_LocalVolume");
             volGo.transform.SetParent(cave.transform, false);
@@ -981,6 +984,9 @@ namespace Aetheria.Editor
                         float d = Mathf.Sqrt(dx * dx + dz * dz) / rad;
                         if (d > 1f) continue;
                         map[z, x] = grassLayer ? Mathf.Max(map[z, x], d < 0.15f ? 1 : 3) : 0;
+                        // A trampled patch where he washed up, so the body is not buried in grass.
+                        float wx = (x0 + x + 0.5f) / res * td.size.x + o.x, wz = (z0 + z + 0.5f) / res * td.size.z + o.z;
+                        if ((new Vector2(wx, wz) - new Vector2(wake.x, wake.z)).sqrMagnitude < 2.4f * 2.4f) map[z, x] = 0;
                     }
                     td.SetDetailLayer(x0, z0, layer, map);
                 }
