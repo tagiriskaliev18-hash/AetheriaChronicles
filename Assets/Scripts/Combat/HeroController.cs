@@ -112,7 +112,15 @@ namespace Aetheria
         private static readonly int AnimBlocking = Animator.StringToHash("Blocking");
         private static readonly int AnimCombatSpeed = Animator.StringToHash("CombatSpeed");
         private static readonly int AnimMoveScale = Animator.StringToHash("MoveScale");
+        private static readonly int AnimGrounded = Animator.StringToHash("Grounded");
+        private static readonly int AnimDodge = Animator.StringToHash("Dodge");
         private const float JogAuthoredSpeed = 4.0f;   // m/s the Quaternius Jog_Fwd_Loop covers per cycle (approx.)
+        // v8 controllers blend idle/walk/jog/sprint on Speed; only above the sprint clip's own ground speed
+        // (AetheriaDemoAnimations.SprintAuthoredSpeed) is the cycle sped up, and never by much.
+        private const float SprintAuthoredSpeed = 8.9f;
+        private const float AnimSpeedDamp = 0.08f;     // seconds, smooths the blend-tree input
+        private const float AirGraceSeconds = 0.12f;   // slopes and steps flicker isGrounded; a jump is airborne at once
+        private bool _animHasRealClips;                // v8 bake: jump, roll and block clips exist (bool "Grounded" is its marker)
         private bool? _animHasMoveScale;
         private Animator _animMoveScaleOwner;
 
@@ -581,16 +589,30 @@ namespace Aetheria
             bool animated = ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null;
             if (animated)
             {
-                // Jog is authored at about 6.2 m/s; CombatSpeed scales attack and cast clips by the hero's attack speed
-                ActiveAnimator.SetFloat(AnimSpeed, speed);
-                // Time-scale the jog to the real speed so walking, jogging and sprinting all keep feet planted
                 if (_animHasMoveScale == null || _animMoveScaleOwner != ActiveAnimator)
                 {
                     _animMoveScaleOwner = ActiveAnimator;
                     _animHasMoveScale = CreatureAnimator.HasParameter(ActiveAnimator, AnimMoveScale);
+                    _animHasRealClips = CreatureAnimator.HasParameter(ActiveAnimator, AnimGrounded);
                 }
-                if (_animHasMoveScale == true)
-                    ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(speed / JogAuthoredSpeed, 0.4f, 2.0f));
+                if (_animHasRealClips)
+                {
+                    // Blend tree thresholds are baked in units of the model root's scale, so the same
+                    // controller keeps the feet planted on a tall and on a short hero.
+                    float animSpeed = speed / Mathf.Max(0.05f, Mathf.Abs(ActiveAnimator.transform.lossyScale.y));
+                    ActiveAnimator.SetFloat(AnimSpeed, animSpeed, AnimSpeedDamp, dt);
+                    if (_animHasMoveScale == true)
+                        ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(animSpeed / SprintAuthoredSpeed, 1f, 1.35f));
+                    ActiveAnimator.SetBool(AnimGrounded, CC.isGrounded || (_airTime < AirGraceSeconds && _verticalVel <= 0f));
+                }
+                else
+                {
+                    // Older bake: one jog clip, time-scaled to the real speed
+                    ActiveAnimator.SetFloat(AnimSpeed, speed);
+                    if (_animHasMoveScale == true)
+                        ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(speed / JogAuthoredSpeed, 0.4f, 2.0f));
+                }
+                // CombatSpeed scales attack clips by the hero's attack speed
                 float attackSpeed = Mathf.Max(0.5f, Customization.Derived.AttackSpeedMultiplier * _alacrityMult);
                 ActiveAnimator.SetFloat(AnimCombatSpeed, attackSpeed);
                 ActiveAnimator.SetBool(AnimBlocking, blocking);
@@ -603,16 +625,18 @@ namespace Aetheria
 
             if (Overlay == null) return;
 
-            // Overlay weights ease in and out so poses never snap
-            Overlay.BlockWeight = Mathf.MoveTowards(Overlay.BlockWeight, blocking && !IsDashing ? 1f : 0f, dt * 7f);
-            float tuckTarget = (!CC.isGrounded && _airTime > 0.08f) ? 1f : (IsDashing ? 0.3f : 0f);
+            // Overlay weights ease in and out so poses never snap. With the v8 clips the guard, the jump and
+            // the roll are real animation, so the procedural guard and tuck stay out of their way.
+            bool realClips = animated && _animHasRealClips;
+            Overlay.BlockWeight = Mathf.MoveTowards(Overlay.BlockWeight, !realClips && blocking && !IsDashing ? 1f : 0f, dt * 7f);
+            float tuckTarget = realClips ? 0f : (!CC.isGrounded && _airTime > 0.08f) ? 1f : (IsDashing ? 0.3f : 0f);
             Overlay.TuckWeight = Mathf.MoveTowards(Overlay.TuckWeight, tuckTarget, dt * 6.5f);
 
             // Lean into acceleration and turns
             Vector3 local = transform.InverseTransformDirection(Velocity);
             float pitchTarget = Mathf.Clamp(local.z * 0.6f, -3f, 5f);   // the jog clip already leans forward
             float rollTarget = Mathf.Clamp(-local.x * 1.9f, -12f, 12f);
-            Overlay.LeanPitch = Mathf.MoveTowards(Overlay.LeanPitch, IsDashing ? 10f : pitchTarget, dt * 60f);
+            Overlay.LeanPitch = Mathf.MoveTowards(Overlay.LeanPitch, IsDashing ? (realClips ? 0f : 10f) : pitchTarget, dt * 60f);
             Overlay.LeanRoll = Mathf.MoveTowards(Overlay.LeanRoll, rollTarget, dt * 90f);
 
             // The head follows the look direction while the body is free
@@ -735,7 +759,11 @@ namespace Aetheria
             _pendingHitStep = 0;
         }
 
-        private static float HitFrameOf(int step) => step switch { 1 => 0.36f, 2 => 0.34f, 3 => 0.38f, _ => 0.46f };
+        // Normalised strike time of each combo clip. v8: Sword_Regular_A 0.22 s of 0.43, Sword_Regular_B 0.25 s
+        // of 0.53, Sword_Regular_C 0.63 s of 2.0 (state runs 1.5x), Sword_Attack 0.38 s of 1.53.
+        private float HitFrameOf(int step) => _animHasRealClips
+            ? step switch { 1 => 0.50f, 2 => 0.47f, 3 => 0.32f, _ => 0.25f }
+            : step switch { 1 => 0.36f, 2 => 0.34f, 3 => 0.38f, _ => 0.46f };
 
         public void PerformDash(Vector3 dir)
         {
@@ -750,6 +778,11 @@ namespace Aetheria
             _invulnTimer = 0.38f + d.DodgeIFrameBonusSec + (SkillTree != null ? SkillTree.DodgeIFrameMult - 1f : 0f) * 0.3f;
             _pendingHitStep = 0;
             transform.rotation = Quaternion.LookRotation(_dashDir, Vector3.up);
+            if (_animHasRealClips && ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null)
+            {
+                ActiveAnimator.ResetTrigger(AnimAttack);
+                ActiveAnimator.SetTrigger(AnimDodge);
+            }
 
             AetheriaFx.FlashLight(transform.position + Vector3.up, new Color(0.30f, 0.86f, 1f), 11f, 7f, 0.25f);
             AetheriaFx.Puff(transform.position + Vector3.up * 0.2f, new Color(0.78f, 0.92f, 1f, 0.40f), 9, 2.6f, 0.75f, 0.55f, 0.2f);
@@ -816,7 +849,14 @@ namespace Aetheria
             _dashTimer = 0f;
             _invulnTimer = 0f;
             if (ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null)
+            {
+                // A trigger left over from before the fall (a respawn set while alive, a queued swing or roll)
+                // must not pull the corpse back out of the Death state.
+                ActiveAnimator.ResetTrigger(AnimRespawn);
+                ActiveAnimator.ResetTrigger(AnimAttack);
+                if (_animHasRealClips) ActiveAnimator.ResetTrigger(AnimDodge);
                 ActiveAnimator.SetTrigger(AnimDie);
+            }
             AetheriaFx.Shake(0.5f, 0.6f);
             AetheriaFx.Puff(transform.position + Vector3.up * 0.4f, new Color(0.25f, 0.22f, 0.28f, 0.55f), 16, 2.2f, 1.4f, 1.6f, 0.6f);
             QuestAndMapService.Instance?.PushNotification("ВЫ ПАЛИ — нажмите [E], чтобы вернуться в Оукхейвен");

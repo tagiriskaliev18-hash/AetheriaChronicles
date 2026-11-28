@@ -80,7 +80,42 @@ namespace Aetheria
             if (_calfR != null) _calfR.localRotation = _restCalfR;
         }
 
-        private static Transform Find(Transform root, params string[] names) => AetheriaPalette.FindBoneAny(root, names);
+        private static Transform Find(Transform root, params string[] names) =>
+            AetheriaPalette.FindBoneAny(root, names) ?? FindLoose(root, names);
+
+        /// <summary>
+        /// Same lookup for rigs that are not plain UE-mannequin names: Sketchfab exports append "_NNN" to every
+        /// joint ("lowerarm_l_042") and Mixamo rigs use their own names ("mixamorig:LeftForeArm_010").
+        /// </summary>
+        private static Transform FindLoose(Transform root, string[] names)
+        {
+            if (root == null) return null;
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                string n = t.name;
+                int underscore = n.LastIndexOf('_');
+                bool digits = underscore > 0 && underscore < n.Length - 1;
+                for (int i = underscore + 1; digits && i < n.Length; i++) digits = char.IsDigit(n[i]);
+                if (digits) n = n.Substring(0, underscore);
+                if (n.StartsWith("mixamorig", System.StringComparison.OrdinalIgnoreCase))
+                    n = n.Substring("mixamorig".Length).TrimStart(':', '_');
+                foreach (var wanted in names)
+                    if (n.Equals(wanted, System.StringComparison.OrdinalIgnoreCase) ||
+                        n.Equals(MixamoName(wanted), System.StringComparison.OrdinalIgnoreCase)) return t;
+            }
+            return null;
+        }
+
+        private static string MixamoName(string mannequin) => mannequin switch
+        {
+            "upperarm_l" => "LeftArm", "upperarm_r" => "RightArm",
+            "lowerarm_l" => "LeftForeArm", "lowerarm_r" => "RightForeArm",
+            "hand_l" => "LeftHand", "hand_r" => "RightHand",
+            "spine_01" => "Spine", "spine_02" => "Spine1", "head" => "Head",
+            "thigh_l" => "LeftUpLeg", "thigh_r" => "RightUpLeg",
+            "calf_l" => "LeftLeg", "calf_r" => "RightLeg",
+            _ => mannequin
+        };
 
         private void LateUpdate()
         {

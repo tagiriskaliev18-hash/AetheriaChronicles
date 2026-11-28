@@ -143,7 +143,38 @@ namespace Aetheria
         {
             var d = AetheriaPrologueDirector.Instance;
             Debug.Log($"[PrologueShots] {name}: stage {(d != null ? d.Current.ToString() : "-")} hero {HeroController.Instance?.transform.position}");
-            ScreenCapture.CaptureScreenshot(Path.Combine(dir, name + ".png"));
+            string path = Path.Combine(dir, name + ".png");
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-prologue-offscreen") < 0)
+            {
+                ScreenCapture.CaptureScreenshot(path);
+                return;
+            }
+
+            // A hidden Windows player has no capturable backbuffer. Render the scene camera
+            // into a texture for automated framing checks instead of capturing the window.
+            var camera = HeroController.Instance != null ? HeroController.Instance.MainCam : Camera.main;
+            if (camera == null) { Debug.LogError("[PrologueShots] No camera for offscreen capture."); return; }
+            var target = RenderTexture.GetTemporary(1280, 720, 24, RenderTextureFormat.ARGB32);
+            var previousTarget = camera.targetTexture;
+            var previousActive = RenderTexture.active;
+            Texture2D image = null;
+            try
+            {
+                camera.targetTexture = target;
+                camera.Render();
+                RenderTexture.active = target;
+                image = new Texture2D(target.width, target.height, TextureFormat.RGB24, false);
+                image.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
+                image.Apply();
+                File.WriteAllBytes(path, image.EncodeToPNG());
+            }
+            finally
+            {
+                camera.targetTexture = previousTarget;
+                RenderTexture.active = previousActive;
+                if (image != null) Object.Destroy(image);
+                RenderTexture.ReleaseTemporary(target);
+            }
         }
     }
 }

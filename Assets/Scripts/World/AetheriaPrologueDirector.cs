@@ -406,7 +406,7 @@ namespace Aetheria
             u = Mathf.Clamp01(u);
             float eased = u * u * (3f - 2f * u) * 0.35f + u * u * 0.65f;
             float entryBlend = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(u / 0.12f));
-            return Vector3.Lerp(_fallEntryPosition, PathPoint(eased), entryBlend);
+            return Vector3.Lerp(_fallEntryPosition + Vector3.down * 0.45f, PathPoint(eased), entryBlend);
         }
 
         private Vector3 FallVelocity()
@@ -420,7 +420,11 @@ namespace Aetheria
         {
             float u = FallU();
             // Accelerating fall: slow tumble off the ledge, fast down the water.
-            Vector3 p = FallPosition(u);
+            // The slab starts dropping during the reaction beat. Follow it down instead
+            // of leaving the character standing motionless above the broken ledge.
+            Vector3 p = _t < FallStart
+                ? _fallEntryPosition + Vector3.down * Mathf.SmoothStep(0f, 0.45f, _t / FallStart)
+                : FallPosition(u);
             Vector3 v = FallVelocity();
             _hero.transform.position = p;
             SetWaterfallSwim(u >= 0.18f && u < 0.98f);
