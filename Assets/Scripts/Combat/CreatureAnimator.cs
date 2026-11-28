@@ -29,6 +29,8 @@ namespace Aetheria
         public int CurrentAction { get; private set; }
 
         private static readonly int PSpeed = Animator.StringToHash("Speed");
+        private static readonly int PMoveScale = Animator.StringToHash("MoveScale");
+        private bool? _hasMoveScale;   // resolved on first Drive, once the Animator is live
         private static readonly int PAction = Animator.StringToHash("Action");
         private static readonly int TDo = Animator.StringToHash("DoAction");
         private static readonly int THit = Animator.StringToHash("Hit");
@@ -53,6 +55,16 @@ namespace Aetheria
             }
             Animator.applyRootMotion = false;
             Animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            _hasMoveScale = null;
+        }
+
+        /// <summary>True when the bound controller declares the parameter (older bakes lack MoveScale).</summary>
+        public static bool HasParameter(Animator animator, int hash)
+        {
+            if (animator == null || animator.runtimeAnimatorController == null) return false;
+            foreach (var p in animator.parameters)
+                if (p.nameHash == hash) return true;
+            return false;
         }
 
         private static bool MatchesActionHash(int action, int shortNameHash) => action switch
@@ -96,6 +108,10 @@ namespace Aetheria
             if (!Valid) return;
             float s = HasMoveClip ? planarSpeed / Mathf.Max(0.5f, MoveAnimationSpeed) : 0f;
             Animator.SetFloat(PSpeed, Mathf.Clamp01(s));
+            // Time-scale the Move clip to the real ground speed so a creature that slows down
+            // does not keep running on the spot (foot sliding).
+            if (_hasMoveScale == null) _hasMoveScale = HasParameter(Animator, PMoveScale);
+            if (_hasMoveScale == true) Animator.SetFloat(PMoveScale, Mathf.Clamp(s, 0.55f, 1.6f));
         }
 
         /// <summary>Starts an action (1..4 attack, 5 cast, 6 stun). Returns false if the creature cannot animate.</summary>

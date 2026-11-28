@@ -10,6 +10,10 @@
 *.txt    text eol=lf
 *.sh     text eol=lf
 *.asset  text eol=lf
+# Binary-serialized Unity assets: text normalisation corrupts them (CR LF bytes inside binary data).
+Assets/Generated/AetheriaTerrainData.asset binary
+*.terraindata binary
+ProjectSettings/XRSettings.asset binary
 *.mat    text eol=lf
 *.prefab text eol=lf
 *.unity  text eol=lf

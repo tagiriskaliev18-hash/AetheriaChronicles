@@ -13,7 +13,7 @@ namespace Aetheria
         public static AetheriaWorldGenerator Instance { get; private set; }
 
         [Range(0f, 1f)]
-        public float TimeOfDay = 0.68f; // Default: Crimson Desert Golden Sunset
+        public float TimeOfDay = 0.42f; // Default: clear late morning (the old 0.68 sunset washed the whole valley orange)
 
         public Light SunLight;
         public Volume GlobalVolume;
@@ -72,6 +72,21 @@ namespace Aetheria
             }
             for (int i = 0; i < args.Length - 1; i++)
             {
+                if (args[i] == "-world-shots")
+                {
+                    StartCoroutine(AetheriaPrologueShots.RunWorld(args[i + 1]));
+                    break;
+                }
+                if (args[i] == "-prologue-shots")
+                {
+                    StartCoroutine(AetheriaPrologueShots.Run(args[i + 1]));
+                    break;
+                }
+                if (args[i] == "-motion-shots")
+                {
+                    AetheriaMotionShots.Begin(args[i + 1]);
+                    break;
+                }
                 if (args[i] == "-verify-screenshots")
                 {
                     StartCoroutine(RunVerificationCaptureRoutine(args[i + 1]));

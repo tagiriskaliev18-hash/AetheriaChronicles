@@ -39,6 +39,7 @@ namespace Aetheria
         }
 
         private GameObject _hudRoot;
+        private bool _cinematicHudHidden;
         private Image _hpFill, _stamFill, _manaFill, _xpFill;
         private Text _vitalsText, _questText, _biomeText, _toastText, _orbsText, _slotDText, _slotFText;
         private GameObject _bossPanel;
@@ -237,6 +238,7 @@ namespace Aetheria
 
         private void HandleGlobalKeys()
         {
+            if (AetheriaIntroCinematic.Active) return;   // the opening cinematic owns the keyboard
             if (Input.GetKeyDown(KeyCode.BackQuote) || Input.GetKeyDown(KeyCode.F1))
                 ToggleOverlay(OverlayMode.DevConsole);
             else if (Input.GetKeyDown(KeyCode.Escape))
@@ -266,6 +268,12 @@ namespace Aetheria
 
         public void ToggleOverlay(OverlayMode target) => SetOverlay(ActiveOverlay == target ? OverlayMode.None : target);
 
+        public void SetCinematicHudHidden(bool hidden)
+        {
+            _cinematicHudHidden = hidden;
+            if (_hudRoot != null) _hudRoot.SetActive(!hidden && !IsModalOpen);
+        }
+
         public void SetOverlay(OverlayMode mode)
         {
             ActiveOverlay = mode;
@@ -273,7 +281,7 @@ namespace Aetheria
             Time.timeScale = IsPaused ? 0f : 1f;
             Cursor.visible = modal;
             Cursor.lockState = modal ? CursorLockMode.None : CursorLockMode.Locked;
-            _hudRoot?.SetActive(!modal);
+            _hudRoot?.SetActive(!modal && !_cinematicHudHidden);
 
             HeroController.Instance?.SetCreatorStudioCamera(mode == OverlayMode.HeroCustomizer);
             AudioAndQualityService.Instance?.SetMenuActive(mode == OverlayMode.MainMenu);

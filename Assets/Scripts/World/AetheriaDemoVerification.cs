@@ -21,8 +21,46 @@ namespace Aetheria
                 "Stone bridge has mesh collision")) yield break;
 
             hero.StartPrologueAwakening();
-            var tutor = AetheriaNPC.AllNPCs.Find(npc => npc.NpcId == "Npc_CaveTutor");
             hud.SetOverlay(OverlayMode.None);
+            var director = AetheriaPrologueDirector.Instance;
+            if (director != null)
+            {
+                if (!Check(director.GladeWakePoint != null, "The glade wake point exists")) yield break;
+                Vector3 wake = director.GladeWakePoint.position;
+                float groundHeight = AetheriaWorld.SampleHeight(wake);
+                float groundMismatch = Mathf.Abs(wake.y - groundHeight);
+                Debug.Log($"[DemoVerification] Glade wake Y={wake.y:F2}, terrain Y={groundHeight:F2}, difference={groundMismatch:F2}m");
+                if (!Check(groundMismatch <= 0.75f,
+                    "Glade wake point matches the runtime terrain height")) yield break;
+                yield return new WaitForSeconds(0.5f);
+                Debug.Log($"[DemoVerification] Cave wake {hero.transform.position}, stage {director.Current}");
+                if (!Check(director.InCave(hero.transform.position) && hero.GetComponent<CharacterController>().isGrounded,
+                    "Prologue wakes the hero inside the cave on solid ground")) yield break;
+                yield return new WaitForSeconds(3.4f);
+                if (!Check(director.Current == AetheriaPrologueDirector.Stage.Light && !hero.CinematicLock,
+                    "The hero can walk toward the light after waking")) yield break;
+                hero.TeleportSafe(director.LightTrigger.position);   // as if he walked to the light
+                yield return new WaitForSeconds(0.3f);
+                director.DebugReachLight();
+                yield return new WaitForSeconds(1.8f);
+                var sage = AetheriaNPC.AllNPCs.Find(npc => npc.NpcId == "Npc_CaveTutor");
+                if (!Check(sage != null && sage.gameObject.activeInHierarchy &&
+                    Vector3.Distance(sage.transform.position, hero.transform.position) < 6f, "The sage appears in front of the hero")) yield break;
+                director.DebugFinishDialogue();
+                yield return new WaitForSeconds(0.3f);
+                var awakening = quests.FindQuest("Q_PrologueAwakening");
+                if (!Check(awakening.State == QuestState.Active && !hero.CinematicLock, "The sage's talk starts the prologue quest")) yield break;
+                hero.TeleportSafe(director.LedgeTrigger.position);
+                yield return new WaitForSeconds(21f);
+                Debug.Log($"[DemoVerification] Glade {hero.transform.position}, stage {hero.PrologueStage}, quest {awakening.State}");
+                if (!Check(awakening.State == QuestState.Completed && hero.PrologueStage == 4 &&
+                    hero.GetComponent<CharacterController>().isGrounded && AetheriaWorld.SampleHeight(hero.transform.position) > 0.25f &&
+                    Vector3.Distance(hero.transform.position, director.GladeWakePoint.position) < 3f,
+                    "The ledge collapse and waterfall carry the hero to the glade")) yield break;
+            }
+            else
+            {
+            var tutor = AetheriaNPC.AllNPCs.Find(npc => npc.NpcId == "Npc_CaveTutor");
             yield return new WaitForSeconds(0.5f);
             Debug.Log($"[DemoVerification] Prologue spawn {hero.transform.position}, tutor {tutor?.transform.position}");
             if (!Check(tutor != null && Vector3.Distance(hero.transform.position, tutor.transform.position) < 4.4f &&
@@ -36,6 +74,7 @@ namespace Aetheria
             if (!Check(prologue.State == QuestState.Completed && hero.PrologueStage == 4 &&
                 hero.GetComponent<CharacterController>().isGrounded && AetheriaWorld.SampleHeight(hero.transform.position) > 0.25f,
                 "Cliff trigger completes the prologue and lands on dry ground")) yield break;
+            }
 
             var checkpoint = hero.transform.position;
             hero.transform.position = checkpoint - Vector3.up * 2f;

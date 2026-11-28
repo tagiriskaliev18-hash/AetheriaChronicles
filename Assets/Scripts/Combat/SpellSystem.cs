@@ -241,7 +241,7 @@ namespace Aetheria
                 SlotD = resolved;
             }
             InvokeCooldownRemaining = GodModeActive ? 0f : 0.65f * CooldownMultiplier;
-            AudioAndQualityService.Instance?.PlaySfx2D("SW_MagicCast_Buff1_1", 0.55f);
+            AudioAndQualityService.Instance?.PlaySfx2D("SFX_Invoke", 0.55f);
             OnSpellStateChanged?.Invoke();
             return true;
         }

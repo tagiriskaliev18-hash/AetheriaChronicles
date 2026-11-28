@@ -109,6 +109,11 @@ namespace Aetheria.Editor
                 Vector2 tiling = mat.HasProperty("_MainTex") ? mat.mainTextureScale : Vector2.one;
                 Vector2 offset = mat.HasProperty("_MainTex") ? mat.mainTextureOffset : Vector2.zero;
                 bool transparent = IsTransparent(mat);
+                // Foliage cards and chains need their cut-out and both faces; dropping them turns every
+                // leaf, grass card and fur strip into an opaque, one-sided quad.
+                bool alphaClip = mat.IsKeywordEnabled("_ALPHATEST_ON") || ReadFloat(mat, "_AlphaClip", null, 0f) > 0.5f;
+                float cutoff = ReadFloat(mat, "_Cutoff", null, 0.5f);
+                bool doubleSided = mat.HasProperty("_Cull") && mat.GetFloat("_Cull") < 0.5f;
 
                 mat.shader = shader;
 
@@ -168,10 +173,16 @@ namespace Aetheria.Editor
                     mat.SetFloat("_DstBlend", transparent ? (float)BlendMode.OneMinusSrcAlpha : (float)BlendMode.Zero);
                     mat.SetFloat("_AlphaSrcBlend", 1f);
                     mat.SetFloat("_AlphaDstBlend", transparent ? (float)BlendMode.OneMinusSrcAlpha : 0f);
-                    mat.SetFloat("_AlphaCutoffEnable", 0f);
+                    mat.SetFloat("_AlphaCutoffEnable", alphaClip ? 1f : 0f);
+                    if (alphaClip)
+                    {
+                        WriteFloat(mat, "_AlphaCutoff", cutoff);
+                        WriteFloat(mat, "_AlphaCutoffShadow", cutoff);
+                        WriteFloat(mat, "_UseShadowThreshold", 1f);
+                    }
                     mat.SetFloat("_EnableBlendModePreserveSpecularLighting", transparent ? 1f : 0f);
                     mat.SetFloat("_EnableFogOnTransparent", 1f);
-                    mat.SetFloat("_DoubleSidedEnable", 0f);
+                    mat.SetFloat("_DoubleSidedEnable", doubleSided || alphaClip ? 1f : 0f);
                     mat.SetFloat("_ReceivesSSR", 1f);
                     mat.SetFloat("_SupportDecals", 1f);
                     mat.SetFloat("_SupportDecalsTransparent", 0f);

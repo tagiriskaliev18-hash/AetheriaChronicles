@@ -1,0 +1,58 @@
+fileFormatVersion: 2
+guid: 9c2dfbfcc8c89a44caed95e908f2eaf9
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 715df9372183c47e389bb6e19fbc3b52, type: 3}
+  editorImportSettings:
+    generateSecondaryUVSet: 0
+  importSettings:
+    nodeNameMethod: 1
+    animationMethod: 2
+    generateMipMaps: 1
+    texturesReadable: 0
+    defaultMinFilterMode: 9729
+    defaultMagFilterMode: 9729
+    anisotropicFilterLevel: 1
+  instantiationSettings:
+    mask: -1
+    layer: 0
+    skinUpdateWhenOffscreen: 1
+    lightIntensityFactor: 1
+    sceneObjectCreation: 2
+  assetDependencies:
+  - type: 0
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\modular_fort_01.bin
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\modular_fort_01.bin
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_wall_nor_gl_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_wall_nor_gl_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_wall_diff_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_wall_diff_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_wall_arm_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_wall_arm_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_trim_nor_gl_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_trim_nor_gl_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_trim_diff_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_trim_diff_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_trim_arm_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_trim_arm_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_plaster_nor_gl_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_plaster_nor_gl_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_plaster_diff_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_plaster_diff_1k.jpg
+  - type: 1
+    originalUri: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_plaster_arm_1k.jpg
+    assetPath: Assets\_AAA_Imported\PolyHaven\Models\modular_fort_01\textures\modular_fort_01_plaster_arm_1k.jpg
+  reportItems: []

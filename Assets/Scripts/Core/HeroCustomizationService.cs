@@ -17,6 +17,11 @@ namespace Aetheria
         public const int MinAttr = 5;
         public const int MaxAttr = 60;
         public const int DefaultStartPoints = 15;
+        /// <summary>Default new-game hero: the CC-BY "Medieval Knight" (by__Rx) with its own PBR textures and a
+        /// separate "Weapon_Sword" in the right hand (built by Aetheria/4c. Build Knight Hero).</summary>
+        public const string KnightHeroResource = "Heroes/Hero_Knight";
+        /// <summary>Last resort when a prefab is missing (e.g. 4c not run yet).</summary>
+        public const string FallbackHeroResource = "Heroes/Hero_Kwang";
 
         public HeroCustomizationProfile Profile = new HeroCustomizationProfile();
         public HeroDerivedStats Derived { get; private set; }
@@ -445,7 +450,7 @@ namespace Aetheria
 
         public static string GetHeroPrefabResourceName(HeroCustomizationProfile p)
         {
-            if (p == null) return "Heroes/Hero_Kwang";
+            if (p == null) return KnightHeroResource;
             if (p.Gender == HeroGender.Female)
             {
                 return p.OutfitStyle switch
@@ -469,7 +474,10 @@ namespace Aetheria
                 HeroOutfitStyle.DraconidWarlock => "Heroes/Hero_GideonMeph",
                 HeroOutfitStyle.HighlandPelt    => p.Race == HeroRace.HighlandNord ? "Heroes/Hero_KhaimeraPelt" : "Heroes/Hero_Khaimera",
                 HeroOutfitStyle.SovereignGilded => "Heroes/Hero_KwangSunrise",
-                _                               => p.Race == HeroRace.HighElf ? "Heroes/Hero_KwangFrost" : (p.Race == HeroRace.ShadowKin ? "Heroes/Hero_KwangAlbino" : "Heroes/Hero_Kwang")
+                // Default look (Vanguard plate): a Human is the knight; the other races keep the Paragon bodies.
+                _                               => p.Race == HeroRace.Human ? KnightHeroResource
+                                                 : p.Race == HeroRace.HighElf ? "Heroes/Hero_KwangFrost"
+                                                 : p.Race == HeroRace.ShadowKin ? "Heroes/Hero_KwangAlbino" : "Heroes/Hero_Kwang"
             };
         }
 

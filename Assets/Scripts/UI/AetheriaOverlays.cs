@@ -294,7 +294,7 @@ namespace Aetheria
             if (GUILayout.Button(hero.HasEnteredWorld ? "APPLY & RESUME ADVENTURE [ESC]" : "AWAKEN IN AETHERIA (PROLOGUE)", _goldBtnStyle, GUILayout.Height(48)))
             {
                 hero.SkillTree?.SaveProgress(hero);
-                if (!hero.HasEnteredWorld) hero.StartPrologueAwakening();
+                if (!hero.HasEnteredWorld) AetheriaIntroCinematic.Play(hero, hero.StartPrologueAwakening);   // opening cinematic, then the cave
                 hud.SetOverlay(OverlayMode.None);
             }
             GUILayout.EndArea();

@@ -6,7 +6,8 @@ chcp 65001 >nul
 
 set "PROJ=%~dp0"
 if "%PROJ:~-1%"=="\" set "PROJ=%PROJ:~0,-1%"
-set "UNITY=C:\Program Files\Unity\Hub\Editor\6000.3.29f1\Editor\Unity.exe"
+set "UNITY=D:\Unity\Editors\6000.3.29f1\Editor\Unity.exe"
+if not exist "%UNITY%" set "UNITY=C:\Program Files\Unity\Hub\Editor\6000.3.29f1\Editor\Unity.exe"
 set "LOG=%PROJ%\Logs"
 if not exist "%LOG%" mkdir "%LOG%"
 

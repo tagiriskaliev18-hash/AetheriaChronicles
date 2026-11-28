@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Aetheria
@@ -32,6 +33,8 @@ namespace Aetheria
         /// <summary>0=InCaveTalkToTutor, 1=WalkOutToOverlook, 2=ApproachWaterfall, 3=PlayingCutscene, 4=OpenWorld</summary>
         public int PrologueStage = 4;
         public bool HasEnteredWorld = false;
+        /// <summary>Set by story cinematics: the hero keeps idling but takes no input and leaves the camera alone.</summary>
+        public bool CinematicLock;
 
         public Transform VisualRoot;
         public Animator ActiveAnimator { get; private set; }
@@ -47,6 +50,11 @@ namespace Aetheria
         private string _loadedWeaponKey = "";
         private GameObject _heroModelInstance;
         private GameObject _weaponInstance;
+        /// <summary>Name of a weapon that ships inside the hero prefab (Hero_Knight: under the right-hand bone).</summary>
+        public const string ModelWeaponNodeName = "Weapon_Sword";
+        private Transform _modelWeapon;
+        private bool _weaponVisible = true;
+        private string _loadedModelName = "";
         private Transform _cosmeticsRoot;
         private readonly GameObject[] _orbitSpheres = new GameObject[3];
         private readonly Light[] _orbitLights = new Light[3];
@@ -82,6 +90,11 @@ namespace Aetheria
         private float _safeTimer = 0f;
         private float _mapRevealCooldown = 0f;
         private float _stepTimer = 0f;
+        private int _footstepIndex;
+        private static readonly string[] FootstepSounds =
+        {
+            "SFX_Step_Stone_01", "SFX_Step_Stone_02", "SFX_Step_Stone_03", "SFX_Step_Stone_04"
+        };
         private float _airTime = 0f;
 
         // Creator Studio Mode
@@ -103,6 +116,18 @@ namespace Aetheria
         private static readonly int AnimRespawn = Animator.StringToHash("Respawn");
         private static readonly int AnimBlocking = Animator.StringToHash("Blocking");
         private static readonly int AnimCombatSpeed = Animator.StringToHash("CombatSpeed");
+        private static readonly int AnimMoveScale = Animator.StringToHash("MoveScale");
+        private static readonly int AnimGrounded = Animator.StringToHash("Grounded");
+        private static readonly int AnimDodge = Animator.StringToHash("Dodge");
+        private const float JogAuthoredSpeed = 4.0f;   // m/s the Quaternius Jog_Fwd_Loop covers per cycle (approx.)
+        // v8 controllers blend idle/walk/jog/sprint on Speed; only above the sprint clip's own ground speed
+        // (AetheriaDemoAnimations.SprintAuthoredSpeed) is the cycle sped up, and never by much.
+        private const float SprintAuthoredSpeed = 8.9f;
+        private const float AnimSpeedDamp = 0.08f;     // seconds, smooths the blend-tree input
+        private const float AirGraceSeconds = 0.12f;   // slopes and steps flicker isGrounded; a jump is airborne at once
+        private bool _animHasRealClips;                // v8 bake: jump, roll and block clips exist (bool "Grounded" is its marker)
+        private bool? _animHasMoveScale;
+        private Animator _animMoveScaleOwner;
 
         public static HeroController Instance { get; private set; }
         private Vector3 _villageSpawn;
@@ -211,6 +236,14 @@ namespace Aetheria
             if (AetheriaHUDManager.Instance == null || !HasEnteredWorld)
             {
                 UpdateStudioCameraIfActive(dt);
+                return;
+            }
+
+            if (CinematicLock)
+            {
+                // Keep him settled on the ground (isGrounded only updates through Move).
+                if (CC.enabled) CC.Move(Vector3.down * 3f * dt);
+                DriveAnimator(0f, false, dt);
                 return;
             }
 
@@ -366,7 +399,8 @@ namespace Aetheria
                 {
                     _stepTimer = sprinting ? 0.26f : 0.34f;
                     AetheriaFx.Puff(transform.position + Vector3.up * 0.06f, new Color(0.86f, 0.80f, 0.66f, 0.22f), 2, 0.9f, sprinting ? 0.42f : 0.28f, 0.55f, 0.5f);
-                    AudioAndQualityService.Instance?.PlaySfxAt("SFX_Footstep", transform.position, 0.22f);
+                    AudioAndQualityService.Instance?.PlaySfxAt(FootstepSounds[_footstepIndex], transform.position, 0.22f);
+                    _footstepIndex = (_footstepIndex + 1) % FootstepSounds.Length;
                 }
             }
 
@@ -560,8 +594,30 @@ namespace Aetheria
             bool animated = ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null;
             if (animated)
             {
-                // Jog is authored at about 6.2 m/s; CombatSpeed scales attack and cast clips by the hero's attack speed
-                ActiveAnimator.SetFloat(AnimSpeed, speed);
+                if (_animHasMoveScale == null || _animMoveScaleOwner != ActiveAnimator)
+                {
+                    _animMoveScaleOwner = ActiveAnimator;
+                    _animHasMoveScale = CreatureAnimator.HasParameter(ActiveAnimator, AnimMoveScale);
+                    _animHasRealClips = CreatureAnimator.HasParameter(ActiveAnimator, AnimGrounded);
+                }
+                if (_animHasRealClips)
+                {
+                    // Blend tree thresholds are baked in units of the model root's scale, so the same
+                    // controller keeps the feet planted on a tall and on a short hero.
+                    float animSpeed = speed / Mathf.Max(0.05f, Mathf.Abs(ActiveAnimator.transform.lossyScale.y));
+                    ActiveAnimator.SetFloat(AnimSpeed, animSpeed, AnimSpeedDamp, dt);
+                    if (_animHasMoveScale == true)
+                        ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(animSpeed / SprintAuthoredSpeed, 1f, 1.35f));
+                    ActiveAnimator.SetBool(AnimGrounded, CC.isGrounded || (_airTime < AirGraceSeconds && _verticalVel <= 0f));
+                }
+                else
+                {
+                    // Older bake: one jog clip, time-scaled to the real speed
+                    ActiveAnimator.SetFloat(AnimSpeed, speed);
+                    if (_animHasMoveScale == true)
+                        ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(speed / JogAuthoredSpeed, 0.4f, 2.0f));
+                }
+                // CombatSpeed scales attack clips by the hero's attack speed
                 float attackSpeed = Mathf.Max(0.5f, Customization.Derived.AttackSpeedMultiplier * _alacrityMult);
                 ActiveAnimator.SetFloat(AnimCombatSpeed, attackSpeed);
                 ActiveAnimator.SetBool(AnimBlocking, blocking);
@@ -574,21 +630,25 @@ namespace Aetheria
 
             if (Overlay == null) return;
 
-            // Overlay weights ease in and out so poses never snap
-            Overlay.BlockWeight = Mathf.MoveTowards(Overlay.BlockWeight, blocking && !IsDashing ? 1f : 0f, dt * 7f);
-            float tuckTarget = (!CC.isGrounded && _airTime > 0.08f) ? 1f : (IsDashing ? 0.75f : 0f);
+            // Overlay weights ease in and out so poses never snap. With the v8 clips the guard, the jump and
+            // the roll are real animation, so the procedural guard and tuck stay out of their way.
+            bool realClips = animated && _animHasRealClips;
+            Overlay.BlockWeight = Mathf.MoveTowards(Overlay.BlockWeight, !realClips && blocking && !IsDashing ? 1f : 0f, dt * 7f);
+            float tuckTarget = realClips ? 0f : (!CC.isGrounded && _airTime > 0.08f) ? 1f : (IsDashing ? 0.3f : 0f);
             Overlay.TuckWeight = Mathf.MoveTowards(Overlay.TuckWeight, tuckTarget, dt * 6.5f);
 
             // Lean into acceleration and turns
             Vector3 local = transform.InverseTransformDirection(Velocity);
-            float pitchTarget = Mathf.Clamp(local.z * 1.35f, -8f, 16f);
+            float pitchTarget = Mathf.Clamp(local.z * 0.6f, -3f, 5f);   // the jog clip already leans forward
             float rollTarget = Mathf.Clamp(-local.x * 1.9f, -12f, 12f);
-            Overlay.LeanPitch = Mathf.MoveTowards(Overlay.LeanPitch, IsDashing ? 24f : pitchTarget, dt * 90f);
+            Overlay.LeanPitch = Mathf.MoveTowards(Overlay.LeanPitch, IsDashing ? (realClips ? 0f : 10f) : pitchTarget, dt * 60f);
             Overlay.LeanRoll = Mathf.MoveTowards(Overlay.LeanRoll, rollTarget, dt * 90f);
 
             // The head follows the look direction while the body is free
-            bool headTrack = !blocking && !IsDashing && !IsAttacking && !InState(StateCast, out _);
-            Overlay.LookWeight = Mathf.MoveTowards(Overlay.LookWeight, headTrack ? 0.55f : 0f, dt * 4f);
+            bool headTrack = !CinematicLock && !blocking && !IsDashing && !IsAttacking && !InState(StateCast, out _);
+            // Head tracking of the camera is off: on these rigs it made the head swivel constantly with every
+            // camera move. The animation clips own the head.
+            Overlay.LookWeight = 0f;
             if (MainCam != null) Overlay.LookTarget = transform.position + MainCam.transform.forward * 9f + Vector3.up * 1.55f;
         }
 
@@ -704,7 +764,11 @@ namespace Aetheria
             _pendingHitStep = 0;
         }
 
-        private static float HitFrameOf(int step) => step switch { 1 => 0.36f, 2 => 0.34f, 3 => 0.38f, _ => 0.46f };
+        // Normalised strike time of each combo clip. v8: Sword_Regular_A 0.22 s of 0.43, Sword_Regular_B 0.25 s
+        // of 0.53, Sword_Regular_C 0.63 s of 2.0 (state runs 1.5x), Sword_Attack 0.38 s of 1.53.
+        private float HitFrameOf(int step) => _animHasRealClips
+            ? step switch { 1 => 0.50f, 2 => 0.47f, 3 => 0.32f, _ => 0.25f }
+            : step switch { 1 => 0.36f, 2 => 0.34f, 3 => 0.38f, _ => 0.46f };
 
         public void PerformDash(Vector3 dir)
         {
@@ -719,6 +783,11 @@ namespace Aetheria
             _invulnTimer = 0.38f + d.DodgeIFrameBonusSec + (SkillTree != null ? SkillTree.DodgeIFrameMult - 1f : 0f) * 0.3f;
             _pendingHitStep = 0;
             transform.rotation = Quaternion.LookRotation(_dashDir, Vector3.up);
+            if (_animHasRealClips && ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null)
+            {
+                ActiveAnimator.ResetTrigger(AnimAttack);
+                ActiveAnimator.SetTrigger(AnimDodge);
+            }
 
             AetheriaFx.FlashLight(transform.position + Vector3.up, new Color(0.30f, 0.86f, 1f), 11f, 7f, 0.25f);
             AetheriaFx.Puff(transform.position + Vector3.up * 0.2f, new Color(0.78f, 0.92f, 1f, 0.40f), 9, 2.6f, 0.75f, 0.55f, 0.2f);
@@ -733,7 +802,7 @@ namespace Aetheria
             // Timed parry
             if (IsBlocking && _parryWindowTimer > 0f)
             {
-                AudioAndQualityService.Instance?.PlaySfxAt("SW_MagicImpact_Metallic_1", transform.position, 0.9f);
+                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Hit_Armor", transform.position, 0.9f);
                 AudioAndQualityService.Instance?.RequestHitStop(0.09f, 0.05f);
                 Spells.Mana = Mathf.Min(Spells.MaxMana, Spells.Mana + 20f + SkillTree.ParryManaRestore);
                 Vector3 at = transform.position + transform.forward * 0.7f + Vector3.up * 1.2f;
@@ -785,7 +854,14 @@ namespace Aetheria
             _dashTimer = 0f;
             _invulnTimer = 0f;
             if (ActiveAnimator != null && ActiveAnimator.isActiveAndEnabled && ActiveAnimator.runtimeAnimatorController != null)
+            {
+                // A trigger left over from before the fall (a respawn set while alive, a queued swing or roll)
+                // must not pull the corpse back out of the Death state.
+                ActiveAnimator.ResetTrigger(AnimRespawn);
+                ActiveAnimator.ResetTrigger(AnimAttack);
+                if (_animHasRealClips) ActiveAnimator.ResetTrigger(AnimDodge);
                 ActiveAnimator.SetTrigger(AnimDie);
+            }
             AetheriaFx.Shake(0.5f, 0.6f);
             AetheriaFx.Puff(transform.position + Vector3.up * 0.4f, new Color(0.25f, 0.22f, 0.28f, 0.55f), 16, 2.2f, 1.4f, 1.6f, 0.6f);
             QuestAndMapService.Instance?.PushNotification("ВЫ ПАЛИ — нажмите [E], чтобы вернуться в Оукхейвен");
@@ -795,6 +871,7 @@ namespace Aetheria
 
         public void RespawnAtOakhaven()
         {
+            AetheriaPrologueDirector.Instance?.Abort();
             if (DragonController.Instance != null && DragonController.Instance.Mounted)
                 DragonController.Instance.Dismount();
             IsDead = false;
@@ -922,6 +999,12 @@ namespace Aetheria
 
         public void StartPrologueAwakening()
         {
+            // The directed prologue (cave, sage, collapse, waterfall, glade) when the scene has one.
+            if (AetheriaPrologueDirector.Instance != null)
+            {
+                AetheriaPrologueDirector.Instance.Begin(this);
+                return;
+            }
             HasEnteredWorld = true;
             PrologueStage = 0;
             var tutor = AetheriaNPC.AllNPCs.Find(npc => npc.NpcId == "Npc_CaveTutor");
@@ -934,6 +1017,7 @@ namespace Aetheria
 
         public void SkipToOpenWorld(bool loadSave)
         {
+            AetheriaPrologueDirector.Instance?.Abort();
             HasEnteredWorld = true;
             PrologueStage = 4;
             if (loadSave && SkillTree.LoadProgress(this)) return;
@@ -944,7 +1028,7 @@ namespace Aetheria
 
         private void UpdatePrologueStageTriggers()
         {
-            if (PrologueStage >= 4) return;
+            if (PrologueStage >= 4 || AetheriaPrologueDirector.Instance != null) return;
             var quest = QuestAndMapService.Instance?.FindQuest("Q_PrologueAwakening");
             if (quest == null || quest.State != QuestState.Active) return;
             Vector3 offset = transform.position - quest.ObjectiveWorldLocation;
@@ -989,7 +1073,7 @@ namespace Aetheria
                 AetheriaFx.Shockwave(landing, new Color(0.55f, 0.88f, 1f), 4.5f, 0.55f);
                 AetheriaFx.Puff(landing, new Color(0.84f, 0.90f, 0.96f, 0.55f), 14, 3.2f, 1.4f, 1.0f, 0.35f);
                 AetheriaFx.Burst(landing + Vector3.up * 0.25f, new Color(0.65f, 0.92f, 1f), 22, 2.5f, 7f, 0.08f, 0.18f, 0.6f, 1.2f, new Color(0.3f, 0.7f, 1f, 0f));
-                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Footstep", landing, 0.7f);
+                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Step_Stone_01", landing, 0.7f);
                 AetheriaFx.Shake(0.18f, 0.25f);
                 QuestAndMapService.Instance?.PushNotification("Зеркальное озеро · через Каменный мост в Оукхейвен");
             }
@@ -1052,17 +1136,23 @@ namespace Aetheria
             string wantHero = HeroCustomizationService.GetHeroPrefabResourceName(p);
             if (_loadedHeroKey != wantHero || _heroModelInstance == null)
             {
-                var prefab = Resources.Load<GameObject>(wantHero) ?? Resources.Load<GameObject>("Heroes/Hero_Kwang");
+                var prefab = Resources.Load<GameObject>(wantHero)
+                             ?? Resources.Load<GameObject>(HeroCustomizationService.KnightHeroResource)
+                             ?? Resources.Load<GameObject>(HeroCustomizationService.FallbackHeroResource);
                     DestroyLookMaterials();
                     if (_heroModelInstance != null) Destroy(_heroModelInstance);
                     _heroModelInstance = null;
+                    _modelWeapon = null;
                     ActiveAnimator = null;
                 if (prefab != null)
                 {
                     _heroModelInstance = Instantiate(prefab, VisualRoot);
                     _heroModelInstance.name = "HeroModelMesh";
                     NormalizeGroundedHeight(_heroModelInstance, HeroCustomizationService.BaseHeightMeters);
+                    _modelWeapon = FindChildDeep(_heroModelInstance.transform, ModelWeaponNodeName);
                     _loadedHeroKey = wantHero;
+                    // The prefab that really loaded (it may be a fallback), so the per-hero checks see the real model.
+                    _loadedModelName = prefab.name;
                     _loadedWeaponKey = "";
                 }
                 if (_heroModelInstance == null)
@@ -1079,7 +1169,41 @@ namespace Aetheria
             SetupAnimator();
             AttachRightHandWeapon(p);
             RebuildCosmeticsAndMaterials(p);
+            ApplyWeaponVisibility();
         }
+
+        /// <summary>
+        /// Shows or hides the hero's weapon: the sword built into the prefab ("Weapon_Sword", Hero_Knight) and/or
+        /// the weapon attached at runtime. Remembered across model rebuilds; story cinematics hide it while talking.
+        /// </summary>
+        public void SetWeaponVisible(bool visible)
+        {
+            _weaponVisible = visible;
+            ApplyWeaponVisibility();
+        }
+
+        private void ApplyWeaponVisibility()
+        {
+            if (_modelWeapon != null && _modelWeapon.gameObject.activeSelf != _weaponVisible)
+                _modelWeapon.gameObject.SetActive(_weaponVisible);
+            if (_weaponInstance != null && _weaponInstance.activeSelf != _weaponVisible)
+                _weaponInstance.SetActive(_weaponVisible);
+        }
+
+        private static Transform FindChildDeep(Transform root, string name)
+        {
+            if (root == null) return null;
+            if (root.name == name) return root;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var hit = FindChildDeep(root.GetChild(i), name);
+                if (hit != null) return hit;
+            }
+            return null;
+        }
+
+        /// <summary>Hero_Knight: CC-BY model with its own PBR textures and sword; no Paragon tint/weapon hacks.</summary>
+        private bool IsKnightModel => _loadedModelName == "Hero_Knight";
 
         private void SetupAnimator()
         {
@@ -1121,11 +1245,13 @@ namespace Aetheria
         private void AttachRightHandWeapon(HeroCustomizationProfile p)
         {
             string wantWep = HeroCustomizationService.GetWeaponResourceName(p);
-            bool bakedMeleeHero = (_loadedHeroKey.Contains("Kwang") || _loadedHeroKey.Contains("Serath") ||
-                                   _loadedHeroKey.Contains("Kallari") || _loadedHeroKey.Contains("Khaimera") ||
-                                   _loadedHeroKey.Contains("Morigesh"))
+            string model = string.IsNullOrEmpty(_loadedModelName) ? _loadedHeroKey : _loadedModelName;
+            bool bakedMeleeHero = (model.Contains("Kwang") || model.Contains("Serath") ||
+                                   model.Contains("Kallari") || model.Contains("Khaimera") ||
+                                   model.Contains("Morigesh"))
                 && !wantWep.Contains("Staff") && !wantWep.Contains("Scepter");
-            if (bakedMeleeHero)
+            // A prefab that carries its own sword (Hero_Knight "Weapon_Sword") never gets a second one at weapon_r/hand_r.
+            if (bakedMeleeHero || _modelWeapon != null || IsKnightModel)
             {
                 if (_weaponInstance != null) Destroy(_weaponInstance);
                 _weaponInstance = null;
@@ -1202,7 +1328,31 @@ namespace Aetheria
         private void ApplyLookTints()
         {
             if (_heroModelInstance == null) return;
+            // The knight keeps its authored PBR materials: no AetheriaSurfaceDetail, no race/hair/armour tints.
+            if (IsKnightModel) return;
             var look = _heroModelInstance.GetComponent<AetheriaCharacterLook>();
+            // The original Kwang prefab was staged without the slot metadata used by
+            // the customizer. Its numbered fallback materials even put metal on the eyes.
+            // Restrict this mapping to the audited base mesh; other skins need their own audit.
+            if (look == null && _heroModelInstance.name == "Hero_Kwang(Clone)")
+            {
+                var renderer = _heroModelInstance.GetComponentsInChildren<SkinnedMeshRenderer>(true)
+                    .FirstOrDefault(r => (r.transform == _heroModelInstance.transform || r.name == "Hero_Kwang") && r.sharedMesh != null && r.sharedMesh.subMeshCount == 18);
+                if (renderer != null)
+                {
+                    look = _heroModelInstance.AddComponent<AetheriaCharacterLook>();
+                    var classes = new SlotClass[renderer.sharedMaterials.Length];
+                    for (int i = 0; i < classes.Length; i++) classes[i] = SlotClass.Unknown;
+                    if (classes.Length >= 18)
+                    {
+                        classes[6] = SlotClass.Eye;
+                        classes[7] = classes[8] = classes[11] = classes[15] = SlotClass.Skin;
+                        classes[13] = SlotClass.Mouth;
+                        classes[17] = SlotClass.Weapon;
+                    }
+                    look.Renderers.Add(new AetheriaCharacterLook.RendererSlots { Renderer = renderer, Classes = classes });
+                }
+            }
             if (look == null || look.Renderers.Count == 0) return;
 
             // First dress-up of this model: clone each slot's material individually and remember its untinted color
@@ -1218,6 +1368,7 @@ namespace Aetheria
                         SlotClass cls = i < rs.Classes.Length ? rs.Classes[i] : SlotClass.Unknown;
                         if (src[i] == null) { mats[i] = null; continue; }
                         var inst = new Material(src[i]) { name = src[i].name + " (Instance)" };
+                        AetheriaSurfaceDetail.Apply(inst, cls);   // real PBR surface: the model ships without albedo maps
                         Color baseCol = src[i].HasProperty("_BaseColor")
                             ? src[i].GetColor("_BaseColor")
                             : (src[i].HasProperty("_Color") ? src[i].GetColor("_Color") : Color.white);

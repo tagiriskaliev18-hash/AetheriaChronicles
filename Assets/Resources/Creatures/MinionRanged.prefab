@@ -56,6 +56,38 @@ PrefabInstance:
       propertyPath: m_Name
       value: MinionRanged
       objectReference: {fileID: 0}
+    - target: {fileID: 7471421255899433682, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.9997059
+      objectReference: {fileID: 0}
+    - target: {fileID: 7471421255899433682, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -1.793619e-33
+      objectReference: {fileID: 0}
+    - target: {fileID: 7471421255899433682, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.02425261
+      objectReference: {fileID: 0}
+    - target: {fileID: 7471421255899433682, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 7.3933963e-32
+      objectReference: {fileID: 0}
+    - target: {fileID: 8674886427663788148, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: -0.97903115
+      objectReference: {fileID: 0}
+    - target: {fileID: 8674886427663788148, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -1.00437154e-32
+      objectReference: {fileID: 0}
+    - target: {fileID: 8674886427663788148, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.20371075
+      objectReference: {fileID: 0}
+    - target: {fileID: 8674886427663788148, guid: 27e89b1d11e17384fbb80fe94ee5e0da, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -4.8269962e-32
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
