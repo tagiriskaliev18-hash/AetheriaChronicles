@@ -82,6 +82,12 @@ namespace Aetheria.Editor
                          "Khaimera", "KhaimeraPelt"
                      })
                 Bake("Heroes/Hero_" + name, null, true, null, null);
+            // CC-BY "Medieval Knight" (Mixamo rig, Sketchfab GLB), built by Aetheria/4c. Build Knight Hero. Skipped
+            // with a warning until that prefab exists, so this menu still runs on a checkout without the GLB.
+            if (AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Resources/Heroes/Hero_Knight.prefab") != null)
+                Bake("Heroes/Hero_Knight", null, true, null, null);
+            else
+                Debug.LogWarning("[DemoAnimations] Heroes/Hero_Knight.prefab missing: run Aetheria/4c. Build Knight Hero first.");
 
             AssetDatabase.SaveAssets();
         }
@@ -127,6 +133,8 @@ namespace Aetheria.Editor
                 {
                     // Heroes get their own state machine; everything below this branch is the creature path.
                     Save(BuildHeroController(controller, machine, target, resource));
+                    try { LogPosedHeight(target, resource); }
+                    catch (Exception e) { Debug.LogWarning($"[DemoAnimations] {resource}: height self-check failed: {e.Message}"); }
                     return;
                 }
 
@@ -262,6 +270,37 @@ namespace Aetheria.Editor
             {
                 PrefabUtility.UnloadPrefabContents(target);
             }
+        }
+
+        /// <summary>Self-check after a hero bake: world height of the body posed at t=0 of the baked Idle clip
+        /// (expected ~1.85 m for a hero prefab with root scale 1). Runs after the prefab is saved; not saved itself.</summary>
+        private static void LogPosedHeight(GameObject target, string resource)
+        {
+            var animator = target.GetComponent<Animator>();
+            var clips = animator != null && animator.runtimeAnimatorController != null ? animator.runtimeAnimatorController.animationClips : null;
+            var idle = clips?.FirstOrDefault(c => c.name.IndexOf("Idle", StringComparison.OrdinalIgnoreCase) >= 0) ?? clips?.FirstOrDefault();
+            if (idle == null) { Debug.LogWarning($"[DemoAnimations] {resource}: no clip for the height self-check."); return; }
+            idle.SampleAnimation(target, 0f);
+            float best = 0f, bestErr = float.MaxValue;
+            var tmp = new Mesh();
+            foreach (bool viaMatrix in new[] { false, true })
+            {
+                bool any = false; var b = new Bounds();
+                foreach (var smr in target.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                {
+                    if (smr.sharedMesh == null) continue;
+                    smr.BakeMesh(tmp, !viaMatrix);
+                    var m = viaMatrix ? smr.transform.localToWorldMatrix : Matrix4x4.TRS(smr.transform.position, smr.transform.rotation, Vector3.one);
+                    foreach (var v in tmp.vertices) { var w = m.MultiplyPoint3x4(v); if (!any) { b = new Bounds(w, Vector3.zero); any = true; } else b.Encapsulate(w); }
+                }
+                // BakeMesh's space depends on the parent scale chain; keep the reading closest to a human height.
+                float err = any ? Mathf.Abs(Mathf.Log(Mathf.Max(1e-6f, b.size.y) / 1.85f)) : float.MaxValue;
+                if (err < bestErr) { bestErr = err; best = b.size.y; }
+            }
+            Object.DestroyImmediate(tmp);
+            var pelvis = UniqueBones(target.transform, RigNames(target.transform)).TryGetValue("pelvis", out var hip) ? hip.position.y : float.NaN;
+            string verdict = best > 1.5f && best < 2.3f ? "OK" : "SUSPICIOUS";
+            Debug.Log($"[DemoAnimations] {resource}: self-check Idle t=0 posed height {best:0.000} m, pelvis y {pelvis:0.000} m (expected ~1.85 / ~0.95): {verdict}.");
         }
 
         /// <summary>
@@ -596,7 +635,13 @@ namespace Aetheria.Editor
                         ? Vector3.Distance(th.position, ca.position) + Vector3.Distance(ca.position, fo.position) : 0f;
                 float targetLeg = LegLength(targetBones);
                 float sourceLeg = LegLength(sourceBones);
-                float hipRatio = targetLeg > 0.01f && sourceLeg > 0.01f ? targetLeg / sourceLeg : 1f;
+                // Scale-free guard: legs are world lengths, so a target under a 0.01 parent chain (cm rigs) still
+                // gets its ratio. The old absolute 0.01 m test fell back to 1 and lifted a small body by a full
+                // source hip height. targetHip.position is then set in world space and read back as localPosition,
+                // so the curve is always in the hip parent's own units, whatever its lossyScale.
+                float hipRatio = targetLeg > 1e-6f && sourceLeg > 1e-6f ? targetLeg / sourceLeg : 1f;
+                if (targetLeg <= 1e-6f || sourceLeg <= 1e-6f)
+                    Debug.LogWarning($"[DemoAnimations] {target.name}: leg length unknown (target {targetLeg}, source {sourceLeg}); hip ratio 1.");
 
                 // Aim every bone down its source direction, parents first, then roll it about that
                 // direction so its side children line up too. No rest pose is involved, so a clip whose

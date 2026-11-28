@@ -558,11 +558,11 @@ namespace Aetheria.Editor
             if (prof == null) { prof = ScriptableObject.CreateInstance<VolumeProfile>(); AssetDatabase.CreateAsset(prof, profPath); }
             if (!prof.TryGet<Exposure>(out var exp)) exp = prof.Add<Exposure>(true);
             exp.mode.Override(ExposureMode.Fixed);
-            exp.fixedExposure.Override(6.2f);
+            exp.fixedExposure.Override(7.1f);   // darker interior: the mouth is the only key light
             if (!prof.TryGet<Fog>(out var fog)) fog = prof.Add<Fog>(true);
             fog.enabled.Override(true);
             fog.enableVolumetricFog.Override(true);
-            fog.meanFreePath.Override(40f);
+            fog.meanFreePath.Override(16f);    // dense enough for visible light shafts
             fog.albedo.Override(new Color(0.75f, 0.8f, 0.9f));
             EditorUtility.SetDirty(prof);
 
@@ -606,7 +606,7 @@ namespace Aetheria.Editor
             // Daylight pouring in through the mouth, with a volumetric shaft.
             MakeLight("Cave_Daylight", mouth + outDir * 1.5f + Vector3.up * 4f, LightType.Spot, new Color(1f, 0.92f, 0.78f), 26000f, 34f,
                 (path[10] - (mouth + outDir * 1.5f + Vector3.up * 4f)).normalized, 70f, true);
-            MakeLight("Cave_MouthFill", mouth + Vector3.up * 2f, LightType.Point, new Color(1f, 0.9f, 0.75f), 2500f, 12f);
+            MakeLight("Cave_MouthFill", mouth + Vector3.up * 2f, LightType.Point, new Color(1f, 0.9f, 0.75f), 1100f, 12f);
             // A dim cold glow where he wakes, and crystals along the way.
             MakeLight("Cave_WakeGlow", path[path.Count - 4] + Vector3.up * 2.2f, LightType.Point, new Color(0.55f, 0.7f, 1f), 320f, 7f);
             var crystalMat = Emissive("Cave_Crystal", new Color(0.35f, 0.7f, 1f), 18f);

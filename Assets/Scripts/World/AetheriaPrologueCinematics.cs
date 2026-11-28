@@ -43,7 +43,11 @@ namespace Aetheria
 
         private void Awake() => _d = GetComponent<AetheriaPrologueDirector>();
 
-        private void OnDisable() => RestoreTime();
+        private void OnDisable()
+        {
+            RestoreTime();
+            if (_hero != null) _hero.SetWeaponVisible(true);
+        }
 
         private void LateUpdate()
         {
@@ -81,8 +85,12 @@ namespace Aetheria
             if (cinematic && !_fovStored) { _baseFov = _cam.fieldOfView; _fovStored = true; }
             if (!cinematic && _fovStored) { _cam.fieldOfView = _baseFov; _fovStored = false; }
             if (from == AetheriaPrologueDirector.Stage.Collapse) RestoreTime();
+            if (to == AetheriaPrologueDirector.Stage.Wake) AetheriaHUDManager.Instance?.SetCinematicHudHidden(true);   // clean opening frame
             if (_tumbling && _hero != null && _hero.VisualRoot != null) { _hero.VisualRoot.localRotation = _visualRest; _tumbling = false; }
 
+            // The hero listens to the sage with empty hands; the sword comes back once the talk is over.
+            if (_hero != null)
+                _hero.SetWeaponVisible(to != AetheriaPrologueDirector.Stage.SageAppear && to != AetheriaPrologueDirector.Stage.Talk);
             if (to == AetheriaPrologueDirector.Stage.SageAppear) BringSageClose();
             if (to == AetheriaPrologueDirector.Stage.Collapse)
             {

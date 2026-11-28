@@ -50,6 +50,11 @@ namespace Aetheria
         private string _loadedWeaponKey = "";
         private GameObject _heroModelInstance;
         private GameObject _weaponInstance;
+        /// <summary>Name of a weapon that ships inside the hero prefab (Hero_Knight: under the right-hand bone).</summary>
+        public const string ModelWeaponNodeName = "Weapon_Sword";
+        private Transform _modelWeapon;
+        private bool _weaponVisible = true;
+        private string _loadedModelName = "";
         private Transform _cosmeticsRoot;
         private readonly GameObject[] _orbitSpheres = new GameObject[3];
         private readonly Light[] _orbitLights = new Light[3];
@@ -1131,17 +1136,23 @@ namespace Aetheria
             string wantHero = HeroCustomizationService.GetHeroPrefabResourceName(p);
             if (_loadedHeroKey != wantHero || _heroModelInstance == null)
             {
-                var prefab = Resources.Load<GameObject>(wantHero) ?? Resources.Load<GameObject>("Heroes/Hero_Kwang");
+                var prefab = Resources.Load<GameObject>(wantHero)
+                             ?? Resources.Load<GameObject>(HeroCustomizationService.KnightHeroResource)
+                             ?? Resources.Load<GameObject>(HeroCustomizationService.FallbackHeroResource);
                     DestroyLookMaterials();
                     if (_heroModelInstance != null) Destroy(_heroModelInstance);
                     _heroModelInstance = null;
+                    _modelWeapon = null;
                     ActiveAnimator = null;
                 if (prefab != null)
                 {
                     _heroModelInstance = Instantiate(prefab, VisualRoot);
                     _heroModelInstance.name = "HeroModelMesh";
                     NormalizeGroundedHeight(_heroModelInstance, HeroCustomizationService.BaseHeightMeters);
+                    _modelWeapon = FindChildDeep(_heroModelInstance.transform, ModelWeaponNodeName);
                     _loadedHeroKey = wantHero;
+                    // The prefab that really loaded (it may be a fallback), so the per-hero checks see the real model.
+                    _loadedModelName = prefab.name;
                     _loadedWeaponKey = "";
                 }
                 if (_heroModelInstance == null)
@@ -1158,7 +1169,41 @@ namespace Aetheria
             SetupAnimator();
             AttachRightHandWeapon(p);
             RebuildCosmeticsAndMaterials(p);
+            ApplyWeaponVisibility();
         }
+
+        /// <summary>
+        /// Shows or hides the hero's weapon: the sword built into the prefab ("Weapon_Sword", Hero_Knight) and/or
+        /// the weapon attached at runtime. Remembered across model rebuilds; story cinematics hide it while talking.
+        /// </summary>
+        public void SetWeaponVisible(bool visible)
+        {
+            _weaponVisible = visible;
+            ApplyWeaponVisibility();
+        }
+
+        private void ApplyWeaponVisibility()
+        {
+            if (_modelWeapon != null && _modelWeapon.gameObject.activeSelf != _weaponVisible)
+                _modelWeapon.gameObject.SetActive(_weaponVisible);
+            if (_weaponInstance != null && _weaponInstance.activeSelf != _weaponVisible)
+                _weaponInstance.SetActive(_weaponVisible);
+        }
+
+        private static Transform FindChildDeep(Transform root, string name)
+        {
+            if (root == null) return null;
+            if (root.name == name) return root;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var hit = FindChildDeep(root.GetChild(i), name);
+                if (hit != null) return hit;
+            }
+            return null;
+        }
+
+        /// <summary>Hero_Knight: CC-BY model with its own PBR textures and sword; no Paragon tint/weapon hacks.</summary>
+        private bool IsKnightModel => _loadedModelName == "Hero_Knight";
 
         private void SetupAnimator()
         {
@@ -1200,11 +1245,13 @@ namespace Aetheria
         private void AttachRightHandWeapon(HeroCustomizationProfile p)
         {
             string wantWep = HeroCustomizationService.GetWeaponResourceName(p);
-            bool bakedMeleeHero = (_loadedHeroKey.Contains("Kwang") || _loadedHeroKey.Contains("Serath") ||
-                                   _loadedHeroKey.Contains("Kallari") || _loadedHeroKey.Contains("Khaimera") ||
-                                   _loadedHeroKey.Contains("Morigesh"))
+            string model = string.IsNullOrEmpty(_loadedModelName) ? _loadedHeroKey : _loadedModelName;
+            bool bakedMeleeHero = (model.Contains("Kwang") || model.Contains("Serath") ||
+                                   model.Contains("Kallari") || model.Contains("Khaimera") ||
+                                   model.Contains("Morigesh"))
                 && !wantWep.Contains("Staff") && !wantWep.Contains("Scepter");
-            if (bakedMeleeHero)
+            // A prefab that carries its own sword (Hero_Knight "Weapon_Sword") never gets a second one at weapon_r/hand_r.
+            if (bakedMeleeHero || _modelWeapon != null || IsKnightModel)
             {
                 if (_weaponInstance != null) Destroy(_weaponInstance);
                 _weaponInstance = null;
@@ -1281,6 +1328,8 @@ namespace Aetheria
         private void ApplyLookTints()
         {
             if (_heroModelInstance == null) return;
+            // The knight keeps its authored PBR materials: no AetheriaSurfaceDetail, no race/hair/armour tints.
+            if (IsKnightModel) return;
             var look = _heroModelInstance.GetComponent<AetheriaCharacterLook>();
             // The original Kwang prefab was staged without the slot metadata used by
             // the customizer. Its numbered fallback materials even put metal on the eyes.
