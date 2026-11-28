@@ -56,6 +56,12 @@ namespace Aetheria
                 case SlotClass.Hair:
                     set = new Set { Tiling = 1f, Metallic = 0f, Smoothness = 0.55f, NormalScale = 0f };
                     return true;
+                case SlotClass.Eye:
+                    set = new Set { Tiling = 1f, Metallic = 0f, Smoothness = 0.35f, NormalScale = 0f };
+                    return true;
+                case SlotClass.Mouth:
+                    set = new Set { Tiling = 1f, Metallic = 0f, Smoothness = 0.2f, NormalScale = 0f };
+                    return true;
                 default:
                     return false;
             }
@@ -69,6 +75,20 @@ namespace Aetheria
             bool hasOwnMap = m.HasProperty("_BaseColorMap") && m.GetTexture("_BaseColorMap") != null;
             // The shared Char_* materials borrow another model's texture atlas, which lands on the wrong UVs.
             bool borrowed = m.name.StartsWith("Char_");
+            // Keep authored PBR values as well as the authored albedo. Replacing metallic and
+            // smoothness on a textured material flattens the artist's intended surface response.
+            if (hasOwnMap && !borrowed) return;
+            if (borrowed && (cls == SlotClass.Skin || cls == SlotClass.Eye || cls == SlotClass.Mouth || cls == SlotClass.Hair))
+            {
+                // A borrowed armor atlas and mask are not valid on face, eyes or teeth.
+                m.SetTexture("_BaseColorMap", null);
+                if (m.HasProperty("_NormalMap")) m.SetTexture("_NormalMap", null);
+                if (m.HasProperty("_MaskMap")) m.SetTexture("_MaskMap", null);
+                m.DisableKeyword("_NORMALMAP");
+                m.DisableKeyword("_MASKMAP");
+                if (cls == SlotClass.Eye) AetheriaRender.SetBaseColor(m, new Color(0.7f, 0.68f, 0.62f));
+                if (cls == SlotClass.Mouth) AetheriaRender.SetBaseColor(m, new Color(0.55f, 0.46f, 0.39f));
+            }
             if ((!hasOwnMap || borrowed) && s.Albedo != null)
             {
                 m.SetTexture("_BaseColorMap", s.Albedo);

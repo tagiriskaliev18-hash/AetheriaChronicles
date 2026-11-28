@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Aetheria
@@ -84,6 +85,11 @@ namespace Aetheria
         private float _safeTimer = 0f;
         private float _mapRevealCooldown = 0f;
         private float _stepTimer = 0f;
+        private int _footstepIndex;
+        private static readonly string[] FootstepSounds =
+        {
+            "SFX_Step_Stone_01", "SFX_Step_Stone_02", "SFX_Step_Stone_03", "SFX_Step_Stone_04"
+        };
         private float _airTime = 0f;
 
         // Creator Studio Mode
@@ -106,7 +112,7 @@ namespace Aetheria
         private static readonly int AnimBlocking = Animator.StringToHash("Blocking");
         private static readonly int AnimCombatSpeed = Animator.StringToHash("CombatSpeed");
         private static readonly int AnimMoveScale = Animator.StringToHash("MoveScale");
-        private const float JogAuthoredSpeed = 6.2f;   // m/s the Paragon Jog_Fwd clips cover per cycle
+        private const float JogAuthoredSpeed = 4.0f;   // m/s the Quaternius Jog_Fwd_Loop covers per cycle (approx.)
         private bool? _animHasMoveScale;
         private Animator _animMoveScaleOwner;
 
@@ -380,7 +386,8 @@ namespace Aetheria
                 {
                     _stepTimer = sprinting ? 0.26f : 0.34f;
                     AetheriaFx.Puff(transform.position + Vector3.up * 0.06f, new Color(0.86f, 0.80f, 0.66f, 0.22f), 2, 0.9f, sprinting ? 0.42f : 0.28f, 0.55f, 0.5f);
-                    AudioAndQualityService.Instance?.PlaySfxAt("SFX_Footstep", transform.position, 0.22f);
+                    AudioAndQualityService.Instance?.PlaySfxAt(FootstepSounds[_footstepIndex], transform.position, 0.22f);
+                    _footstepIndex = (_footstepIndex + 1) % FootstepSounds.Length;
                 }
             }
 
@@ -583,7 +590,7 @@ namespace Aetheria
                     _animHasMoveScale = CreatureAnimator.HasParameter(ActiveAnimator, AnimMoveScale);
                 }
                 if (_animHasMoveScale == true)
-                    ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(speed / JogAuthoredSpeed, 0.55f, 1.6f));
+                    ActiveAnimator.SetFloat(AnimMoveScale, Mathf.Clamp(speed / JogAuthoredSpeed, 0.4f, 2.0f));
                 float attackSpeed = Mathf.Max(0.5f, Customization.Derived.AttackSpeedMultiplier * _alacrityMult);
                 ActiveAnimator.SetFloat(AnimCombatSpeed, attackSpeed);
                 ActiveAnimator.SetBool(AnimBlocking, blocking);
@@ -598,19 +605,21 @@ namespace Aetheria
 
             // Overlay weights ease in and out so poses never snap
             Overlay.BlockWeight = Mathf.MoveTowards(Overlay.BlockWeight, blocking && !IsDashing ? 1f : 0f, dt * 7f);
-            float tuckTarget = (!CC.isGrounded && _airTime > 0.08f) ? 1f : (IsDashing ? 0.75f : 0f);
+            float tuckTarget = (!CC.isGrounded && _airTime > 0.08f) ? 1f : (IsDashing ? 0.3f : 0f);
             Overlay.TuckWeight = Mathf.MoveTowards(Overlay.TuckWeight, tuckTarget, dt * 6.5f);
 
             // Lean into acceleration and turns
             Vector3 local = transform.InverseTransformDirection(Velocity);
-            float pitchTarget = Mathf.Clamp(local.z * 1.35f, -8f, 16f);
+            float pitchTarget = Mathf.Clamp(local.z * 0.6f, -3f, 5f);   // the jog clip already leans forward
             float rollTarget = Mathf.Clamp(-local.x * 1.9f, -12f, 12f);
-            Overlay.LeanPitch = Mathf.MoveTowards(Overlay.LeanPitch, IsDashing ? 24f : pitchTarget, dt * 90f);
+            Overlay.LeanPitch = Mathf.MoveTowards(Overlay.LeanPitch, IsDashing ? 10f : pitchTarget, dt * 60f);
             Overlay.LeanRoll = Mathf.MoveTowards(Overlay.LeanRoll, rollTarget, dt * 90f);
 
             // The head follows the look direction while the body is free
-            bool headTrack = !blocking && !IsDashing && !IsAttacking && !InState(StateCast, out _);
-            Overlay.LookWeight = Mathf.MoveTowards(Overlay.LookWeight, headTrack ? 0.55f : 0f, dt * 4f);
+            bool headTrack = !CinematicLock && !blocking && !IsDashing && !IsAttacking && !InState(StateCast, out _);
+            // Head tracking of the camera is off: on these rigs it made the head swivel constantly with every
+            // camera move. The animation clips own the head.
+            Overlay.LookWeight = 0f;
             if (MainCam != null) Overlay.LookTarget = transform.position + MainCam.transform.forward * 9f + Vector3.up * 1.55f;
         }
 
@@ -755,7 +764,7 @@ namespace Aetheria
             // Timed parry
             if (IsBlocking && _parryWindowTimer > 0f)
             {
-                AudioAndQualityService.Instance?.PlaySfxAt("SW_MagicImpact_Metallic_1", transform.position, 0.9f);
+                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Hit_Armor", transform.position, 0.9f);
                 AudioAndQualityService.Instance?.RequestHitStop(0.09f, 0.05f);
                 Spells.Mana = Mathf.Min(Spells.MaxMana, Spells.Mana + 20f + SkillTree.ParryManaRestore);
                 Vector3 at = transform.position + transform.forward * 0.7f + Vector3.up * 1.2f;
@@ -1019,7 +1028,7 @@ namespace Aetheria
                 AetheriaFx.Shockwave(landing, new Color(0.55f, 0.88f, 1f), 4.5f, 0.55f);
                 AetheriaFx.Puff(landing, new Color(0.84f, 0.90f, 0.96f, 0.55f), 14, 3.2f, 1.4f, 1.0f, 0.35f);
                 AetheriaFx.Burst(landing + Vector3.up * 0.25f, new Color(0.65f, 0.92f, 1f), 22, 2.5f, 7f, 0.08f, 0.18f, 0.6f, 1.2f, new Color(0.3f, 0.7f, 1f, 0f));
-                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Footstep", landing, 0.7f);
+                AudioAndQualityService.Instance?.PlaySfxAt("SFX_Step_Stone_01", landing, 0.7f);
                 AetheriaFx.Shake(0.18f, 0.25f);
                 QuestAndMapService.Instance?.PushNotification("Зеркальное озеро · через Каменный мост в Оукхейвен");
             }
@@ -1233,6 +1242,28 @@ namespace Aetheria
         {
             if (_heroModelInstance == null) return;
             var look = _heroModelInstance.GetComponent<AetheriaCharacterLook>();
+            // The original Kwang prefab was staged without the slot metadata used by
+            // the customizer. Its numbered fallback materials even put metal on the eyes.
+            // Restrict this mapping to the audited base mesh; other skins need their own audit.
+            if (look == null && _heroModelInstance.name == "Hero_Kwang(Clone)")
+            {
+                var renderer = _heroModelInstance.GetComponentsInChildren<SkinnedMeshRenderer>(true)
+                    .FirstOrDefault(r => (r.transform == _heroModelInstance.transform || r.name == "Hero_Kwang") && r.sharedMesh != null && r.sharedMesh.subMeshCount == 18);
+                if (renderer != null)
+                {
+                    look = _heroModelInstance.AddComponent<AetheriaCharacterLook>();
+                    var classes = new SlotClass[renderer.sharedMaterials.Length];
+                    for (int i = 0; i < classes.Length; i++) classes[i] = SlotClass.Unknown;
+                    if (classes.Length >= 18)
+                    {
+                        classes[6] = SlotClass.Eye;
+                        classes[7] = classes[8] = classes[11] = classes[15] = SlotClass.Skin;
+                        classes[13] = SlotClass.Mouth;
+                        classes[17] = SlotClass.Weapon;
+                    }
+                    look.Renderers.Add(new AetheriaCharacterLook.RendererSlots { Renderer = renderer, Classes = classes });
+                }
+            }
             if (look == null || look.Renderers.Count == 0) return;
 
             // First dress-up of this model: clone each slot's material individually and remember its untinted color

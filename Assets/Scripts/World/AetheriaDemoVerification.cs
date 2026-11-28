@@ -25,6 +25,13 @@ namespace Aetheria
             var director = AetheriaPrologueDirector.Instance;
             if (director != null)
             {
+                if (!Check(director.GladeWakePoint != null, "The glade wake point exists")) yield break;
+                Vector3 wake = director.GladeWakePoint.position;
+                float groundHeight = AetheriaWorld.SampleHeight(wake);
+                float groundMismatch = Mathf.Abs(wake.y - groundHeight);
+                Debug.Log($"[DemoVerification] Glade wake Y={wake.y:F2}, terrain Y={groundHeight:F2}, difference={groundMismatch:F2}m");
+                if (!Check(groundMismatch <= 0.75f,
+                    "Glade wake point matches the runtime terrain height")) yield break;
                 yield return new WaitForSeconds(0.5f);
                 Debug.Log($"[DemoVerification] Cave wake {hero.transform.position}, stage {director.Current}");
                 if (!Check(director.InCave(hero.transform.position) && hero.GetComponent<CharacterController>().isGrounded,
@@ -44,7 +51,7 @@ namespace Aetheria
                 var awakening = quests.FindQuest("Q_PrologueAwakening");
                 if (!Check(awakening.State == QuestState.Active && !hero.CinematicLock, "The sage's talk starts the prologue quest")) yield break;
                 hero.TeleportSafe(director.LedgeTrigger.position);
-                yield return new WaitForSeconds(16.5f);
+                yield return new WaitForSeconds(21f);
                 Debug.Log($"[DemoVerification] Glade {hero.transform.position}, stage {hero.PrologueStage}, quest {awakening.State}");
                 if (!Check(awakening.State == QuestState.Completed && hero.PrologueStage == 4 &&
                     hero.GetComponent<CharacterController>().isGrounded && AetheriaWorld.SampleHeight(hero.transform.position) > 0.25f &&

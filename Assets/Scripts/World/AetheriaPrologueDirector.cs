@@ -36,6 +36,8 @@ namespace Aetheria
 
         public Stage Current { get; private set; } = Stage.Idle;
         public bool DialogueOpen => Current == Stage.Talk;
+        public float WaterfallProgress => Current == Stage.Collapse ? FallU() : 0f;
+        public Vector3 WaterfallVelocity => Current == Stage.Collapse ? FallVelocity() : Vector3.zero;
 
         private HeroController _hero;
         private AetheriaNPC _sage;
@@ -50,6 +52,7 @@ namespace Aetheria
         private Vector3 _camVel;
         private readonly List<Rigidbody> _falling = new List<Rigidbody>();
         private bool _spawnedSplash;
+        private Vector3 _fallEntryPosition;
         private GUIStyle _name, _body, _hint, _big;
         private Texture2D _black;
 
@@ -64,7 +67,7 @@ namespace Aetheria
         };
 
         private void Awake() => Instance = this;
-        private void OnDestroy() { if (Instance == this) Instance = null; if (_black != null) Destroy(_black); }
+        private void OnDestroy() { if (Instance == this) { Instance = null; AetheriaHUDManager.Instance?.SetCinematicHudHidden(false); } if (_black != null) Destroy(_black); }
 
         private void Start()
         {
@@ -114,6 +117,8 @@ namespace Aetheria
             Current = Stage.Done;
             _fade = 0f;
             _titleAlpha = 0f;
+            SetWaterfallSwim(false);
+            AetheriaHUDManager.Instance?.SetCinematicHudHidden(false);
             foreach (var rb in _falling) if (rb != null) Destroy(rb.gameObject);
             _falling.Clear();
             if (_sage != null) { _sage.gameObject.SetActive(true); _sage.transform.localScale = _sageBaseScale; }
@@ -128,6 +133,7 @@ namespace Aetheria
         {
             Current = s;
             _t = 0f;
+            AetheriaHUDManager.Instance?.SetCinematicHudHidden(s == Stage.SageAppear || s == Stage.Talk || s == Stage.Collapse || s == Stage.Shore);
             Debug.Log($"[Prologue] Stage {s} at {(_hero != null ? _hero.transform.position : Vector3.zero)}");
             switch (s)
             {
@@ -144,7 +150,8 @@ namespace Aetheria
                     if (_sage != null)
                     {
                         _sage.gameObject.SetActive(true);
-                        _sage.transform.localScale = _sageBaseScale * 0.01f;
+                        _sage.transform.localScale = _sageBaseScale;
+                        if (SagePoint != null) _sage.transform.position = SagePoint.position;
                     }
                     break;
                 case Stage.Talk:
@@ -166,12 +173,14 @@ namespace Aetheria
                     _hero.CinematicLock = true;
                     _hero.CC.enabled = false;
                     _spawnedSplash = false;
+                    _fallEntryPosition = _hero.transform.position;
                     BreakLedge();
                     AetheriaFx.Shake(0.45f, 1.1f);
                     AudioAndQualityService.Instance?.PlaySfxAt("SFX_Hit_Stone", _hero.transform.position, 1f);
                     TriggerHero("HitReact");
                     break;
                 case Stage.Shore:
+                    SetWaterfallSwim(false);
                     _hero.transform.SetPositionAndRotation(GladeWakePoint.position, GladeWakePoint.rotation);
                     _hero.CC.enabled = false;
                     TriggerHero("Die");                 // lying on the bank while the screen is dark
@@ -333,11 +342,8 @@ namespace Aetheria
         {
             if (_sage == null) return;
             Vector3 p = SagePoint != null ? SagePoint.position : _sage.transform.position;
-            float u = Mathf.Clamp01(_t / 1.6f);
-            // Back-out ease: grows past full size and settles, rising out of a ring of light.
-            float s = 1f + 2.2f * Mathf.Pow(u - 1f, 3f) + 1.2f * Mathf.Pow(u - 1f, 2f);
-            _sage.transform.localScale = _sageBaseScale * Mathf.Max(0.01f, s);
-            _sage.transform.position = p + Vector3.up * (1f - Mathf.SmoothStep(0f, 1f, u)) * -0.8f;
+            // The sage appears at his authored scale: the light conveys the entrance
+            // without visibly inflating or stretching the character model.
             Color gold = new Color(1f, 0.85f, 0.45f), teal = new Color(0.45f, 0.95f, 1f);
             if (Mathf.Repeat(_t, 0.18f) < Time.deltaTime && _t < 1.8f)
             {
@@ -379,12 +385,13 @@ namespace Aetheria
             }
         }
 
-        private const float FallStart = 0.9f, FallDuration = 5.2f;
+        private const float FallStart = 0.9f, FallDuration = 9f;
 
         private Vector3 PathPoint(float u)
         {
             if (FallPath == null || FallPath.Length == 0) return _hero.transform.position;
             int n = FallPath.Length;
+            if (n == 1) return FallPath[0].position;
             float f = Mathf.Clamp01(u) * (n - 1);
             int i = Mathf.Min(n - 2, Mathf.FloorToInt(f));
             float t = f - i;
@@ -394,19 +401,32 @@ namespace Aetheria
         }
 
         private float FallU() => Mathf.Clamp01((_t - FallStart) / FallDuration);
-        private Vector3 FallVelocity() => (PathPoint(FallU() + 0.02f) - PathPoint(FallU())) / Mathf.Max(0.001f, FallDuration * 0.02f);
+        private Vector3 FallPosition(float u)
+        {
+            u = Mathf.Clamp01(u);
+            float eased = u * u * (3f - 2f * u) * 0.35f + u * u * 0.65f;
+            float entryBlend = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(u / 0.12f));
+            return Vector3.Lerp(_fallEntryPosition, PathPoint(eased), entryBlend);
+        }
+
+        private Vector3 FallVelocity()
+        {
+            float u = FallU();
+            float a = Mathf.Max(0f, u - 0.01f), b = Mathf.Min(1f, u + 0.01f);
+            return (FallPosition(b) - FallPosition(a)) / Mathf.Max(0.001f, (b - a) * FallDuration);
+        }
 
         private void UpdateFall()
         {
             float u = FallU();
             // Accelerating fall: slow tumble off the ledge, fast down the water.
-            float eased = u * u * (3f - 2f * u) * 0.35f + u * u * 0.65f;
-            Vector3 p = PathPoint(eased);
+            Vector3 p = FallPosition(u);
             Vector3 v = FallVelocity();
             _hero.transform.position = p;
+            SetWaterfallSwim(u >= 0.18f && u < 0.98f);
             if (Flat(v).sqrMagnitude > 0.01f) _hero.transform.rotation = Quaternion.Slerp(_hero.transform.rotation, Quaternion.LookRotation(Flat(v).normalized), Time.deltaTime * 4f);
 
-            if (u > 0.55f && Mathf.Repeat(_t, 0.12f) < Time.deltaTime)
+            if (u > 0.18f && Mathf.Repeat(_t, 0.12f) < Time.deltaTime)
                 AetheriaFx.Puff(p, new Color(0.85f, 0.93f, 1f, 0.5f), 6, 2.5f, 1.4f, 1.0f, 0.5f);   // spray on the fall
             if (u >= 0.98f && !_spawnedSplash)
             {
@@ -422,6 +442,13 @@ namespace Aetheria
         }
 
         // ------------------------------------------------------------------ helpers
+
+        private void SetWaterfallSwim(bool active)
+        {
+            var anim = _hero != null ? _hero.ActiveAnimator : null;
+            if (anim != null && anim.isActiveAndEnabled && HasParam(anim, "WaterfallSwim"))
+                anim.SetBool("WaterfallSwim", active);
+        }
 
         private void TriggerHero(string trigger)
         {

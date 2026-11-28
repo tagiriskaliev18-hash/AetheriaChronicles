@@ -49,6 +49,8 @@ namespace Aetheria.Editor
             var root = new GameObject("AetheriaPrologue").transform;
             var rock = RockMaterial();
             var director = root.gameObject.AddComponent<AetheriaPrologueDirector>();
+            root.gameObject.AddComponent<AetheriaPrologueCinematics>();   // shot language on top of the director
+            DarkenSage(tutor);
 
             // ---- cave --------------------------------------------------------------------------
             Vector3 mouth = c - outDir * 5.5f;
@@ -89,11 +91,13 @@ namespace Aetheria.Editor
             for (int i = 0; i < pts.Count; i++) fall.Add(Marker(root, "Prologue_Fall_" + i, pts[i], outDir));
             director.FallPath = fall.ToArray();
             BuildWaterfall(root, pts.Skip(1).ToList(), side, top);
+            AetheriaPrologueCliffDressing.AddFrontSheet(root.Find("Prologue_Waterfall")?.gameObject, outDir);
+            AetheriaPrologueCliffDressing.Dress(root, c, outDir, side, top, waterY, pts, H);
 
             // ---- the glade on the far shore ---------------------------------------------------
             Vector3 shore = FindGladeShore(c, lake, waterY);
             Vector3 toLake = Flat(lake - shore).normalized;
-            Vector3 wake = shore - toLake * 1.6f;
+            Vector3 wake = shore - toLake * 3.2f;   // a few steps up the bank, clear of the waterline
             wake.y = H(wake);
             director.GladeWakePoint = Marker(root, "Prologue_GladeWake", wake, Quaternion.AngleAxis(70f, Vector3.up) * toLake);
             Vector3 gladeSide = Vector3.Cross(Vector3.up, toLake);
@@ -104,11 +108,117 @@ namespace Aetheria.Editor
             BuildGlade(root, gladeCentre, wake, toLake);   // root sits at the origin: glade meshes are in world space
 
             ClearTrees(caveBounds, c + outDir * 12f, pts, gladeCentre);
+            // The glade is a safe place to wake up: push any enemy camp out of aggro range.
+            foreach (var enemy in Object.FindObjectsByType<EnemyAndBossAI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                Vector3 away = Flat(enemy.transform.position - gladeCentre);
+                if (away.magnitude > 45f) continue;
+                Vector3 to = gladeCentre + (away.sqrMagnitude > 0.01f ? away.normalized : -toLake) * 60f;
+                to.y = H(to);
+                enemy.transform.position = to;
+                EditorUtility.SetDirty(enemy.transform);
+            }
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
             Debug.Log($"[Prologue] Built: cave {caveBounds.size}, fall {pts.Count} points, glade at {gladeCentre}.");
+        }
+
+        /// <summary>
+        /// Dresses the sage. The shared hero prefab cycles three generic materials over all fourteen sub-meshes
+        /// (the face wears cloak cloth). The sage body has known parts, so each gets its own material: weathered
+        /// skin, a dark wool robe and hood, a darker cape, a leather belt, aged brass shoulders, grey brows, eyes.
+        /// The materials are named Sage_* so the runtime hero look system never touches them.
+        /// </summary>
+        private static void DarkenSage(GameObject tutor)
+        {
+            if (tutor == null) return;
+            const string W = "Assets/_AAA_Imported/WizardRaw/GLBModels/hero_archmage_d4_";
+            Material Cloth(string name, Color tint, float smooth, float tiling)
+            {
+                var m = Mat(name, Shader.Find("HDRP/Lit"));
+                m.SetTexture("_BaseColorMap", AssetDatabase.LoadAssetAtPath<Texture2D>(W + "woven_wool_albedo.png"));
+                var n = AssetDatabase.LoadAssetAtPath<Texture2D>(W + "woven_wool_normal.png");
+                if (n != null) { m.SetTexture("_NormalMap", n); m.EnableKeyword("_NORMALMAP"); m.SetFloat("_NormalScale", 1.4f); }
+                m.SetColor("_BaseColor", tint);
+                m.SetTextureScale("_BaseColorMap", new Vector2(tiling, tiling));
+                m.SetFloat("_Metallic", 0f);
+                m.SetFloat("_Smoothness", smooth);
+                AetheriaHdrpConvert.ValidateHdMaterial(m);
+                EditorUtility.SetDirty(m);
+                return m;
+            }
+            Material Plain(string name, Color c, float metallic, float smooth, Color emission = default)
+            {
+                var m = Mat(name, Shader.Find("HDRP/Lit"));
+                m.SetTexture("_BaseColorMap", null);
+                m.SetColor("_BaseColor", c);
+                m.SetFloat("_Metallic", metallic);
+                m.SetFloat("_Smoothness", smooth);
+                if (emission != default) { m.SetColor("_EmissiveColor", emission); m.EnableKeyword("_EMISSIVE_COLOR_MAP"); }
+                AetheriaHdrpConvert.ValidateHdMaterial(m);
+                EditorUtility.SetDirty(m);
+                return m;
+            }
+            var robe = Cloth("Sage_Robe", new Color(0.34f, 0.31f, 0.27f), 0.22f, 5f);
+            var cape = Cloth("Sage_Cape", new Color(0.2f, 0.21f, 0.23f), 0.2f, 4f);
+            var belt = Cloth("Sage_Leather", new Color(0.33f, 0.22f, 0.14f), 0.38f, 7f);
+            var brass = Mat("Sage_Brass", Shader.Find("HDRP/Lit"));
+            brass.SetTexture("_BaseColorMap", AssetDatabase.LoadAssetAtPath<Texture2D>(W + "gilded_brass_albedo.png"));
+            var bn = AssetDatabase.LoadAssetAtPath<Texture2D>(W + "gilded_brass_normal.png");
+            if (bn != null) { brass.SetTexture("_NormalMap", bn); brass.EnableKeyword("_NORMALMAP"); }
+            brass.SetColor("_BaseColor", new Color(0.62f, 0.52f, 0.36f));
+            brass.SetFloat("_Metallic", 0.9f);
+            brass.SetFloat("_Smoothness", 0.48f);
+            AetheriaHdrpConvert.ValidateHdMaterial(brass);
+            EditorUtility.SetDirty(brass);
+            var skin = Plain("Sage_Skin", new Color(0.56f, 0.44f, 0.38f), 0f, 0.38f);
+            var hair = Plain("Sage_Hair", new Color(0.62f, 0.61f, 0.58f), 0f, 0.3f);
+            var eye = Plain("Sage_Eye", new Color(0.04f, 0.035f, 0.03f), 0f, 0.92f);
+            var glow = Plain("Sage_Sigil", new Color(0.25f, 0.2f, 0.1f), 0f, 0.4f, new Color(1.6f, 1.1f, 0.45f));
+            // Sub-mesh order of the Gideon body: head, upper robe, lower robe, belt, cape, sigil, shoulders, brows, eyes x5, lashes.
+            var bySlot = new[] { skin, robe, robe, belt, cape, glow, brass, hair, eye, eye, eye, eye, eye, hair };
+            foreach (var r in tutor.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                if (mats.Length != bySlot.Length) continue;   // only the body this map was made for
+                r.sharedMaterials = bySlot;
+                EditorUtility.SetDirty(r);
+            }
+            UseSculptedSage(tutor);
+        }
+
+        /// <summary>
+        /// Shows the CC-BY "Old Wizard" sculpt (XiaoBuBu80, Sketchfab; see Assets/_AAA_Imported/Sketchfab/CREDITS.md):
+        /// hooded robe, white beard, staff and book. It is not rigged, so the hero-rig body stays as the hidden
+        /// logic body (Animator, NPC component) and AetheriaSageIdle gives the sculpt breathing and nods.
+        /// </summary>
+        private static void UseSculptedSage(GameObject tutor)
+        {
+            const string path = "Assets/_AAA_Imported/Sketchfab/OldWizard_XiaoBuBu80.glb";
+            var asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (asset == null) return;
+            var old = tutor.transform.Find("Sage_Sculpt");
+            if (old != null) Object.DestroyImmediate(old.gameObject);
+            var rends = tutor.GetComponentsInChildren<Renderer>(true);
+            if (rends.Length == 0) return;
+            var body = rends[0].bounds; foreach (var r in rends) body.Encapsulate(r.bounds);
+            foreach (var r in rends) { r.enabled = false; EditorUtility.SetDirty(r); }
+
+            // A holder carries placement and scale; the imported root keeps its own axis-conversion rotation.
+            var sculpt = new GameObject("Sage_Sculpt");
+            sculpt.transform.SetParent(tutor.transform, false);
+            var model = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+            model.transform.SetParent(sculpt.transform, false);
+            var srs = sculpt.GetComponentsInChildren<Renderer>();
+            var b = srs[0].bounds; foreach (var r in srs) b.Encapsulate(r.bounds);
+            sculpt.transform.localScale *= 1.8f / Mathf.Max(0.1f, b.size.y);
+            b = srs[0].bounds; foreach (var r in srs) b.Encapsulate(r.bounds);
+            Vector3 feet = new Vector3(tutor.transform.position.x, body.min.y, tutor.transform.position.z);
+            sculpt.transform.position += feet - new Vector3(b.center.x, b.min.y, b.center.z);
+            foreach (var r in srs) r.shadowCastingMode = ShadowCastingMode.On;
+            sculpt.AddComponent<AetheriaSageIdle>();
         }
 
         private static Transform Marker(Transform parent, string name, Vector3 pos, Vector3 forward)
@@ -203,7 +313,7 @@ namespace Aetheria.Editor
 
         private static Material RockMaterial()
         {
-            return Triplanar("Cave_Rock", "cliff_side", 0.2f, new Color(0.78f, 0.76f, 0.74f));   // natural rock (rock_wall_08 read as masonry)
+            return Triplanar("Cave_Rock", "cliff_side", 0.2f, new Color(0.56f, 0.58f, 0.63f));   // cool, dark stone: the daylight at the mouth is the only warm note   // natural rock (rock_wall_08 read as masonry)
         }
 
         private static Material RockMaterialLegacy()
@@ -295,7 +405,7 @@ namespace Aetheria.Editor
             var outerMesh = Loft(outer, rings, k, false, "Cave_Outer");
             var mouthMesh = MouthAndCaps(inner, outer, rings, k, axisHi, inward, "Cave_Caps");
             var floorMesh = CaveFloor(axisHi, halfWidth, side, floorY);
-            var hill = Triplanar("Cave_Hill", "cliff_side", 0.12f, new Color(0.85f, 0.83f, 0.8f));
+            var hill = Triplanar("Cave_Hill", "cliff_side", 0.12f, new Color(0.7f, 0.7f, 0.72f));
             var groundMat = Triplanar("Cave_Ground", "rocky_trail", 0.45f, new Color(0.75f, 0.72f, 0.68f));
             foreach (var (mesh, name, mat) in new[] { (innerMesh, "Inner", rock), (outerMesh, "Outer", hill), (mouthMesh, "Caps", hill), (floorMesh, "Floor", groundMat) })
             {
@@ -550,7 +660,7 @@ namespace Aetheria.Editor
                 float r0 = 9.6f + row * 2.3f;
                 Vector3 centre = c + outDir * (r0 + 1.15f) + side * (col - 0.5f) * 2.7f;
                 centre.y = top - 0.7f;
-                var mesh = Slab(rng, 2.3f, 1.4f, 2.7f);
+                var mesh = RockSlab(2.3f, 1.4f, 2.7f, centre);
                 var go = new GameObject("LedgePiece_" + idx++);
                 go.transform.SetParent(ledge, false);
                 go.transform.position = centre;
@@ -561,6 +671,57 @@ namespace Aetheria.Editor
                 bc.center = Vector3.zero;
                 bc.size = new Vector3(2.7f, 1.4f, 2.3f);
             }
+        }
+
+        /// <summary>
+        /// A broken rock slab: a finely subdivided box, rounded toward a pebble and displaced with ridged noise
+        /// sampled in world space, so neighbouring slabs share one rock grain. The top stays nearly flat to walk on.
+        /// </summary>
+        private static Mesh RockSlab(float lengthZ, float height, float widthX, Vector3 worldCentre)
+        {
+            const int n = 12;
+            var v = new List<Vector3>(); var t = new List<int>(); var uv = new List<Vector2>();
+            Vector3 dims = new Vector3(widthX, height, lengthZ);
+            Vector3[] faces = { Vector3.up, Vector3.down, Vector3.left, Vector3.right, Vector3.forward, Vector3.back };
+            foreach (var nrm in faces)
+            {
+                Vector3 u = Mathf.Abs(nrm.y) > 0.5f ? Vector3.right : Vector3.up;
+                Vector3 w = Vector3.Cross(nrm, u);
+                int b = v.Count;
+                for (int i = 0; i <= n; i++)
+                for (int j = 0; j <= n; j++)
+                {
+                    Vector3 p = nrm * 0.5f + u * (i / (float)n - 0.5f) + w * (j / (float)n - 0.5f);
+                    Vector3 round = Vector3.Lerp(p, p.normalized * 0.62f, 0.38f);
+                    Vector3 q = Vector3.Scale(round, dims);
+                    Vector3 world = worldCentre + q;
+                    float top = Mathf.Clamp01((p.y - 0.3f) / 0.2f);   // 1 on the walking surface
+                    float d = 0.16f * Ridged(world * 0.8f) + 0.06f * Noise3(world * 3.1f + Vector3.one * 5f) - 0.12f;
+                    d *= Mathf.Lerp(1f, 0.18f, top);
+                    q += Vector3.Scale(round.normalized, dims).normalized * d;
+                    v.Add(q);
+                    uv.Add(new Vector2(i / (float)n, j / (float)n));
+                }
+                for (int i = 0; i < n; i++)
+                for (int j = 0; j < n; j++)
+                {
+                    int a = b + i * (n + 1) + j, c = a + n + 1;
+                    t.AddRange(new[] { a, a + 1, c, a + 1, c + 1, c });
+                }
+            }
+            var m = new Mesh { name = "RockSlab" };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(t, 0);
+            m.RecalculateNormals(); m.RecalculateTangents(); m.RecalculateBounds();
+            // Faces were wound per face; make every triangle face outward.
+            var verts = m.vertices; var tris = m.triangles;
+            for (int i = 0; i < tris.Length; i += 3)
+            {
+                Vector3 a = verts[tris[i]], bb = verts[tris[i + 1]], c = verts[tris[i + 2]];
+                if (Vector3.Dot(Vector3.Cross(bb - a, c - a), (a + bb + c) / 3f) < 0f) { int s = tris[i + 1]; tris[i + 1] = tris[i + 2]; tris[i + 2] = s; }
+            }
+            m.triangles = tris;
+            m.RecalculateNormals(); m.RecalculateTangents(); m.RecalculateBounds();
+            return m;
         }
 
         /// <summary>A rough stone block: box with jittered corners, top face slightly domed.</summary>
@@ -621,7 +782,7 @@ namespace Aetheria.Editor
         {
             var mat = Mat("Waterfall_Water", Shader.Find("HDRP/Unlit"));
             mat.SetTexture("_UnlitColorMap", WaterStreaks());
-            mat.SetColor("_UnlitColor", new Color(0.5f, 0.64f, 0.74f, 0.62f));
+            mat.SetColor("_UnlitColor", new Color(0.8f, 0.88f, 0.94f, 0.5f));   // white water, not a blue sheet
             mat.SetFloat("_SurfaceType", 1f);
             mat.SetFloat("_BlendMode", 0f);
             mat.SetFloat("_DoubleSidedEnable", 1f);
@@ -655,7 +816,14 @@ namespace Aetheria.Editor
             var splash = new GameObject("Waterfall_Splash");
             splash.transform.SetParent(go.transform, false);
             splash.transform.position = pts[pts.Count - 1] + Vector3.up * 1.2f;
-            splash.AddComponent<AetheriaSplashEmitter>();
+            // Spray at the lip, speed streaks, mist and foam at the pool, splash bursts (replaces the old emitter).
+            var fx = new GameObject("Waterfall_Fx").AddComponent<AetheriaWaterfallFx>();
+            fx.transform.SetParent(parent, false);
+            fx.Path = pts.ToArray();
+            fx.Side = side;
+            fx.Width = 5.2f;
+            fx.WaterY = pts[pts.Count - 1].y + 1.2f;
+            fx.Brightness = 0.5f;
         }
 
         // ------------------------------------------------------------------ glade
@@ -665,6 +833,7 @@ namespace Aetheria.Editor
             Vector3 best = lake + Vector3.forward * 20f;
             float bestScore = float.MinValue;
             var oakhaven = AetheriaWorld.FindSite("OakhavenVillage");
+            Vector3 far = Flat(lake - plateau).normalized;   // the far shore, across the water from the cliff
             for (int a = 0; a < 72; a++)
             {
                 Vector3 dir = Quaternion.AngleAxis(a * 5f, Vector3.up) * Vector3.forward;
@@ -677,7 +846,7 @@ namespace Aetheria.Editor
                     float slope = Mathf.Abs(H(inland) - H(p));
                     float road = 0f;
                     for (float d = 0f; d < 10f; d += 2f) road = Mathf.Max(road, RoadLike(p + dir * d));
-                    float score = Vector3.Distance(Flat(p), Flat(plateau)) * 0.6f - slope * 6f - road * 80f;
+                    float score = Vector3.Distance(Flat(p), Flat(plateau)) * 0.6f - slope * 6f - road * 80f + Vector3.Dot(dir, far) * 40f;
                     if (oakhaven != null && Vector3.Distance(Flat(p), Flat(oakhaven.Position)) < 30f) score -= 100f;
                     if (score > bestScore) { bestScore = score; best = p; }
                     break;

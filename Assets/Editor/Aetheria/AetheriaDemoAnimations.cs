@@ -16,7 +16,13 @@ namespace Aetheria.Editor
         // v3: pelvis translation is retargeted (deaths reach the ground, locomotion bobs), the Move state
         // is time-scaled by MoveScale against foot sliding, borrowed Hit/Death clips for heroes that had
         // none, and cross-fades sized per transition instead of one 0.07 s snap everywhere.
-        private const string BakeVersion = "aetheria-demo-rig-v5";
+        private const string BakeVersion = "aetheria-demo-rig-v7";
+        // CC0 Quaternius Universal Animation Library (UE mannequin bone names): relaxed exploration idle, jog,
+        // hit and death instead of the crouched, sword-raised Paragon MOBA combat stance.
+        private const string UalIdle = "Anim/QuaterniusUAL:AL_Standard#Idle_Loop";
+        private const string UalJog = "Anim/QuaterniusUAL:AL_Standard#Jog_Fwd_Loop";
+        private const string UalHit = "Anim/QuaterniusUAL:AL_Standard#Hit_Chest";
+        private const string UalDeath = "Anim/QuaterniusUAL:AL_Standard#Death01";
         private const string ParagonHit = "Heroes/Kwang:Hitreact_Fwd";
         private const string ParagonDeath = "Heroes/Kwang:Death_Bwd";
 
@@ -45,27 +51,27 @@ namespace Aetheria.Editor
                 ("Fly", "FlyForwardAnim"), ("Breath", "AttackFireBallAnim"), ("Scream", "ScreamAnim"), ("Hit", "GetHitAnim"));
 
             foreach (var name in new[] { "Kwang", "KwangAlbino", "KwangFrost", "KwangManbun", "KwangSunrise" })
-                Bake("Heroes/Hero_" + name, "Heroes/Kwang", true, "Idle", "Jog_Fwd",
+                Bake("Heroes/Hero_" + name, "Heroes/Kwang", true, UalIdle, UalJog,
                     ("Attack1", "PrimaryAttack_A_Slow"), ("Attack2", "PrimaryAttack_B_Slow"),
                     ("Attack3", "PrimaryAttack_C_Slow"), ("Attack4", "PrimaryAttack_D_Slow"),
-                    ("Cast", "Cast"), ("Hit", "Hitreact_Fwd"), ("Death", "Death_Bwd"));
+                    ("Cast", "Cast"), ("Hit", UalHit), ("Death", UalDeath));
 
             foreach (var name in new[] { "Gideon", "GideonInq", "GideonMeph", "Morigesh", "MorigeshMystic" })
-                Bake("Heroes/Hero_" + name, "Heroes/Gideon", true, "Idle", "Jog_Fwd",
+                Bake("Heroes/Hero_" + name, "Heroes/Gideon", true, UalIdle, UalJog,
                     ("Attack1", "Primary_Attack_A_Medium"), ("Attack2", "Primary_Attack_A_Medium"),
                     ("Attack3", "Primary_Attack_A_Medium"), ("Cast", "Cast"),
-                    ("Hit", ParagonHit), ("Death", ParagonDeath));
+                    ("Hit", UalHit), ("Death", UalDeath));
 
             foreach (var name in new[] { "Serath", "SerathGold", "SerathFrost", "Kallari", "KallariLotus" })
-                Bake("Heroes/Hero_" + name, "Heroes/Serath", true, "Idle", "Jog_Fwd",
+                Bake("Heroes/Hero_" + name, "Heroes/Serath", true, UalIdle, UalJog,
                     ("Attack1", "Primary_Attack_A_Medium"), ("Attack2", "Primary_Attack_B_Medium"),
-                    ("Attack3", "Primary_Attack_D_Medium"), ("Cast", "Primary_Attack_D_Medium"), ("Death", "Death_Fwd"),
-                    ("Hit", ParagonHit));
+                    ("Attack3", "Primary_Attack_D_Medium"), ("Cast", "Primary_Attack_D_Medium"), ("Death", UalDeath),
+                    ("Hit", UalHit));
 
             foreach (var name in new[] { "Khaimera", "KhaimeraPelt" })
-                Bake("Heroes/Hero_" + name, "Heroes/Khaimera", true, "Idle_NonAdditive", "Jog_Fwd",
+                Bake("Heroes/Hero_" + name, "Heroes/Khaimera", true, UalIdle, UalJog,
                     ("Attack1", "Melee_A"), ("Attack2", "Melee_B"), ("Attack3", "Melee_A"),
-                    ("Cast", "Melee_B"), ("Death", "Death_A"), ("Hit", ParagonHit));
+                    ("Cast", "Melee_B"), ("Death", UalDeath), ("Hit", UalHit));
 
             AssetDatabase.SaveAssets();
         }
@@ -116,6 +122,16 @@ namespace Aetheria.Editor
                     moving.speedParameterActive = true;
                     Connect(rest, moving, AnimatorConditionMode.Greater, 0.12f, "Speed", 0.2f);
                     Connect(moving, rest, AnimatorConditionMode.Less, 0.12f, "Speed", 0.25f);
+                }
+
+                if (hero)
+                {
+                    // Separate cinematic motion while the current carries the hero down the waterfall.
+                    controller.AddParameter("WaterfallSwim", AnimatorControllerParameterType.Bool);
+                    var swim = machine.AddState("WaterfallSwim");
+                    swim.motion = BakeMotion(controller, target, sources, "Anim/QuaterniusUAL:AL_Standard#Swim_Fwd_Loop", true);
+                    Connect(null, swim, AnimatorConditionMode.If, 0f, "WaterfallSwim", 0.28f);
+                    Connect(swim, rest, AnimatorConditionMode.IfNot, 0f, "WaterfallSwim", 0.22f);
                 }
 
                 controller.AddParameter("CombatSpeed", AnimatorControllerParameterType.Float);
@@ -234,10 +250,15 @@ namespace Aetheria.Editor
                 folder = name.Substring(0, separator);
                 name = name.Substring(separator + 1);
             }
+            // "File#Clip" picks one take from a multi-clip library FBX (the Quaternius libraries).
+            string take = null;
+            int hash = name.IndexOf('#');
+            if (hash >= 0) { take = name.Substring(hash + 1); name = name.Substring(0, hash); }
             string path = $"{Sources}{folder}/Animations/{name}.fbx";
             var sourceAsset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             var clip = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>()
-                .FirstOrDefault(c => !c.name.StartsWith("__preview__", StringComparison.Ordinal));
+                .Where(c => !c.name.StartsWith("__preview__", StringComparison.Ordinal))
+                .FirstOrDefault(c => take == null || c.name == take || c.name.EndsWith("|" + take, StringComparison.Ordinal));
             if (sourceAsset == null || clip == null || clip.length <= 0f)
                 throw new InvalidOperationException($"Missing usable clip at {path}.");
 

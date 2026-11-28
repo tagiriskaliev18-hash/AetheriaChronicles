@@ -40,7 +40,24 @@ namespace Aetheria
             caster?.GetComponent<HeroController>()?.PlayCastAnimation();
             AetheriaFx.FlashLight(origin, def.PrimaryColor, 22f, 9f, 0.35f);
             AetheriaFx.Flare(origin + dir * 0.5f, def.PrimaryColor, 1.8f, 0.25f);
-            AudioAndQualityService.Instance?.PlaySfxAt(def.Id == SpellId.ColdSnap || def.Id == SpellId.IcePrismWall ? "SFX_ChronoBlink" : "SW_MagicCast_FireBall1_1", origin, 0.75f);
+            string castSound;
+            switch (def.Id)
+            {
+                case SpellId.ColdSnap:
+                case SpellId.IcePrismWall:
+                case SpellId.ChronoBlink:
+                    castSound = "SFX_ChronoBlink";
+                    break;
+                case SpellId.StormAlacrity:
+                case SpellId.StormEMP:
+                case SpellId.GravityTornado:
+                    castSound = "SFX_SelfCast_Tempest";
+                    break;
+                default:
+                    castSound = "SFX_Fireball_Cast";
+                    break;
+            }
+            AudioAndQualityService.Instance?.PlaySfxAt(castSound, origin, 0.75f);
         }
 
         // ------------------------------------------------------------------ shared damage + scorch
@@ -174,7 +191,19 @@ namespace Aetheria
 
                 if (!_landed)
                 {
-                    if (next.y <= ground) Impact();
+                    if (next.y <= ground)
+                    {
+                        // Locate the surface crossing within this frame, so the impact
+                        // does not jump back to the meteor's previous position.
+                        float currentGround = AetheriaWorld.SampleHeight(transform.position) + 1.6f;
+                        float startClearance = transform.position.y - currentGround;
+                        float endClearance = next.y - ground;
+                        float crossing = startClearance > 0f
+                            ? Mathf.Clamp01(startClearance / (startClearance - endClearance))
+                            : 0f;
+                        transform.position = Vector3.Lerp(transform.position, next, crossing);
+                        Impact();
+                    }
                     else transform.position = next;
                     return;
                 }

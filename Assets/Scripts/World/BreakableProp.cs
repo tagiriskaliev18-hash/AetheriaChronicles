@@ -177,7 +177,7 @@ namespace Aetheria
             AetheriaFx.Debris(at, col, 10, impulseOrigin, 9f, 0.16f, true);
             AetheriaFx.Flare(at, col, 2.6f, 0.35f);
             AetheriaFx.Shake(0.16f, 0.32f);
-            AudioAndQualityService.Instance?.PlaySfxAt("SFX_Barrel_Break", at, 0.85f);
+            AudioAndQualityService.Instance?.PlaySfxAt("SFX_Pylon_Shatter", at, 0.85f);
             AudioAndQualityService.Instance?.PlaySfxAt("SFX_Hit_Stone", at, 0.7f);
 
             if (!_questNotified && !string.IsNullOrEmpty(LinkedQuestId))

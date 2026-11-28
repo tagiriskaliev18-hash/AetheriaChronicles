@@ -57,13 +57,16 @@ namespace Aetheria
             yield return new WaitForSeconds(2.6f);
             Shot(dir, "07_waterfall_fall");
             yield return new WaitForSeconds(0.25f);   // the capture lands at the end of the frame
-            yield return new WaitForSeconds(2.3f);
+            while (director.Current == AetheriaPrologueDirector.Stage.Collapse && director.WaterfallProgress < 0.94f)
+                yield return null;
             Shot(dir, "08_splash");
             yield return new WaitForSeconds(0.25f);   // the capture lands at the end of the frame
-            yield return new WaitForSeconds(7.6f);
+            while (director.Current == AetheriaPrologueDirector.Stage.Collapse) yield return null;
+            yield return new WaitForSeconds(4.7f);
             Shot(dir, "09_glade_wake");
             yield return new WaitForSeconds(0.25f);   // the capture lands at the end of the frame
-            yield return new WaitForSeconds(3.0f);
+            while (director.Current == AetheriaPrologueDirector.Stage.Shore) yield return null;
+            yield return new WaitForSeconds(0.5f);
             Shot(dir, "10_glade_after");
             yield return new WaitForSeconds(0.25f);   // the capture lands at the end of the frame
             yield return new WaitForSeconds(0.5f);

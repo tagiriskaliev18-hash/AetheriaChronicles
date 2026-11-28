@@ -35,7 +35,9 @@ namespace Aetheria.Editor
             var s = asset.currentPlatformRenderPipelineSettings;
 
             // Hardware ray tracing and the rasterized effects that gate it
-            s.supportRayTracing = true;
+            // Off: no effect in the player uses hardware ray tracing (GI/SSR ray-march), but with it on HDRP
+            // builds acceleration structures for every vegetation instance, which overflows 8 GB GPUs.
+            s.supportRayTracing = false;
             s.supportedRayTracingMode = RenderPipelineSettings.SupportedRayTracingMode.Both;
             s.supportSSR = true;
             s.supportSSRTransparent = true;

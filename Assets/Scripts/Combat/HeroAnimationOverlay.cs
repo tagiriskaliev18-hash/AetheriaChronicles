@@ -126,10 +126,10 @@ namespace Aetheria
             if (TuckWeight > 0.01f)
             {
                 float t = TuckWeight;
-                if (_thighL != null) _thighL.rotation = Quaternion.AngleAxis(46f * t, right) * _thighL.rotation;
-                if (_thighR != null) _thighR.rotation = Quaternion.AngleAxis(52f * t, right) * _thighR.rotation;
-                if (_calfL != null) _calfL.rotation = Quaternion.AngleAxis(-62f * t, right) * _calfL.rotation;
-                if (_calfR != null) _calfR.rotation = Quaternion.AngleAxis(-70f * t, right) * _calfR.rotation;
+                if (_thighL != null) _thighL.rotation = Quaternion.AngleAxis(-46f * t, right) * _thighL.rotation;
+                if (_thighR != null) _thighR.rotation = Quaternion.AngleAxis(-52f * t, right) * _thighR.rotation;
+                if (_calfL != null) _calfL.rotation = Quaternion.AngleAxis(62f * t, right) * _calfL.rotation;
+                if (_calfR != null) _calfR.rotation = Quaternion.AngleAxis(70f * t, right) * _calfR.rotation;
                 if (_upperL != null) _upperL.rotation = Quaternion.AngleAxis(-38f * t, right) * _upperL.rotation;
                 if (_upperR != null) _upperR.rotation = Quaternion.AngleAxis(-38f * t, right) * _upperR.rotation;
             }
@@ -142,12 +142,14 @@ namespace Aetheria
                     Vector3 flatFwd = transform.forward;
                     Vector3 dirNorm = dir.normalized;
                     float ang = Vector3.Angle(flatFwd, dirNorm);
-                    Vector3 clampedDir = ang > 55f
-                        ? Vector3.RotateTowards(flatFwd, dirNorm, 55f * Mathf.Deg2Rad, 0f)
+                    Vector3 clampedDir = ang > 35f
+                        ? Vector3.RotateTowards(flatFwd, dirNorm, 35f * Mathf.Deg2Rad, 0f)
                         : dirNorm;
-                    Quaternion targetHead = Quaternion.LookRotation(clampedDir, up);
-                    Quaternion wanted = Quaternion.RotateTowards(_head.rotation, targetHead, 55f);
-                    _head.rotation = Quaternion.Slerp(_head.rotation, wanted, LookWeight);
+                    // Turn the animated head by the world-space difference between body facing and look
+                    // direction. The UE head bone's local axes are not Z-forward/Y-up, so building an absolute
+                    // LookRotation for it rolled the head sideways.
+                    Quaternion delta = Quaternion.FromToRotation(flatFwd, clampedDir);
+                    _head.rotation = Quaternion.Slerp(Quaternion.identity, delta, LookWeight) * _head.rotation;
                 }
             }
         }

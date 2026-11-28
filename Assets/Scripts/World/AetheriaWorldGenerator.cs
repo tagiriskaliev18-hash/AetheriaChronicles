@@ -82,6 +82,11 @@ namespace Aetheria
                     StartCoroutine(AetheriaPrologueShots.Run(args[i + 1]));
                     break;
                 }
+                if (args[i] == "-motion-shots")
+                {
+                    AetheriaMotionShots.Begin(args[i + 1]);
+                    break;
+                }
                 if (args[i] == "-verify-screenshots")
                 {
                     StartCoroutine(RunVerificationCaptureRoutine(args[i + 1]));

@@ -90,7 +90,10 @@ namespace Aetheria
             bool ultra = tier == RenderTier.CrimsonHdrpUltra;
             QualitySettings.shadows = UnityEngine.ShadowQuality.All;
             QualitySettings.lodBias = ultra ? 1.8f : 0.9f;
-            QualitySettings.globalTextureMipmapLimit = ultra ? 0 : 1;
+            // Cards with less than ~11 GB of VRAM (e.g. RTX 4060 8 GB) run out of memory with full-size
+            // textures once the open world is in view; drop one mip level there even on the Ultra tier.
+            bool lowVram = SystemInfo.graphicsMemorySize > 0 && SystemInfo.graphicsMemorySize < 11000;
+            QualitySettings.globalTextureMipmapLimit = ultra && !lowVram ? 0 : 1;
 
             var vol = AetheriaRenderImpl.FindHighestPriorityGlobalVolume(requireGradientSky: false);
             if (vol != null)
